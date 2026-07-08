@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Local config (NOT to be committed)
+env.local
+
+# Credentials
+.env
+
+# Python cache
+__pycache__/
+*.pyc

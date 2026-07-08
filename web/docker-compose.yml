@@ -1,0 +1,21 @@
+services:
+  site-frontend:
+    image: nginx:alpine
+    container_name: ftf_frontend
+    ports:
+      - "${NGINX_PORT:-8888}:80"
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always
+
+  site-backend:
+    image: node:20-alpine
+    container_name: ftf_backend
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    command: sh -c "npm install && node server.js"
+    restart: always
