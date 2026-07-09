@@ -7,10 +7,10 @@
 # 脚本由 `sh deploy.sh` 调用。
 #
 # 目标路径（WebDAV 容器 clinedeploy-webdav）：
-#   web/html/*        → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
-#   web/docker-compose.yml  → /docker/               (docker compose)
-#   web/nginx.conf     → /docker/                   (nginx config)
-#   web/backend/*      → /docker/backend/           (Node.js backend)
+#   web/html/<PROJECT_PATH>/  → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
+#   web/nginx.conf.template   → /docker/nginx.conf           (nginx 配置)
+#   web/docker-compose.yml    → /docker/                     (docker compose)
+#   web/backend/*             → /docker/backend/             (Node.js backend)
 #
 # 用法：
 #   sh deploy/deploy.sh
@@ -123,13 +123,17 @@ fi
 unset PASSWORD
 START_TS=$(date +%s)
 
-# ----- 5. 同步 web/html → /docker/html/<PROJECT_PATH>/ -----
-echo ""
-echo -e "${YELLOW}📄 同步前端页面...${NC}"
-if [ -d "${SCRIPT_DIR}/../web/html" ]; then
-    rclone sync --delete-excluded "${SCRIPT_DIR}/../web/html/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
-    echo -e "${GREEN}✅ HTML 同步完成${NC}"
+# ----- 5. 同步前端页面 -----
+SOURCE_HTML="${SCRIPT_DIR}/../web/html/${PROJECT_PATH}"
+if [ ! -d "$SOURCE_HTML" ]; then
+    # Fallback to root html if project subdir doesn't exist
+    SOURCE_HTML="${SCRIPT_DIR}/../web/html"
 fi
+
+echo ""
+echo -e "${YELLOW}📄 同步前端页面 (→ /docker/html/${PROJECT_PATH}/)...${NC}"
+rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
+echo -e "${GREEN}✅ HTML 同步完成${NC}"
 
 # ----- 6. 同步 web/backend → /docker/backend/ -----
 echo ""
@@ -147,9 +151,8 @@ if [ -f "${SCRIPT_DIR}/../web/docker-compose.yml" ]; then
     echo "  ✅ docker-compose.yml"
 fi
 
-# Process nginx.conf template with PROJECT_PATH substitution
 if [ -f "${SCRIPT_DIR}/../web/nginx.conf.template" ]; then
-    # Generate nginx.conf with substituted PROJECT_PATH
+    # Generate nginx.conf with PROJECT_PATH variable substituted
     NGINX_CONF=$(sed "s|\${PROJECT_PATH}|${PROJECT_PATH}|g" "${SCRIPT_DIR}/../web/nginx.conf.template")
     echo "$NGINX_CONF" | rclone rcat "${REMOTE}:/docker/nginx.conf" 2>&1 | grep -v "NOTICE" | tail -1 || true
     echo "  ✅ nginx.conf (with ${PROJECT_PATH} path)"
@@ -175,8 +178,7 @@ if command -v curl >/dev/null 2>&1; then
     [ -n "$COMMIT_MSG" ] && NOTIFY_MSG="${NOTIFY_MSG}\n${COMMIT_MSG}"
     NOTIFY_MSG="${NOTIFY_MSG}\n路径: /${PROJECT_PATH}/"
     NOTIFY_MSG="${NOTIFY_MSG}\n耗时: ${ELAPSED}s"
-    
-    # Try Pushover via MCP or curl
+
     curl -s -X POST https://api.pushover.net/1/messages.json \
         --data-urlencode "token=${PUSHOVER_NAS_TOKEN:-}" \
         --data-urlencode "user=${PUSHOVER_NAS_USER:-}" \
