@@ -2,21 +2,20 @@
 # ==============================================================================
 # 🚀 FamilyTimeFlow — NAS 一键部署脚本 (WebDAV)
 #
-# 将本地 repo 中的前端文件部署到极空间 NAS。
-# 使用 rclone + WebDAV 协议，内网 IP 优先，外网 Tailscale Funnel fallback。
-# 脚本由 `sh deploy.sh` 调用。
+# 多项目共享同一 nginx 实例，每个项目只部署自己的文件。
+# 不覆盖共享的 nginx.conf / docker-compose.yml（由 Emma Focus 管理）。
 #
 # 目标路径（WebDAV 容器 clinedeploy-webdav）：
-#   web/html/<PROJECT_PATH>/          → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
-#   web/nginx.conf.template            → /docker/nginx.conf           (nginx 配置)
-#   web/docker-compose.yml             → /docker/                     (docker compose)
-#   web/backend/<PROJECT_PATH>/        → /docker/backend/<PROJECT_PATH>/  (Node.js backend)
+#   web/html/family-time-flow/     → /docker/html/family-time-flow/    (静态页)
+#   web/conf.d/family-time-flow.conf → /docker/conf.d/family-time-flow.conf (nginx片段)
+#   web/backend/family-time-flow/  → /docker/backend/family-time-flow/ (Node.js后端)
 #
 # 用法：
 #   sh deploy/deploy.sh
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_PATH="family-time-flow"
 
 # 加载 ~/.nas-env 本地共享配置（如果存在），不提交 git，所有项目共享
 [ -f ~/.nas-env ] && . ~/.nas-env
@@ -32,7 +31,6 @@ NAS_IP="${NAS_IP:-192.168.6.108}"
 NAS_PORT="${NAS_WEBDAV_PORT:-8889}"
 DOMAIN="${DOMAIN_PUBLIC:-https://remote-access-8888.zconnect.cn}"
 KEYCHAIN_WEBDAV_SERVICE="${KEYCHAIN_WEBDAV_SERVICE:-emma-webdav}"
-PROJECT_PATH="${PROJECT_PATH:-family-time-flow}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -43,27 +41,22 @@ echo ""
 echo "============================================="
 echo " 🚀 FamilyTimeFlow — NAS 部署 (WebDAV)"
 echo "============================================="
+echo " 项目: ${PROJECT_PATH}"
+echo " 目标: ${NAS_IP}:${NAS_PORT}"
 
 # ----- 1. 读取 WebDAV 密码（跨平台）-----
 PASSWORD=""
-
-# macOS: 从 Keychain 读取
 if [ "$(uname)" = "Darwin" ]; then
     PASSWORD=$(security find-generic-password -s "$KEYCHAIN_WEBDAV_SERVICE" -a "$USER" -w 2>/dev/null)
 fi
-
-# 后备：从环境变量读取
 if [ -z "$PASSWORD" ] && [ -n "$WEBDAV_PASS" ]; then
     PASSWORD="$WEBDAV_PASS"
 fi
-
-# 最后：交互式输入
 if [ -z "$PASSWORD" ]; then
     echo -e "${YELLOW}⚠️ 请输入 WebDAV 密码（输入时不显示）：${NC}"
     read -s PASSWORD
     echo ""
 fi
-
 if [ -z "$PASSWORD" ]; then
     echo -e "${RED}❌ 未提供 WebDAV 密码。${NC}"
     echo "   macOS: security add-generic-password -s \"${KEYCHAIN_WEBDAV_SERVICE}\" -a \"$USER\" -w \"密码\""
@@ -124,42 +117,36 @@ unset PASSWORD
 START_TS=$(date +%s)
 
 # ----- 5. 同步前端页面 -----
-SOURCE_HTML="${SCRIPT_DIR}/../web/html/${PROJECT_PATH}"
-if [ ! -d "$SOURCE_HTML" ]; then
-    # Fallback to root html if project subdir doesn't exist
-    SOURCE_HTML="${SCRIPT_DIR}/../web/html"
-fi
-
 echo ""
 echo -e "${YELLOW}📄 同步前端页面 (→ /docker/html/${PROJECT_PATH}/)...${NC}"
-rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
-echo -e "${GREEN}✅ HTML 同步完成${NC}"
-
-# ----- 6. 同步后端代码 (per PROJECT_PATH) -----
-SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend/${PROJECT_PATH}"
-if [ ! -d "$SOURCE_BACKEND" ]; then
-    # Fallback to root backend if project subdir doesn't exist
-    SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend"
+SOURCE_HTML="${SCRIPT_DIR}/../web/html/${PROJECT_PATH}"
+if [ -d "$SOURCE_HTML" ]; then
+    rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    echo -e "${GREEN}✅ HTML 同步完成${NC}"
+else
+    echo -e "${YELLOW}⚠️  未找到 ${SOURCE_HTML}，跳过${NC}"
 fi
 
+# ----- 6. 同步 nginx 配置片段 -----
+echo ""
+echo -e "${YELLOW}📄 同步 nginx 配置 (→ /docker/conf.d/${PROJECT_PATH}.conf)...${NC}"
+NGINX_FRAGMENT="${SCRIPT_DIR}/../web/conf.d/${PROJECT_PATH}.conf"
+if [ -f "$NGINX_FRAGMENT" ]; then
+    rclone copy "$NGINX_FRAGMENT" "${REMOTE}:/docker/conf.d/" 2>&1 | grep -v "NOTICE" | tail -1 || true
+    echo -e "${GREEN}✅ nginx 配置同步完成${NC}"
+else
+    echo -e "${YELLOW}⚠️  未找到 ${NGINX_FRAGMENT}，跳过${NC}"
+fi
+
+# ----- 7. 同步后端代码 -----
 echo ""
 echo -e "${YELLOW}📄 同步后端代码 (→ /docker/backend/${PROJECT_PATH}/)...${NC}"
-rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" 2>&1 | grep -v "NOTICE" | tail -2 || true
-echo -e "${GREEN}✅ 后端同步完成${NC}"
-
-# ----- 7. 同步 Docker infra 文件 -----
-echo ""
-echo -e "${YELLOW}📄 同步 Docker 配置...${NC}"
-if [ -f "${SCRIPT_DIR}/../web/docker-compose.yml" ]; then
-    rclone copy "${SCRIPT_DIR}/../web/docker-compose.yml" "${REMOTE}:/docker/" 2>&1 | grep -v "NOTICE" | tail -1 || true
-    echo "  ✅ docker-compose.yml"
-fi
-
-if [ -f "${SCRIPT_DIR}/../web/nginx.conf.template" ]; then
-    # Generate nginx.conf with PROJECT_PATH variable substituted
-    NGINX_CONF=$(sed "s|\${PROJECT_PATH}|${PROJECT_PATH}|g" "${SCRIPT_DIR}/../web/nginx.conf.template")
-    echo "$NGINX_CONF" | rclone rcat "${REMOTE}:/docker/nginx.conf" 2>&1 | grep -v "NOTICE" | tail -1 || true
-    echo "  ✅ nginx.conf (with ${PROJECT_PATH} path)"
+SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend/${PROJECT_PATH}"
+if [ -d "$SOURCE_BACKEND" ]; then
+    rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    echo -e "${GREEN}✅ 后端同步完成${NC}"
+else
+    echo -e "${YELLOW}⚠️  未找到 ${SOURCE_BACKEND}，跳过${NC}"
 fi
 
 # ----- 8. 完成 -----
