@@ -15,7 +15,7 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
-      - ./backend:/app
+      - ./backend/${PROJECT_PATH:-family-time-flow}:/app
     working_dir: /app
     command: sh -c "npm install && node server.js"
     restart: always

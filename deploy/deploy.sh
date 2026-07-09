@@ -7,10 +7,10 @@
 # 脚本由 `sh deploy.sh` 调用。
 #
 # 目标路径（WebDAV 容器 clinedeploy-webdav）：
-#   web/html/<PROJECT_PATH>/  → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
-#   web/nginx.conf.template   → /docker/nginx.conf           (nginx 配置)
-#   web/docker-compose.yml    → /docker/                     (docker compose)
-#   web/backend/*             → /docker/backend/             (Node.js backend)
+#   web/html/<PROJECT_PATH>/          → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
+#   web/nginx.conf.template            → /docker/nginx.conf           (nginx 配置)
+#   web/docker-compose.yml             → /docker/                     (docker compose)
+#   web/backend/<PROJECT_PATH>/        → /docker/backend/<PROJECT_PATH>/  (Node.js backend)
 #
 # 用法：
 #   sh deploy/deploy.sh
@@ -135,13 +135,17 @@ echo -e "${YELLOW}📄 同步前端页面 (→ /docker/html/${PROJECT_PATH}/)...
 rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
 echo -e "${GREEN}✅ HTML 同步完成${NC}"
 
-# ----- 6. 同步 web/backend → /docker/backend/ -----
-echo ""
-echo -e "${YELLOW}📄 同步后端代码...${NC}"
-if [ -d "${SCRIPT_DIR}/../web/backend" ]; then
-    rclone sync --delete-excluded "${SCRIPT_DIR}/../web/backend/" "${REMOTE}:/docker/backend/" --exclude "node_modules" 2>&1 | grep -v "NOTICE" | tail -2 || true
-    echo -e "${GREEN}✅ 后端同步完成${NC}"
+# ----- 6. 同步后端代码 (per PROJECT_PATH) -----
+SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend/${PROJECT_PATH}"
+if [ ! -d "$SOURCE_BACKEND" ]; then
+    # Fallback to root backend if project subdir doesn't exist
+    SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend"
 fi
+
+echo ""
+echo -e "${YELLOW}📄 同步后端代码 (→ /docker/backend/${PROJECT_PATH}/)...${NC}"
+rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" 2>&1 | grep -v "NOTICE" | tail -2 || true
+echo -e "${GREEN}✅ 后端同步完成${NC}"
 
 # ----- 7. 同步 Docker infra 文件 -----
 echo ""
