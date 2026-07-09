@@ -1,12 +1,12 @@
-# Contributing to Infra Template
+# Contributing to FamilyTimeFlow
 
-This template grows through contributions from real projects.
+This project uses the [infra-template](https://github.com/animeidea-debug/infra-template) for NAS deployment.
 
 ## How to contribute
 
 1. Improve a component in **your project** (fix nginx config, improve deploy script, etc.)
 2. Extract the **generic parts** (remove project-specific values)
-3. Update the corresponding file(s) in this repository
+3. Update the corresponding file(s) in the infra-template repository
 4. Submit a Pull Request with:
    - What you changed
    - Which project validated the change
@@ -21,5 +21,5 @@ This template grows through contributions from real projects.
 ## Example
 
 ```
-Project: My App improved nginx caching → PR to infra-template
+Project: FamilyTimeFlow improved deploy script → PR to infra-template
   → All projects using this template benefit

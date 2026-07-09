@@ -1,0 +1,69 @@
+# Cline Global Rules — FamilyTimeFlow Template
+# Usage: cp clinerules/global.template ~/.clinerules
+# Then modify for your project info
+# Note: This template is synced via git, but installing to ~/.clinerules requires manual execution
+
+## Pushover Notifications
+When the following operations execute, send notifications via MCP tool `pushover_send_message`:
+
+1. **Task completion** → "Done: " prefix, summarize changes
+2. **Git commit + push** → Notify commit title
+3. **Deployment complete** → Notify deployment status
+4. **Long-running tasks** (> 30s) → Notify completion
+5. **User action required** → Notify to switch ACT MODE
+
+MCP server path: /Users/your-username/scripts/mcp-pushover-server.js
+
+## Credential Management
+All passwords are read from macOS Keychain, never stored in plain text files:
+- WebDAV: `security find-generic-password -s "your-webdav" -a "your-username" -w`
+- Other credentials: Same pattern, custom service name
+
+## Auto Deployment
+After each code modification:
+1. `cd deploy && sh deploy.sh`  # Deploy to NAS
+
+## Multi-project nginx Isolation
+
+### Key Principle
+Each project must use a **unique PROJECT_PATH** to avoid conflicts on shared nginx servers.
+
+### Configuration
+1. **Set PROJECT_PATH in env.local** (unique per project):
+   ```sh
+   PROJECT_PATH="family-time-flow"  # Must be unique!
+   ```
+
+2. **Project uses dedicated subdirectory**:
+   ```
+   web/html/
+   └── index.html              # FamilyTimeFlow main page
+   ```
+
+3. **docker-compose volume mount** (must match PROJECT_PATH):
+   ```yaml
+   volumes:
+     - ./html:/usr/share/nginx/html/${PROJECT_PATH:-family-time-flow}:ro
+   ```
+
+4. **Deploy to project-specific path**:
+   ```sh
+   # Deploys to /docker/html/<PROJECT_PATH>/
+   rclone sync ./web/html/ remote:/docker/html/${PROJECT_PATH}/
+   ```
+
+5. **Access your project at**:
+   ```
+   http://localhost:8888/<PROJECT_PATH>/
+   ```
+
+### nginx.conf Template
+The `web/nginx.conf.template` uses `${PROJECT_PATH}` placeholders that are substituted during deployment:
+- `location /${PROJECT_PATH}/` → serves project HTML
+- `location /${PROJECT_PATH}/api/` → proxies to backend
+
+### For Other Projects
+When creating a new project from this template:
+1. Change `PROJECT_PATH` to a unique value (e.g., `my-blog`, `photo-gallery`)
+2. Ensure the nginx on NAS includes all project configs
+3. Each project will be accessible at its own path

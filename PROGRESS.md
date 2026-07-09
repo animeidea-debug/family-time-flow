@@ -1,6 +1,6 @@
 # FamilyTimeFlow — Project Progress
 
-> **Last updated**: 2026-07-09 01:56 UTC+8
+> **Last updated**: 2026-07-09 02:00 UTC+8
 
 ---
 
@@ -12,6 +12,8 @@
 - [x] **Seeded from infra-template**: Docker Compose (nginx + Node.js), deploy scripts, docs
 - [x] **README.md** — Customized for FamilyTimeFlow
 - [x] **PRD reformatted** → `PRD_FamilyTimeFlow.md` (clean markdown)
+- [x] **docs/SETUP.md** — Synced from infra-template
+- [x] **docs/CONTRIBUTING.md** — Synced from infra-template
 
 ### NAS Credentials & Deploy Pipeline
 
@@ -20,6 +22,16 @@
 - [x] **Shared NAS config**: `~/.nas-env` with IP, ports, users, Keychain service names
 - [x] **First deploy successful**: `deploy/deploy.sh` — LAN connected, files synced in 1s
 - [x] **Deployed to NAS**: `index.html`, `server.js`, `docker-compose.yml`, `nginx.conf`
+
+### Multi-Project nginx Isolation (NEW)
+
+- [x] **Added PROJECT_PATH variable** to `env.template` for unique project routing
+- [x] **Created nginx.conf.template** with `${PROJECT_PATH}` placeholders
+- [x] **Updated deploy.sh** to:
+  - Deploy HTML to `/docker/html/${PROJECT_PATH}/` (isolated per project)
+  - Process nginx.conf template with sed substitution
+  - Show project path in deployment output
+- [x] **Updated clinerules** to document multi-project isolation pattern
 
 ### Immich Integration Design (Phase 3 Prep)
 
@@ -74,7 +86,19 @@ Ready to start when you are!
 | WebDAV password | macOS Keychain (`emma-webdav`) | rclone deploy authentication |
 | SSH key | `~/.ssh/nas_ed25519` | Passwordless NAS SSH access |
 | SSH config | `~/.ssh/config` | Host aliases (`nas`, `nas-ts`) |
-| Project config | `env.local` | Project name, ports |
+| Project config | `env.local` | Project name, ports, PROJECT_PATH |
 | Immich API key | Not persisted yet (will go in `.env`) | Immich API access |
 
 > **For Windows PC**: You'll need to set up the equivalents — `WEBDAV_PASS` env var instead of Keychain, and configure SSH with your key file.
+
+---
+
+## Multi-Project Isolation Summary
+
+**Problem**: Multiple projects sharing the same NAS nginx server would overwrite each other's `index.html` and `nginx.conf`.
+
+**Solution**: Path-based isolation using `PROJECT_PATH` variable.
+
+**Access URL**: `http://localhost:8888/<PROJECT_PATH>/`
+
+**Example**: With `PROJECT_PATH="family-time-flow"`, access at `http://localhost:8888/family-time-flow/`

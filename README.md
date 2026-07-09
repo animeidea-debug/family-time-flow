@@ -24,7 +24,8 @@ family-time-flow/
 │   ├── CONTRIBUTING.md          # Contribution guidelines
 │   └── IMMICH_INTEGRATION.md    # Immich API integration design (live-verified)
 ├── clinerules/
-│   └── env.template             # Shared env config documentation
+│   ├── env.template             # Shared env config documentation
+│   └── global.template          # Cline rules template
 ├── deploy/
 │   ├── deploy.sh                # NAS deployment via rclone WebDAV
 │   ├── deploy_gas.sh            # GAS deployment script
@@ -36,7 +37,8 @@ family-time-flow/
 │   │   ├── package.json         # Express skeleton
 │   │   └── server.js            # Backend placeholder → Phase 2 API
 │   ├── docker-compose.yml       # nginx + Node.js (NAS-ready)
-│   └── nginx.conf               # Reverse proxy config
+│   ├── nginx.conf               # Static nginx config (legacy)
+│   └── nginx.conf.template      # Template with PROJECT_PATH substitution
 ├── env.template                 # Project env template (→ env.local)
 ├── .gitignore
 └── env.local*                   # Local config (gitignored)
@@ -53,6 +55,17 @@ family-time-flow/
 | **Animation** | GSAP (GreenSock Animation Platform) |
 | **Photos** | Immich v2.7.5 API integration (live-verified) |
 | **NAS Config** | Shared `~/.nas-env` + macOS Keychain (WebDAV/SSH passwords) |
+
+## Multi-Project Isolation
+
+This project supports **path-based isolation** to avoid conflicts when multiple projects share the same nginx server:
+
+- Set `PROJECT_PATH` in `env.local` (unique per project)
+- Access your project at: `http://localhost:8888/<PROJECT_PATH>/`
+- HTML deploys to: `/docker/html/<PROJECT_PATH>/`
+- nginx config is generated from template with path substitution
+
+---
 
 ## Quick Start
 
@@ -76,13 +89,21 @@ family-time-flow/
 security add-generic-password -s "emma-webdav" -a "$USER" -w "your-webdav-password"
 ```
 
-### 3. Deploy to NAS
+### 3. Configure Project (optional)
+
+```sh
+# Copy env.template to env.local and customize:
+cp env.template env.local
+# Edit PROJECT_PATH if needed (default: family-time-flow)
+```
+
+### 4. Deploy to NAS
 
 ```sh
 sh deploy/deploy.sh
 ```
 
-### 4. SSH into NAS
+### 5. SSH into NAS
 
 ```sh
 ssh nas   # Requires ~/.ssh/nas_ed25519 key
@@ -95,6 +116,7 @@ ssh nas   # Requires ~/.ssh/nas_ed25519 key
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Infra Setup** | GitHub repo, Docker Compose, deploy scripts, NAS credentials | ✅ Done |
+| **Multi-Project Isolation** | Path-based nginx routing, template processing | ✅ Done |
 | **Immich Design** | API integration design (live DB + API exploration) | ✅ Done |
 | **Phase 1** | Frontend MVP — life grid, countdown, theme switching, config panel | 🔜 Next |
 | **Phase 2** | Backend — SQLite, CRUD API, Docker deployment | ⏳ |

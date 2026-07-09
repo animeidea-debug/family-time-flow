@@ -7,10 +7,10 @@
 # 脚本由 `sh deploy.sh` 调用。
 #
 # 目标路径（WebDAV 容器 clinedeploy-webdav）：
-#   web/html/*        → /docker/html/      (nginx 静态页)
-#   web/docker-compose.yml  → /docker/      (docker compose)
-#   web/nginx.conf     → /docker/           (nginx config)
-#   web/backend/*      → /docker/backend/   (Node.js backend)
+#   web/html/*        → /docker/html/<PROJECT_PATH>/  (nginx 静态页)
+#   web/docker-compose.yml  → /docker/               (docker compose)
+#   web/nginx.conf     → /docker/                   (nginx config)
+#   web/backend/*      → /docker/backend/           (Node.js backend)
 #
 # 用法：
 #   sh deploy/deploy.sh
@@ -32,6 +32,7 @@ NAS_IP="${NAS_IP:-192.168.6.108}"
 NAS_PORT="${NAS_WEBDAV_PORT:-8889}"
 DOMAIN="${DOMAIN_PUBLIC:-https://remote-access-8888.zconnect.cn}"
 KEYCHAIN_WEBDAV_SERVICE="${KEYCHAIN_WEBDAV_SERVICE:-emma-webdav}"
+PROJECT_PATH="${PROJECT_PATH:-family-time-flow}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -122,11 +123,11 @@ fi
 unset PASSWORD
 START_TS=$(date +%s)
 
-# ----- 5. 同步 web/html → /docker/html/ -----
+# ----- 5. 同步 web/html → /docker/html/<PROJECT_PATH>/ -----
 echo ""
 echo -e "${YELLOW}📄 同步前端页面...${NC}"
 if [ -d "${SCRIPT_DIR}/../web/html" ]; then
-    rclone sync --delete-excluded "${SCRIPT_DIR}/../web/html/" "${REMOTE}:/docker/html/" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    rclone sync --delete-excluded "${SCRIPT_DIR}/../web/html/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
     echo -e "${GREEN}✅ HTML 同步完成${NC}"
 fi
 
@@ -145,9 +146,13 @@ if [ -f "${SCRIPT_DIR}/../web/docker-compose.yml" ]; then
     rclone copy "${SCRIPT_DIR}/../web/docker-compose.yml" "${REMOTE}:/docker/" 2>&1 | grep -v "NOTICE" | tail -1 || true
     echo "  ✅ docker-compose.yml"
 fi
-if [ -f "${SCRIPT_DIR}/../web/nginx.conf" ]; then
-    rclone copy "${SCRIPT_DIR}/../web/nginx.conf" "${REMOTE}:/docker/" 2>&1 | grep -v "NOTICE" | tail -1 || true
-    echo "  ✅ nginx.conf"
+
+# Process nginx.conf template with PROJECT_PATH substitution
+if [ -f "${SCRIPT_DIR}/../web/nginx.conf.template" ]; then
+    # Generate nginx.conf with substituted PROJECT_PATH
+    NGINX_CONF=$(sed "s|\${PROJECT_PATH}|${PROJECT_PATH}|g" "${SCRIPT_DIR}/../web/nginx.conf.template")
+    echo "$NGINX_CONF" | rclone rcat "${REMOTE}:/docker/nginx.conf" 2>&1 | grep -v "NOTICE" | tail -1 || true
+    echo "  ✅ nginx.conf (with ${PROJECT_PATH} path)"
 fi
 
 # ----- 8. 完成 -----
@@ -158,7 +163,7 @@ echo ""
 echo "============================================="
 echo -e "${GREEN}✅ FamilyTimeFlow 部署完成！${NC}"
 echo "   连接: ${REMOTE}"
-echo "   前端: ${DOMAIN}"
+echo "   前端: ${DOMAIN}/${PROJECT_PATH}/"
 echo "   耗时: ${ELAPSED}s"
 echo "============================================="
 
@@ -168,6 +173,7 @@ if command -v curl >/dev/null 2>&1; then
     NOTIFY_TITLE="FamilyTimeFlow"
     NOTIFY_MSG="✅ NAS 部署完成 (${REMOTE})"
     [ -n "$COMMIT_MSG" ] && NOTIFY_MSG="${NOTIFY_MSG}\n${COMMIT_MSG}"
+    NOTIFY_MSG="${NOTIFY_MSG}\n路径: /${PROJECT_PATH}/"
     NOTIFY_MSG="${NOTIFY_MSG}\n耗时: ${ELAPSED}s"
     
     # Try Pushover via MCP or curl

@@ -5,52 +5,71 @@
 - A ZSpace NAS (or any Linux host with Docker)
 - macOS development machine (or Windows with Git Bash)
 - Tailscale Funnel or ZSpace remote access configured
-- Docker & Docker Compose on the NAS
 
-## Quick Start
+## New Machine Setup (one-time per computer)
 
-### 1. Ensure shared NAS config exists
+### 1. Configure ~/.nas-env
+
+Create `~/.nas-env` with your NAS info (this file is NOT in git, shared across all projects):
 
 ```sh
-# Check if ~/.nas-env already has your NAS details
-cat ~/.nas-env
-
-# If not, create it:
-# NAS_IP="192.168.x.x"
-# NAS_USER="your-username"
-# NAS_SSH_PORT="10000"
-# NAS_WEBDAV_PORT="8889"
-# SSH_HOST_ALIAS="nas"
-# KEYCHAIN_SSH_SERVICE="nas-ssh"
-# KEYCHAIN_WEBDAV_SERVICE="emma-webdav"
+# ~/.nas-env — example
+NAS_IP="192.168.x.x"
+SSH_USER="username"
+SSH_PORT="22"
+SSH_KEY_PATH="~/.ssh/nas_ed25519"
+SSH_HOST_ALIAS="nas"
+NAS_WEBDAV_PORT="8889"
+NAS_DATA_ROOT="/tmp/zfsv3/nvme14/<user-id>/data"
+KEYCHAIN_SSH_SERVICE="nas-ssh"
+KEYCHAIN_WEBDAV_SERVICE="my-webdav"
 ```
 
-### 2. Store passwords in macOS Keychain (one-time)
+### 2. Set up SSH key (passwordless login)
 
 ```sh
-# WebDAV password (for deploy)
-security add-generic-password -s "emma-webdav" -a "$USER" -w "your-webdav-password"
-
-# SSH password (if not using key-based auth)
-security add-generic-password -s "nas-ssh" -a "your-username" -w "your-ssh-password"
+ssh-keygen -t ed25519 -f ~/.ssh/nas_ed25519
+ssh-copy-id -i ~/.ssh/nas_ed25519.pub -p "$SSH_PORT" "$SSH_USER@$NAS_IP"
 ```
 
-### 3. Configure project
+Configure `~/.ssh/config`:
 
-```sh
-cp env.template env.local
-vim env.local   # Set project name, ports
+```
+Host nas
+    HostName 192.168.x.x
+    User username
+    Port 22
+    IdentityFile ~/.ssh/nas_ed25519
 ```
 
-### 4. Deploy to NAS
+Now `ssh nas` works without password.
+
+### 3. Store passwords in macOS Keychain
 
 ```sh
-# Deploy frontend + backend to NAS via WebDAV
+security add-generic-password -s "nas-ssh" -a "$SSH_USER" -w "your SSH password"
+security add-generic-password -s "my-webdav" -a "$USER" -w "your WebDAV password"
+```
+
+### 4. Create project from template
+
+Click "Use this template" on GitHub → clone locally.
+
+### 5. Deploy to NAS
+
+```sh
+# macOS: Keychain-based auth (auto-reads ~/.nas-env)
 sh deploy/deploy.sh
+
+# Windows: env var-based auth
+.\deploy\run_deploy.bat
 ```
 
-### 5. SSH into NAS (for maintenance)
+## Quick Reference
 
-```sh
-# Uses SSH key at ~/.ssh/nas_ed25519 (passwordless)
-ssh nas
+| Operation | Command |
+|-----------|---------|
+| SSH to NAS | `ssh nas` |
+| View NAS config | `. ~/.nas-env && echo $NAS_IP` |
+| Get SSH password from Keychain | `security find-generic-password -s "nas-ssh" -a "$SSH_USER" -w` |
+| Get WebDAV password | `security find-generic-password -s "$KEYCHAIN_WEBDAV_SERVICE" -a "$USER" -w` |
