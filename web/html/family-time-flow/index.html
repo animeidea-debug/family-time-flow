@@ -869,6 +869,23 @@
             </div>
 
             <div class="form-control">
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">学制</span></label>
+                <select id="cfgSchoolSystem"
+                    class="select select-bordered select-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300">
+                    <option value="shanghai">🏙️ 上海 (5+4 预初)</option>
+                    <option value="national">🇨🇳 全国 (6+3+3)</option>
+                </select>
+            </div>
+
+            <!-- User Management -->
+            <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">👤 用户管理</div>
+            <div id="userSelectContainer" class="flex flex-wrap gap-1.5"></div>
+            <div class="flex gap-2 mt-1">
+                <button onclick="createNewUser()"
+                    class="btn btn-ghost btn-xs flex-1 font-bold opacity-60 hover:opacity-100">➕ 新建用户</button>
+            </div>
+
+            <div class="form-control">
                 <label class="label cursor-pointer justify-start gap-3 py-1">
                     <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent checkbox-sm" />
                     <span class="label-text font-bold text-theme-text">📸 同步 Immich 元数据</span>
@@ -1017,7 +1034,9 @@
             state.profile.identityTag = document.getElementById('cfgIdentity').value;
             state.targetDate = document.getElementById('cfgTargetDate').value || state.targetDate;
             state.immichSync = document.getElementById('cfgImmichSync').checked;
+            state.profile.schoolSystem = document.getElementById('cfgSchoolSystem').value;
             saveState();
+            pushToApi();
             toggleDrawer();
             initLifeGrid();
             updateCountdown();
@@ -1470,6 +1489,136 @@
             });
         }
 
+        // ==================== API CLIENT (Phase 2b) ====================
+        const API_BASE = window.location.pathname.includes('/family-time-flow/') ? '/family-time-flow/api' : 'http://192.168.6.108:3000/api';
+        let remoteUsers = [];
+        let activeUserId = null;
+        let apiAvailable = false;
+
+        async function apiGet(path) {
+            try {
+                const r = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(3000) });
+                if (!r.ok) throw new Error('API error');
+                return await r.json();
+            } catch { return null; }
+        }
+
+        async function apiPost(path, data) {
+            try {
+                const r = await fetch(`${API_BASE}${path}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
+                });
+                if (!r.ok) throw new Error('API error');
+                return await r.json();
+            } catch { return null; }
+        }
+
+        async function apiPut(path, data) {
+            try {
+                const r = await fetch(`${API_BASE}${path}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
+                });
+                if (!r.ok) throw new Error('API error');
+                return await r.json();
+            } catch { return null; }
+        }
+
+        async function syncFromApi() {
+            const data = await apiGet('/sync');
+            if (!data || !data.users) { apiAvailable = false; return false; }
+            apiAvailable = true;
+            remoteUsers = data.users;
+
+            // Find or create local user matching identityTag
+            const localTag = state.profile.identityTag || 'student';
+            let match = data.users.find(u => u.identity_tag === localTag);
+            if (!match) match = data.users[0];
+            if (match && match.id) {
+                activeUserId = match.id;
+                // Merge remote data into local state (local overrides for fields the user changed)
+                state.profile.name = match.name || state.profile.name;
+                state.profile.birthDate = match.birth_date || state.profile.birthDate;
+                state.profile.expectedAge = match.expected_age || state.profile.expectedAge;
+                state.profile.identityTag = match.identity_tag || state.profile.identityTag;
+                state.targetDate = match.target_date || state.targetDate;
+                state.profile.schoolSystem = match.school_system || 'shanghai';
+                // Override local education badge with API computed if available
+                if (match.education) {
+                    state._apiEducation = match.education;
+                }
+                saveState();
+                hydrateFormFromState();
+                renderUserButtons();
+            }
+            return true;
+        }
+
+        async function pushToApi() {
+            if (!apiAvailable || !activeUserId) return;
+            await apiPut(`/users/${activeUserId}`, {
+                name: state.profile.name,
+                birth_date: state.profile.birthDate || null,
+                expected_age: state.profile.expectedAge,
+                identity_tag: state.profile.identityTag,
+                school_system: state.profile.schoolSystem || 'shanghai',
+                target_date: state.targetDate || null,
+                immich_sync: state.immichSync ? 1 : 0
+            });
+        }
+
+        function renderUserButtons() {
+            const container = document.getElementById('userSelectContainer');
+            container.innerHTML = '';
+            remoteUsers.forEach(u => {
+                const btn = document.createElement('button');
+                const isActive = u.id === activeUserId;
+                btn.className = `btn btn-xs ${isActive ? 'btn-accent' : 'btn-ghost'} font-bold`;
+                btn.textContent = u.name || `用户 ${u.id}`;
+                btn.onclick = () => switchUser(u.id);
+                container.appendChild(btn);
+            });
+        }
+
+        async function switchUser(userId) {
+            const user = remoteUsers.find(u => u.id === userId);
+            if (!user) return;
+            activeUserId = userId;
+            state.profile.name = user.name || '';
+            state.profile.birthDate = user.birth_date || '';
+            state.profile.expectedAge = user.expected_age || 80;
+            state.profile.identityTag = user.identity_tag || 'student';
+            state.targetDate = user.target_date || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+            state.profile.schoolSystem = user.school_system || 'shanghai';
+            saveState();
+            hydrateFormFromState();
+            setTheme(state.profile.identityTag);
+            // Fetch full user data with education
+            const full = await apiGet(`/users/${userId}`);
+            if (full && full.education) state._apiEducation = full.education;
+            initLifeGrid();
+            updateEducationTimeline();
+            renderUserButtons();
+            showToast(`👤 切换到 ${state.profile.name || '用户'}`);
+        }
+
+        async function createNewUser() {
+            const name = prompt('请输入新用户名称:', '');
+            if (!name) return;
+            const user = await apiPost('/users', {
+                name, birth_date: null, expected_age: 80,
+                identity_tag: 'student', school_system: 'shanghai'
+            });
+            if (user) {
+                await switchUser(user.id);
+                // Refresh the remote user list
+                await syncFromApi();
+            } else {
+                showToast('⚠️ 后端不可用，请在本地设置中配置');
+            }
+        }
+
         // ==================== WHEEL ZOOM ====================
         function initWheelZoom() {
             const sc = document.querySelector('.overflow-x-auto');
@@ -1488,6 +1637,13 @@
             setTheme(state.profile.identityTag || 'student');
             updateTickerStyle();
             initFlatpickrs();
+            // Try API sync (non-blocking, falls back to localStorage silently)
+            syncFromApi().then(() => {
+                if (apiAvailable) {
+                    initLifeGrid();
+                    updateEducationTimeline();
+                }
+            });
             initLifeGrid();
             updateEducationTimeline();
             updateCountdown();

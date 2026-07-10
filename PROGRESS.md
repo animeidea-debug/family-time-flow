@@ -1,6 +1,6 @@
 # FamilyTimeFlow — Project Progress
 
-> **Last updated**: 2026-07-10 10:43 UTC+8
+> **Last updated**: 2026-07-10 14:27 UTC+8
 
 ---
 
@@ -67,16 +67,20 @@
 
 ## 🔜 Next Up
 
-### Phase 2: Lightweight Containerized Backend (MVP 2.0)
+### Phase 2: Lightweight Containerized Backend ✅ COMPLETE
 
-| # | Task | Details |
-|---|------|---------|
-| 1 | **SQLite Schema** | Users + Events tables, `better-sqlite3` |
-| 2 | **Express API** | REST endpoints: CRUD users, events, config |
-| 3 | **Frontend → API** | Replace `localStorage` with `fetch()` calls |
-| 4 | **Docker Compose** | nginx reverse-proxy → Node.js backend |
-| 5 | **Multi-user** | Simple identity switch (no JWT, family-mode) |
-| 6 | **NAS Deploy** | Deploy and test on Synology/QNAP |
+| # | Task | Status |
+|---|------|--------|
+| 1 | **SQLite Schema** — `users` + `events` + `app_config` tables (sql.js, pure JS) | ✅ |
+| 2 | **Express API** — 14 REST endpoints: CRUD users, events, config, education, milestones | ✅ |
+| 3 | **Education Helpers** — Shanghai 5+4 (预初) + National 6+3+3, grade/age/milestone computation | ✅ |
+| 4 | **nginx API Proxy** — `/family-time-flow/api/` → `ftf_backend:3000` | ✅ |
+| 5 | **NAS Deploy** — Docker container running on NAS (`node:20-alpine`), DB at `/app/data/ftf.db` | ✅ |
+
+**Pending for Phase 2b:**
+- [ ] Frontend → API: Replace `localStorage` with `fetch()` calls
+- [ ] Multi-user: Simple identity switch (no JWT)
+- [ ] Docker Compose: Formal docker-compose.yml integration
 
 ### Phase 3: Immich Integration (SaaS 3.0)
 
