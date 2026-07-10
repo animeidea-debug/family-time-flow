@@ -651,6 +651,73 @@
 
 <body class="theme-student theme-transition min-h-screen flex flex-col overflow-x-hidden font-sans">
 
+    <!-- Onboarding Overlay (shown when no config exists) -->
+    <div id="onboardingOverlay"
+        class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl transition-all duration-700 hidden"
+        style="font-family:'PingFang SC','Microsoft YaHei',sans-serif">
+        <div class="max-w-md w-full mx-4 text-center">
+            <!-- Step 1: Welcome -->
+            <div id="onbStep1">
+                <div class="text-6xl mb-4">🕰️</div>
+                <h1 class="text-3xl font-black text-gray-800 mb-2">欢迎来到</h1>
+                <h2 class="text-2xl font-bold text-theme-accent mb-6">家庭人生时光机</h2>
+                <p class="text-sm text-gray-500 mb-8">让时间的流逝变得具体可感，而非抽象概念</p>
+                <button onclick="startOnboarding()"
+                    class="btn btn-accent btn-lg font-bold shadow-lg shadow-accent/30 transition-all duration-300 hover:scale-105">
+                    📸 从照片库开始
+                </button>
+                <p class="text-xs text-gray-400 mt-4">我们将自动连接您的 Immich 照片库</p>
+            </div>
+
+            <!-- Step 2: Loading -->
+            <div id="onbStep2" class="hidden">
+                <div class="text-4xl mb-4"><span id="onbLoadingIcon"
+                        class="loading loading-spinner loading-lg text-theme-accent"></span></div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">正在连接您的照片库...</h2>
+                <p id="onbStatusText" class="text-sm text-gray-500 mb-4">正在检查 Immich 连接</p>
+                <div class="w-full bg-gray-100 rounded-full h-2 mb-6 overflow-hidden">
+                    <div id="onbProgress" class="h-full rounded-full bg-theme-accent transition-all duration-500"
+                        style="width:0%"></div>
+                </div>
+                <p id="onbError" class="text-xs text-red-400 hidden"></p>
+            </div>
+
+            <!-- Step 3: Person Selection -->
+            <div id="onbStep3" class="hidden">
+                <div class="text-4xl mb-3">👨‍👩‍👧‍👦</div>
+                <h2 class="text-xl font-bold text-gray-800 mb-1">请选择您的身份</h2>
+                <p class="text-xs text-gray-400 mb-5">从照片库中找到以下家庭成员，选择以自动完成设置</p>
+                <div id="onbPersonList" class="space-y-2 mb-5 max-h-60 overflow-y-auto px-2"></div>
+                <button onclick="skipOnboarding()" class="btn btn-ghost btn-xs text-gray-400">跳过，手动设置 →</button>
+            </div>
+
+            <!-- Step 4: Preview -->
+            <div id="onbStep4" class="hidden">
+                <div class="text-4xl mb-3">🎉</div>
+                <h2 id="onbPreviewName" class="text-xl font-bold text-gray-800 mb-1"></h2>
+                <div id="onbPreviewContent" class="text-left bg-gray-50 rounded-2xl p-5 space-y-2 text-sm mb-5">
+                    <div class="flex justify-between"><span>📅 出生日期</span><span id="onbPreviewBirth"
+                            class="font-bold text-theme-accent"></span></div>
+                    <div class="flex justify-between"><span>📖 当前年级</span><span id="onbPreviewGrade"
+                            class="font-bold text-theme-accent"></span></div>
+                    <div class="flex justify-between"><span>🎯 中考</span><span id="onbPreviewZhongkao"
+                            class="font-bold text-theme-accent"></span></div>
+                    <div class="flex justify-between"><span>🏆 高考</span><span id="onbPreviewGaokao"
+                            class="font-bold text-theme-accent"></span></div>
+                    <div class="w-full h-1.5 bg-gray-200 rounded-full mt-2">
+                        <div class="h-full rounded-full bg-theme-accent" style="width:15%"></div>
+                    </div>
+                    <div class="text-center text-[10px] text-gray-400">人生进度 15%</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="confirmOnboarding()" class="btn btn-accent flex-1 font-bold shadow-lg">🚀
+                        开始时光之旅</button>
+                    <button onclick="resetOnboarding()" class="btn btn-ghost btn-sm">↩ 重新选择</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container flex flex-col items-center"></div>
 
@@ -1633,6 +1700,9 @@
             const personSection = document.getElementById('immichPersonSection');
             const personSelect = document.getElementById('cfgImmichPerson');
 
+            // Skip status check if already done during onboarding
+            if (immichConnected && immichPeople.length > 0) return;
+
             loadingEl.classList.remove('hidden');
             statusEl.textContent = '正在检查 Immich 连接...';
 
@@ -1764,6 +1834,132 @@
                 `📸 那年今日 (${md})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉`;
         }
 
+        // ==================== ONBOARDING FLOW ====================
+        let onboardingPersonId = null;
+
+        function showOnboarding() {
+            document.getElementById('onboardingOverlay').classList.remove('hidden');
+            showStep(1);
+        }
+
+        function showStep(n) {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`onbStep${i}`).classList.toggle('hidden', i !== n);
+            }
+        }
+
+        function startOnboarding() {
+            showStep(2);
+            const statusEl = document.getElementById('onbStatusText');
+            const progressEl = document.getElementById('onbProgress');
+            const errorEl = document.getElementById('onbError');
+
+            statusEl.textContent = '正在检查 Immich 连接...';
+            progressEl.style.width = '20%';
+            errorEl.classList.add('hidden');
+
+            // Try Immich connection
+            checkImmichStatus().then(() => {
+                progressEl.style.width = '60%';
+                statusEl.textContent = '正在加载家庭成员...';
+
+                if (immichConnected && immichPeople.length > 0) {
+                    progressEl.style.width = '100%';
+                    setTimeout(() => showPersonSelection(), 500);
+                } else if (immichConnected && immichPeople.length === 0) {
+                    progressEl.style.width = '100%';
+                    setTimeout(() => {
+                        errorEl.textContent = '⚠️ 照片库中已命名的人员为空，请先在 Immich 中为人脸设置姓名。';
+                        errorEl.classList.remove('hidden');
+                        statusEl.textContent = '未找到已命名的人员';
+                    }, 500);
+                } else {
+                    progressEl.style.width = '100%';
+                    setTimeout(() => {
+                        // No Immich — show manual entry
+                        errorEl.textContent = '⚠️ 无法连接 Immich，请手动填写信息。';
+                        errorEl.classList.remove('hidden');
+                        statusEl.textContent = 'Immich 不可用';
+                        setTimeout(() => skipOnboarding(), 1500);
+                    }, 500);
+                }
+            });
+        }
+
+        function showPersonSelection() {
+            showStep(3);
+            const list = document.getElementById('onbPersonList');
+            list.innerHTML = '';
+            immichPeople.forEach(p => {
+                const card = document.createElement('div');
+                const age = p.birthDate ? Math.floor((new Date() - new Date(p.birthDate)) / (365.25 * 24 * 60 * 60 * 1000)) : '?';
+                const grade = p.birthDate ? getGradeFromAge(age).grade : '';
+                card.className = 'flex items-center gap-3 p-3 rounded-xl border-2 border-gray-100 hover:border-theme-accent cursor-pointer transition-all duration-200 hover:shadow-md';
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-theme-accent/10 flex items-center justify-center text-lg">👤</div>
+                    <div class="flex-1 text-left">
+                        <div class="font-bold text-sm">${p.name}</div>
+                        <div class="text-xs text-gray-400">🎂 ${p.birthDate || '未设置'} · ${age}岁 · ${grade}</div>
+                    </div>
+                `;
+                card.onclick = () => selectPerson(p);
+                list.appendChild(card);
+            });
+        }
+
+        function selectPerson(person) {
+            onboardingPersonId = person.id;
+            state.profile.name = person.name;
+            state.profile.birthDate = person.birthDate || '';
+            state.profile.immichPersonId = person.id;
+            state.immichSync = true;
+
+            // Determine identity tag based on age
+            if (person.birthDate) {
+                const age = Math.floor((new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000));
+                if (age < 22) state.profile.identityTag = 'student';
+                else if (age < 60) state.profile.identityTag = 'worker';
+                else state.profile.identityTag = 'family';
+            }
+
+            // Preview
+            showStep(4);
+            const grade = person.birthDate ? getGradeFromAge(Math.floor((new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000))) : {};
+            const milestones = person.birthDate ? getMilestones(person.birthDate) : [];
+            const zhongkao = milestones.find(m => m.label.includes('中考'));
+            const gaokao = milestones.find(m => m.label.includes('高考'));
+            const ageYears = person.birthDate ? (new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000) : 0;
+            const lifePct = Math.min(Math.round(ageYears / 80 * 100), 100);
+
+            document.getElementById('onbPreviewName').textContent = `👋 你好，${person.name}！`;
+            document.getElementById('onbPreviewBirth').textContent = person.birthDate || '未设置';
+            document.getElementById('onbPreviewGrade').textContent = grade.grade || '未知';
+            document.getElementById('onbPreviewZhongkao').textContent = zhongkao ? zhongkao.remaining : '已过';
+            document.getElementById('onbPreviewGaokao').textContent = gaokao ? gaokao.remaining : '已过';
+            document.getElementById('onbPreviewContent').querySelector('.h-full').style.width = `${lifePct}%`;
+            document.getElementById('onbPreviewContent').querySelector('.text-center').textContent = `人生进度 ${lifePct}%`;
+        }
+
+        function confirmOnboarding() {
+            saveState();
+            if (apiAvailable && activeUserId) pushToApi();
+            document.getElementById('onboardingOverlay').classList.add('hidden');
+            setTheme(state.profile.identityTag);
+            initLifeGrid();
+            updateEducationTimeline();
+            showToast(`🎉 欢迎，${state.profile.name}！`);
+        }
+
+        function skipOnboarding() {
+            document.getElementById('onboardingOverlay').classList.add('hidden');
+            showToast('💡 点击 ⚙️ 开始设置');
+        }
+
+        function resetOnboarding() {
+            onboardingPersonId = null;
+            showStep(3);
+        }
+
         // ==================== WHEEL ZOOM ====================
         function initWheelZoom() {
             const sc = document.querySelector('.overflow-x-auto');
@@ -1779,6 +1975,12 @@
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
+
+            // Show onboarding if no profile configured (first visit)
+            if (!state.profile.name && !state.profile.birthDate) {
+                showOnboarding();
+            }
+
             setTheme(state.profile.identityTag || 'student');
             updateTickerStyle();
             initFlatpickrs();
