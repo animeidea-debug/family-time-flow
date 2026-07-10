@@ -245,39 +245,68 @@
             }
         }
 
-        /* ===== Milestone colors on grid ===== */
-        .week-cell.stage-primary {
-            background-color: var(--accent-color);
+        /* ===== Milestone stage colors on grid (distinct, applied to spent cells) ===== */
+        body.theme-student .week-cell.stage-0 {
+            background-color: #93C5FD;
             opacity: 0.5;
         }
 
-        .week-cell.stage-middle {
+        /* 学龄前 - 浅蓝 */
+        body.theme-student .week-cell.stage-1 {
+            background-color: #6EE7B7;
+            opacity: 0.5;
+        }
+
+        /* 小学 - 浅绿 */
+        body.theme-student .week-cell.stage-2 {
+            background-color: #FCD34D;
+            opacity: 0.5;
+        }
+
+        /* 初中 - 浅黄 */
+        body.theme-student .week-cell.stage-3 {
+            background-color: #FB923C;
+            opacity: 0.5;
+        }
+
+        /* 高中 - 浅橙 */
+        body.theme-student .week-cell.stage-4 {
+            background-color: #E879F9;
+            opacity: 0.4;
+        }
+
+        /* 大学 - 浅紫 */
+
+        body.theme-worker .week-cell.stage-0,
+        body.theme-worker .week-cell.stage-1,
+        body.theme-worker .week-cell.stage-2,
+        body.theme-worker .week-cell.stage-3,
+        body.theme-worker .week-cell.stage-4 {
             background-color: var(--accent-color);
-            opacity: 0.35;
+            opacity: 0.4;
         }
 
-        .week-cell.milestone-marker {
-            position: relative;
+        body.theme-family .week-cell.stage-0,
+        body.theme-family .week-cell.stage-1,
+        body.theme-family .week-cell.stage-2,
+        body.theme-family .week-cell.stage-3,
+        body.theme-family .week-cell.stage-4 {
+            background-color: var(--accent-color);
+            opacity: 0.4;
         }
 
-        .week-cell.milestone-marker::after {
-            content: '⭐';
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 6px;
-            pointer-events: none;
-            opacity: 0.7;
+        /* Milestone marker: just a thin colored left border on the first week cell of milestone year */
+        .week-cell.milestone-border {
+            border-left: 3px solid #EF4444 !important;
+            border-radius: 2px !important;
         }
 
-        .week-cell.milestone-marker.中考::after {
-            content: '🎯';
+        .week-cell.milestone-border.中考 {
+            border-left-color: #F59E0B !important;
         }
 
-        .week-cell.milestone-marker.高考::after {
-            content: '🏆';
+        .week-cell.milestone-border.高考 {
+            border-left-color: #8B5CF6 !important;
         }
 
         /* ===== Countdown ===== */
@@ -1001,15 +1030,15 @@
                 grid.appendChild(label);
             }
 
-            // Define education stage boundaries (in years from birth)
+            // Define education stage boundaries with distinct color classes
             const stages = [
-                { start: 0, end: 6, cls: 'stage-primary', label: '学龄前' },
-                { start: 6, end: 12, cls: 'stage-middle', label: '小学' },
-                { start: 12, end: 15, cls: 'stage-primary', label: '初中' },
-                { start: 15, end: 18, cls: 'stage-middle', label: '高中' },
-                { start: 18, end: 22, cls: 'stage-primary', label: '大学' },
+                { start: 0, end: 6, cls: 'stage-0', label: '学龄前' },
+                { start: 6, end: 12, cls: 'stage-1', label: '小学' },
+                { start: 12, end: 15, cls: 'stage-2', label: '初中' },
+                { start: 15, end: 18, cls: 'stage-3', label: '高中' },
+                { start: 18, end: 22, cls: 'stage-4', label: '大学' },
             ];
-            // Define specific milestone weeks (year boundary cells)
+            // Define milestone boundary year cells (first week of milestone year gets a red border)
             const milestoneYears = [6, 12, 15, 18, 22];
 
             for (let year = 0; year < expectedAge; year++) {
@@ -1064,9 +1093,9 @@
                                 }
                             }
                         }
-                        // Milestone markers at boundary years (on all cells)
+                        // Milestone border at boundary years (on the first week cell of milestone year)
                         if (state.profile.identityTag === 'student' && milestoneYears.includes(year) && week === 0) {
-                            cell.classList.add('milestone-marker');
+                            cell.classList.add('milestone-border');
                             if (year === 15) cell.classList.add('中考');
                             if (year === 18) cell.classList.add('高考');
                         }
@@ -1217,25 +1246,14 @@
 
         // ==================== CHINA EDUCATION TIMELINE ====================
         function getGradeFromAge(ageYears) {
-            // Chinese education system: 6+3+3+4
-            if (ageYears < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
-            if (ageYears < 6) return { stage: '学龄前', grade: `幼儿园 小${ageYears < 4 ? '班' : ageYears < 5 ? '中班' : '大班'}`, year: 0 };
-            if (ageYears < 12) {
-                const g = ageYears - 5;
-                return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五', '六'][g - 1]}年级`, year: g };
-            }
-            if (ageYears < 15) {
-                const g = ageYears - 11;
-                return { stage: '初中', grade: `初中 ${['一', '二', '三'][g - 1]}年级`, year: g };
-            }
-            if (ageYears < 18) {
-                const g = ageYears - 14;
-                return { stage: '高中', grade: `高中 ${['一', '二', '三'][g - 1]}年级`, year: g };
-            }
-            if (ageYears < 22) {
-                const g = ageYears - 17;
-                return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][g - 1]}年级`, year: g };
-            }
+            // Chinese education system: 6+3+3+4 — floor age to integer for grade indexing
+            const y = Math.floor(ageYears);
+            if (y < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
+            if (y < 6) return { stage: '学龄前', grade: `幼儿园 ${['小班', '中班', '大班'][y - 3]}`, year: 0 };
+            if (y < 12) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五', '六'][y - 6]}年级`, year: y - 5 };
+            if (y < 15) return { stage: '初中', grade: `初中 ${['一', '二', '三'][y - 12]}年级`, year: y - 11 };
+            if (y < 18) return { stage: '高中', grade: `高中 ${['一', '二', '三'][y - 15]}年级`, year: y - 14 };
+            if (y < 22) return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][y - 18]}年级`, year: y - 17 };
             return { stage: '已毕业', grade: '已毕业', year: 0 };
         }
 
