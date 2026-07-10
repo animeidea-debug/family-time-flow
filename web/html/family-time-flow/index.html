@@ -1336,13 +1336,23 @@
         }
 
         // ==================== CHINA EDUCATION TIMELINE ====================
-        function getGradeFromAge(ageYears) {
-            // Shanghai education: 5年小学 + 1年预初 + 3年初中 + 3年高中 + 4年大学
+        function getGradeFromAge(ageYears, systemOverride) {
+            const system = systemOverride || state.profile.schoolSystem || 'shanghai';
             const y = Math.floor(ageYears);
+            if (system === 'shanghai') {
+                if (y < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
+                if (y < 6) return { stage: '学龄前', grade: `幼儿园 ${['小班', '中班', '大班'][y - 3]}`, year: 0 };
+                if (y < 11) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五'][y - 6]}年级`, year: y - 5 };
+                if (y < 12) return { stage: '预初', grade: '预初年级', year: y - 11 };
+                if (y < 15) return { stage: '初中', grade: `初中 ${['一', '二', '三'][y - 12]}年级`, year: y - 11 };
+                if (y < 18) return { stage: '高中', grade: `高中 ${['一', '二', '三'][y - 15]}年级`, year: y - 14 };
+                if (y < 22) return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][y - 18]}年级`, year: y - 17 };
+                return { stage: '已毕业', grade: '已毕业', year: 0 };
+            }
+            // National (6+3+3+4)
             if (y < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
             if (y < 6) return { stage: '学龄前', grade: `幼儿园 ${['小班', '中班', '大班'][y - 3]}`, year: 0 };
-            if (y < 11) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五'][y - 6]}年级`, year: y - 5 };
-            if (y < 12) return { stage: '预初', grade: '预初年级', year: y - 11 };
+            if (y < 12) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五', '六'][y - 6]}年级`, year: y - 5 };
             if (y < 15) return { stage: '初中', grade: `初中 ${['一', '二', '三'][y - 12]}年级`, year: y - 11 };
             if (y < 18) return { stage: '高中', grade: `高中 ${['一', '二', '三'][y - 15]}年级`, year: y - 14 };
             if (y < 22) return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][y - 18]}年级`, year: y - 17 };
@@ -1637,15 +1647,14 @@
             setTheme(state.profile.identityTag || 'student');
             updateTickerStyle();
             initFlatpickrs();
-            // Try API sync (non-blocking, falls back to localStorage silently)
+            initLifeGrid();
+            // Try API sync (non-blocking). API will update education if available.
             syncFromApi().then(() => {
                 if (apiAvailable) {
-                    initLifeGrid();
+                    // Refresh UI with server data
                     updateEducationTimeline();
                 }
             });
-            initLifeGrid();
-            updateEducationTimeline();
             updateCountdown();
             updateTimeBudget();
             startTickerLoop();
