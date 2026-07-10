@@ -570,6 +570,8 @@
                             🗓️ 人生周格
                         </h2>
                         <p id="gridDescription" class="text-xs sm:text-sm text-theme-text/60 mt-0.5 font-semibold"></p>
+                        <div id="educationBadge"
+                            class="text-[10px] sm:text-xs font-bold text-theme-accent/70 mt-0.5 hidden"></div>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="flex gap-2 text-[10px] sm:text-xs font-bold">
@@ -597,6 +599,14 @@
                 <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆</p>
             </section>
 
+            <!-- Milestone Timeline (visible when Student theme) -->
+            <section id="milestoneSection" class="emma-card p-4 sm:p-5 hidden">
+                <h2 class="text-lg sm:text-xl font-black text-theme-text mb-2 flex items-center gap-2">
+                    🎓 人生大事里程碑
+                </h2>
+                <div id="milestoneList" class="space-y-2 text-xs sm:text-sm"></div>
+            </section>
+
             <!-- Meso + Micro Column -->
             <div class="flex flex-col gap-4 sm:gap-6">
 
@@ -622,6 +632,14 @@
                             class="input input-bordered input-sm w-full bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
                             placeholder="选择日期...">
                     </div>
+                </section>
+
+                <!-- Education Timeline -->
+                <section id="eduTimelineSection" class="emma-card p-4 sm:p-5 hidden">
+                    <h2 class="text-lg sm:text-xl font-black text-theme-text mb-2 flex items-center gap-2">
+                        📚 学年进度
+                    </h2>
+                    <div id="eduTimelineContent" class="text-xs sm:text-sm space-y-1.5"></div>
                 </section>
 
                 <!-- Micro: Today's Time Account -->
@@ -1135,6 +1153,135 @@
             });
         }
 
+        // ==================== CHINA EDUCATION TIMELINE ====================
+        function getGradeFromAge(ageYears) {
+            // Chinese education system: 6+3+3+4
+            if (ageYears < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
+            if (ageYears < 6) return { stage: '学龄前', grade: `幼儿园 小${ageYears < 4 ? '班' : ageYears < 5 ? '中班' : '大班'}`, year: 0 };
+            if (ageYears < 12) {
+                const g = ageYears - 5;
+                return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五', '六'][g - 1]}年级`, year: g };
+            }
+            if (ageYears < 15) {
+                const g = ageYears - 11;
+                return { stage: '初中', grade: `初中 ${['一', '二', '三'][g - 1]}年级`, year: g };
+            }
+            if (ageYears < 18) {
+                const g = ageYears - 14;
+                return { stage: '高中', grade: `高中 ${['一', '二', '三'][g - 1]}年级`, year: g };
+            }
+            if (ageYears < 22) {
+                const g = ageYears - 17;
+                return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][g - 1]}年级`, year: g };
+            }
+            return { stage: '已毕业', grade: '已毕业', year: 0 };
+        }
+
+        function getMilestones(birthDate) {
+            if (!birthDate) return [];
+            const birth = new Date(birthDate);
+            const now = new Date();
+            const ageMs = now - birth;
+            const ageYears = ageMs / (365.25 * 24 * 60 * 60 * 1000);
+
+            const milestones = [
+                { label: '🎒 上小学', age: 6 },
+                { label: '📐 上初中', age: 12 },
+                { label: '📚 中考', age: 15 },
+                { label: '🎯 上高中', age: 15 },
+                { label: '🏆 高考', age: 18 },
+                { label: '🎓 上大学', age: 18 },
+                { label: '💼 大学毕业', age: 22 },
+                { label: '🎉 30而立', age: 30 },
+                { label: '🏠 40不惑', age: 40 },
+                { label: '🧘 50知天命', age: 50 }
+            ];
+
+            return milestones.map(m => {
+                const msAge = m.age * 365.25 * 24 * 60 * 60 * 1000;
+                const eventDate = new Date(birth.getTime() + msAge);
+                const diffMs = eventDate - now;
+                const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+                const isPast = diffDays < 0;
+                const isNow = Math.abs(diffDays) <= 7;
+                const remaining = isPast ? '已过' : isNow ? '🔥 即将到来!' : `${diffDays} 天后`;
+                return { ...m, eventDate, diffDays, isPast, isNow, remaining };
+            });
+        }
+
+        function updateEducationTimeline() {
+            const badge = document.getElementById('educationBadge');
+            const milestoneSection = document.getElementById('milestoneSection');
+            const milestoneList = document.getElementById('milestoneList');
+            const eduSection = document.getElementById('eduTimelineSection');
+            const eduContent = document.getElementById('eduTimelineContent');
+
+            // Show/hide based on student theme
+            const isStudent = state.profile.identityTag === 'student';
+            milestoneSection.classList.toggle('hidden', !isStudent);
+            eduSection.classList.toggle('hidden', !isStudent);
+
+            if (!isStudent || !state.profile.birthDate) {
+                badge.classList.add('hidden');
+                return;
+            }
+
+            const birth = new Date(state.profile.birthDate);
+            const now = new Date();
+            const ageMs = now - birth;
+            const ageYears = ageMs / (365.25 * 24 * 60 * 60 * 1000);
+            const grade = getGradeFromAge(ageYears);
+
+            // Badge
+            badge.textContent = `📖 ${grade.grade}`;
+            badge.classList.remove('hidden');
+
+            // Milestones
+            const milestones = getMilestones(state.profile.birthDate);
+            const futureMilestones = milestones.filter(m => !m.isPast);
+            const recentMilestones = milestones.filter(m => m.isPast).slice(-2);
+
+            milestoneList.innerHTML = '';
+            // Show recent past milestones (dimmed)
+            recentMilestones.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between py-1 border-b border-theme-border/30 opacity-50';
+                div.innerHTML = `<span>${m.label}</span><span class="text-theme-text/60 text-[10px]">✅ 已完成</span>`;
+                milestoneList.appendChild(div);
+            });
+            // Show upcoming milestones
+            futureMilestones.slice(0, 4).forEach(m => {
+                const div = document.createElement('div');
+                const isUrgent = m.diffDays <= 365 && m.diffDays > 0;
+                div.className = `flex items-center justify-between py-1.5 border-b border-theme-border/30 ${isUrgent ? 'font-bold' : ''}`;
+                div.innerHTML = `<span>${m.label}</span><span class="text-accent text-[10px] sm:text-xs font-bold">${m.remaining}</span>`;
+                milestoneList.appendChild(div);
+            });
+
+            // Education timeline
+            const currentYear = now.getFullYear();
+            const birthYear = birth.getFullYear();
+            const schoolYear = `第 ${currentYear - birthYear - 5 > 0 ? currentYear - birthYear - 5 : 1} 学年`;
+            const semester = (now.getMonth() >= 1 && now.getMonth() <= 6) ? '下学期' : '上学期';
+
+            // Calculate days into current school year (Sept 1)
+            const schoolYearStart = new Date(now.getMonth() >= 8 ? currentYear : currentYear - 1, 8, 1);
+            const schoolYearEnd = new Date(now.getMonth() >= 8 ? currentYear + 1 : currentYear, 7, 31);
+            const totalSchoolDays = (schoolYearEnd - schoolYearStart) / (24 * 60 * 60 * 1000);
+            const schoolDaysElapsed = (now - schoolYearStart) / (24 * 60 * 60 * 1000);
+            const schoolProgress = Math.min(Math.max(schoolDaysElapsed / totalSchoolDays, 0), 1) * 100;
+
+            eduContent.innerHTML = `
+                <div class="flex justify-between"><span>📅 当前: ${grade.grade}</span><span class="text-theme-accent font-bold">${semester}</span></div>
+                <div class="flex justify-between"><span>📊 学年进度</span><span class="text-theme-accent font-bold">${Math.round(schoolProgress)}%</span></div>
+                <div class="w-full h-2 bg-theme-muted rounded-full overflow-hidden mt-1">
+                    <div class="h-full rounded-full" style="width:${schoolProgress}%;background:var(--accent-color);transition:width 500ms ease"></div>
+                </div>
+                <div class="text-theme-text/60 text-[10px] mt-1">🎯 中考: ${milestones.find(m => m.label.includes('中考'))?.remaining || '未知'}</div>
+                <div class="text-theme-text/60 text-[10px]">🎯 高考: ${milestones.find(m => m.label.includes('高考'))?.remaining || '未知'}</div>
+            `;
+        }
+
         // ==================== TICKER ====================
         function updateTicker() {
             const now = new Date();
@@ -1182,6 +1329,7 @@
             updateTickerStyle();
             initFlatpickrs();
             initLifeGrid();
+            updateEducationTimeline();
             updateCountdown();
             updateTimeBudget();
             startTickerLoop();
@@ -1191,7 +1339,10 @@
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);
 
-            setTimeout(() => showToast(`👋 欢迎回来，${state.profile.name || "朋友"}`), 800);
+            setTimeout(() => {
+                showToast(`👋 欢迎回来，${state.profile.name || "朋友"}`);
+                updateEducationTimeline();
+            }, 800);
 
             gsap.from('main .emma-card', {
                 y: 24, opacity: 0, duration: 0.35, stagger: 0.05, ease: 'power3.out', delay: 0.1,
