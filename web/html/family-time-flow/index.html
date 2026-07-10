@@ -656,7 +656,7 @@
         class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl transition-all duration-700 hidden"
         style="font-family:'PingFang SC','Microsoft YaHei',sans-serif">
         <div class="max-w-md w-full mx-4 text-center">
-            <!-- Step 1: Welcome -->
+            <!-- Step 1: Welcome + Auto-connect -->
             <div id="onbStep1">
                 <div class="text-6xl mb-4">🕰️</div>
                 <h1 class="text-3xl font-black text-gray-800 mb-2">欢迎来到</h1>
@@ -664,37 +664,9 @@
                 <p class="text-sm text-gray-500 mb-8">让时间的流逝变得具体可感，而非抽象概念</p>
                 <button onclick="startOnboarding()"
                     class="btn btn-accent btn-lg font-bold shadow-lg shadow-accent/30 transition-all duration-300 hover:scale-105">
-                    📸 从照片库开始
+                    � 一键开始
                 </button>
-                <p class="text-xs text-gray-400 mt-4">我们将自动连接您的 Immich 照片库</p>
-            </div>
-
-            <!-- Step 1.5: Immich Server Config -->
-            <div id="onbStep15" class="hidden">
-                <div class="text-4xl mb-3">🔗</div>
-                <h2 class="text-xl font-bold text-gray-800 mb-1">连接 Immich 照片库</h2>
-                <p class="text-xs text-gray-400 mb-2">选择连接方式，密钥已就绪</p>
-                <div class="text-left space-y-2 mb-4">
-                    <div class="flex gap-2">
-                        <button id="onbLanBtn" onclick="selectImmichPreset('lan')"
-                            class="flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left">
-                            <div class="font-bold text-sm">🏠 内网连接</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">http://192.168.6.108:22283</div>
-                        </button>
-                        <button id="onbWanBtn" onclick="selectImmichPreset('wan')"
-                            class="flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left">
-                            <div class="font-bold text-sm">🌐 外网连接</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">https://remote-access-22283.zconnect.cn</div>
-                        </button>
-                    </div>
-                    <div id="onbPresetSelected" class="text-xs text-green-500 font-bold hidden">已选择 ✅</div>
-                </div>
-                <button id="onbTestBtn" onclick="testImmichConfig()" class="btn btn-accent w-full font-bold mb-2">
-                    🔌 一键连接
-                </button>
-                <div id="onbTestResult" class="text-xs hidden mb-2"></div>
-                <button onclick="continueAfterImmichConfig()" class="btn btn-ghost btn-xs text-gray-400 mt-1">跳过
-                    →</button>
+                <p class="text-xs text-gray-400 mt-4">自动连接照片库 · 无需手动配置</p>
             </div>
 
             <!-- Step 2: Loading -->
@@ -1040,6 +1012,7 @@
                 birthDate: '',
                 expectedAge: 80,
                 identityTag: 'student',
+                schoolSystem: 'shanghai',
                 immichPersonId: null
             },
             events: [],
@@ -1097,6 +1070,7 @@
             document.getElementById('cfgTargetDate').value = state.targetDate ?
                 new Date(state.targetDate).toISOString().slice(0, 16) : '';
             document.getElementById('cfgIdentity').value = state.profile.identityTag || 'student';
+            document.getElementById('cfgSchoolSystem').value = state.profile.schoolSystem || 'shanghai';
             document.getElementById('cfgImmichSync').checked = state.immichSync || false;
             document.getElementById('targetDate').value = state.targetDate ?
                 new Date(state.targetDate).toISOString().slice(0, 16) : '';
@@ -1160,7 +1134,7 @@
             localStorage.removeItem(STATE_KEY);
             state = {
                 currentUser: 'student',
-                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', immichPersonId: null },
+                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', immichPersonId: null },
                 events: [],
                 targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
                 immichSync: false
@@ -1900,21 +1874,43 @@
             result.className = 'text-xs mb-2 text-gray-500';
             result.textContent = '正在连接...';
 
-            const resp = await apiPost('/immich/config', { url, key: IMMICH_KEY });
-            if (resp && resp.connected) {
+            let connected = false;
+            let version = null;
+            try {
+                const r = await fetch(`${url}/api/server/version`, {
+                    headers: { 'x-api-key': IMMICH_KEY },
+                    signal: AbortSignal.timeout(5000)
+                });
+                if (r.ok || r.status === 200) {
+                    const text = await r.text();
+                    try { version = JSON.parse(text); connected = true; } catch { }
+                }
+            } catch (e) {
+                console.log('Direct fetch failed:', e.message);
+                // Try via backend proxy as fallback
+                const backendStatus = await immichGet('/status');
+                connected = backendStatus && backendStatus.connected;
+                if (connected) version = backendStatus.version;
+            }
+
+            if (connected) {
                 result.className = 'text-xs mb-2 text-green-500';
-                result.textContent = `✅ 连接成功！Immich v${resp.version.major}.${resp.version.minor}.${resp.version.patch}`;
+                result.textContent = `✅ 连接成功！Immich v${version.major}.${version.minor}.${version.patch}`;
+
+                // Save config to backend (backend always uses Docker internal IP for its own calls)
+                await apiPost('/immich/config', { url: 'http://172.17.0.1:22283', key: IMMICH_KEY });
+
                 immichConnected = true;
-                // Reload people
+                // Reload people via backend proxy
                 const peopleData = await immichGet('/people');
                 if (peopleData && peopleData.people) immichPeople = peopleData.people;
                 btn.textContent = '✅ 已连接';
                 setTimeout(() => continueAfterImmichConfig(), 1000);
             } else {
                 result.className = 'text-xs mb-2 text-red-400';
-                result.textContent = resp ? `❌ ${resp.message}` : '❌ 无法连接，请检查地址和密钥';
+                result.textContent = '❌ 无法连接，请确认网络环境';
                 btn.disabled = false;
-                btn.textContent = '🔌 测试连接';
+                btn.textContent = '🔌 重试';
             }
         }
 
@@ -1923,11 +1919,16 @@
             if (hasPeople) {
                 showPersonSelection();
             } else {
-                startOnboarding(); // go to loading step
+                skipOnboarding();
             }
         }
 
         function startOnboarding() {
+            // Show Immich config step first (LAN/WAN presets)
+            showStep(15);
+        }
+
+        function startOldOnboarding() {
             showStep(2);
             const statusEl = document.getElementById('onbStatusText');
             const progressEl = document.getElementById('onbProgress');
