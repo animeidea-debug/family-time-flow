@@ -271,6 +271,129 @@ app.delete("/api/users/:id/events/:eid", (req, res) => {
     res.json({ status: "deleted" });
 });
 
+// ==================== IMMICH INTEGRATION (Phase 3) ====================
+// All Immich routes added here - no existing code modified.
+// Immich access via internal LAN: http://192.168.6.108:2283/api
+// API Key stored in app_config table (never in git)
+
+const IMMICH_URL = 'http://172.17.0.1:22283';
+
+// Helper: proxy request to Immich API
+async function immichFetch(path) {
+    const config = queryAll("SELECT key, value FROM app_config");
+    const cfg = {};
+    config.forEach(c => cfg[c.key] = c.value);
+    const apiKey = cfg.immich_api_key;
+    if (!apiKey) return null;
+    try {
+        const resp = await fetch(`${IMMICH_URL}${path}`, {
+            headers: { 'x-api-key': apiKey, 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch { return null; }
+}
+
+// POST /api/immich/set-key — Store Immich API key (one-time)
+app.post("/api/immich/set-key", (req, res) => {
+    const { key } = req.body;
+    if (!key) return res.status(400).json({ error: "key required" });
+    run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_api_key", key]);
+    // Test the key
+    fetch(`${IMMICH_URL}/api/server/version`, {
+        headers: { 'x-api-key': key }
+    }).then(r => r.json()).then(v => {
+        res.json({ status: "ok", version: v, message: "Immich API key saved and verified" });
+    }).catch(() => {
+        res.json({ status: "warning", message: "Key saved but Immich unreachable" });
+    });
+});
+
+// GET /api/immich/status — Check Immich connectivity
+app.get("/api/immich/status", async (req, res) => {
+    const version = await immichFetch("/api/server/version");
+    const ping = await immichFetch("/api/server/ping");
+    res.json({
+        connected: !!version,
+        version: version || null,
+        ping: ping || null
+    });
+});
+
+// GET /api/immich/people — List all recognized people
+app.get("/api/immich/people", async (req, res) => {
+    const data = await immichFetch("/api/people?size=1000");
+    if (!data) return res.json({ people: [], total: 0 });
+    // Return only name + id + thumbnailPath + birthDate + assetsCount
+    res.json({
+        total: data.total,
+        people: (data.people || data || []).map(p => ({
+            id: p.id,
+            name: p.name || '未命名',
+            birthDate: p.birthDate || null,
+            thumbnailPath: p.thumbnailPath || null,
+            assetsCount: p.assetsCount || 0
+        }))
+    });
+});
+
+// GET /api/immich/assets?personId=&date=&limit=3 — Query assets
+app.get("/api/immich/assets", async (req, res) => {
+    const { personId, date, limit } = req.query;
+    let params = [];
+    if (personId) params.push(`personId=${encodeURIComponent(personId)}`);
+    if (date) {
+        params.push(`takenDateAfter=${encodeURIComponent(date)}T00:00:00`);
+        params.push(`takenDateBefore=${encodeURIComponent(date)}T23:59:59`);
+    }
+    params.push(`limit=${parseInt(limit) || 5}`);
+    const qs = params.join('&');
+    const data = await immichFetch(`/api/assets?${qs}`);
+    if (!data) return res.json({ assets: [] });
+    // Return only safe fields
+    res.json({
+        assets: (data.assets || data || []).map(a => ({
+            id: a.id,
+            originalFileName: a.originalFileName,
+            fileCreatedAt: a.fileCreatedAt,
+            type: a.type,
+            people: (a.people || []).map(p => ({ id: p.id, name: p.name })),
+            exifInfo: a.exifInfo ? { dateTimeOriginal: a.exifInfo.dateTimeOriginal } : null
+        }))
+    });
+});
+
+// GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
+app.get("/api/immich/on-this-day", async (req, res) => {
+    const { month, day, limit } = req.query;
+    const m = month || (new Date().getMonth() + 1).toString();
+    const d = day || new Date().getDate().toString();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const lim = parseInt(limit) || 5;
+
+    // Query assets across multiple years (last 5 years)
+    const year = new Date().getFullYear();
+    const allAssets = [];
+    for (let y = year - 5; y <= year; y++) {
+        const dateStr = `${y}-${pad(m)}-${pad(d)}`;
+        const data = await immichFetch(`/api/assets?takenDateAfter=${dateStr}T00:00:00&takenDateBefore=${dateStr}T23:59:59&limit=${lim}`);
+        if (data && (data.assets || data)) {
+            const assets = (data.assets || data || []).slice(0, lim);
+            allAssets.push(...assets.map(a => ({
+                id: a.id,
+                originalFileName: a.originalFileName,
+                fileCreatedAt: a.fileCreatedAt,
+                year: y,
+                type: a.type,
+                people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
+            })));
+        }
+        if (allAssets.length >= lim) break;
+    }
+    res.json({ assets: allAssets.slice(0, lim) });
+});
+
 // ==================== START ====================
 initDb().then(() => {
     const PORT = process.env.PORT || 3000;
