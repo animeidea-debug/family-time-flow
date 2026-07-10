@@ -245,6 +245,41 @@
             }
         }
 
+        /* ===== Milestone colors on grid ===== */
+        .week-cell.stage-primary {
+            background-color: var(--accent-color);
+            opacity: 0.5;
+        }
+
+        .week-cell.stage-middle {
+            background-color: var(--accent-color);
+            opacity: 0.35;
+        }
+
+        .week-cell.milestone-marker {
+            position: relative;
+        }
+
+        .week-cell.milestone-marker::after {
+            content: '⭐';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6px;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .week-cell.milestone-marker.中考::after {
+            content: '🎯';
+        }
+
+        .week-cell.milestone-marker.高考::after {
+            content: '🏆';
+        }
+
         /* ===== Countdown ===== */
         .countdown-display {
             font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
@@ -966,7 +1001,17 @@
                 grid.appendChild(label);
             }
 
-            // Rows: year labels + week cells
+            // Define education stage boundaries (in years from birth)
+            const stages = [
+                { start: 0, end: 6, cls: 'stage-primary', label: '学龄前' },
+                { start: 6, end: 12, cls: 'stage-middle', label: '小学' },
+                { start: 12, end: 15, cls: 'stage-primary', label: '初中' },
+                { start: 15, end: 18, cls: 'stage-middle', label: '高中' },
+                { start: 18, end: 22, cls: 'stage-primary', label: '大学' },
+            ];
+            // Define specific milestone weeks (year boundary cells)
+            const milestoneYears = [6, 12, 15, 18, 22];
+
             for (let year = 0; year < expectedAge; year++) {
                 const rowIdx = year + 2;
 
@@ -996,7 +1041,7 @@
                         cell.style.borderRadius = '1px';
                     }
 
-                    // spent/current state
+                    // spent/current state + education stage coloring
                     if (birthDate) {
                         const birthMs = birthDate.getTime();
                         const weekMs = globalWeek * 7 * 24 * 60 * 60 * 1000;
@@ -1007,6 +1052,23 @@
                         }
                         if (globalWeek === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
                             cell.classList.add('current');
+                        }
+
+                        // Apply education stage shading (only for student theme, on spent+future)
+                        if (state.profile.identityTag === 'student') {
+                            const cellAgeYears = (cellDate - birthMs) / (365.25 * 24 * 60 * 60 * 1000);
+                            for (const s of stages) {
+                                if (cellAgeYears >= s.start && cellAgeYears < s.end && year >= s.start) {
+                                    cell.classList.add(s.cls);
+                                    break;
+                                }
+                            }
+                            // Milestone markers at boundary years
+                            if (milestoneYears.includes(year) && week === 0) {
+                                cell.classList.add('milestone-marker');
+                                if (year === 15) cell.classList.add('中考');
+                                if (year === 18) cell.classList.add('高考');
+                            }
                         }
                     }
 
@@ -1262,7 +1324,9 @@
             const currentYear = now.getFullYear();
             const birthYear = birth.getFullYear();
             const schoolYear = `第 ${currentYear - birthYear - 5 > 0 ? currentYear - birthYear - 5 : 1} 学年`;
-            const semester = (now.getMonth() >= 1 && now.getMonth() <= 6) ? '下学期' : '上学期';
+            const m = now.getMonth(); // 0=Jan
+            const semester = (m >= 8 || m <= 1) ? '上学期' : (m >= 2 && m <= 6) ? '下学期' : (m === 7 ? '暑假中' : '上学期');
+            const semesterLabel = (m === 7 || m === 8) ? `暑假 (${grade.grade}结束)` : semester;
 
             // Calculate days into current school year (Sept 1)
             const schoolYearStart = new Date(now.getMonth() >= 8 ? currentYear : currentYear - 1, 8, 1);
@@ -1272,7 +1336,7 @@
             const schoolProgress = Math.min(Math.max(schoolDaysElapsed / totalSchoolDays, 0), 1) * 100;
 
             eduContent.innerHTML = `
-                <div class="flex justify-between"><span>📅 当前: ${grade.grade}</span><span class="text-theme-accent font-bold">${semester}</span></div>
+                <div class="flex justify-between"><span>📅 当前: ${grade.grade}</span><span class="text-theme-accent font-bold">${semesterLabel}</span></div>
                 <div class="flex justify-between"><span>📊 学年进度</span><span class="text-theme-accent font-bold">${Math.round(schoolProgress)}%</span></div>
                 <div class="w-full h-2 bg-theme-muted rounded-full overflow-hidden mt-1">
                     <div class="h-full rounded-full" style="width:${schoolProgress}%;background:var(--accent-color);transition:width 500ms ease"></div>
