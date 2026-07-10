@@ -66,19 +66,6 @@
             --accent-color-rgb: 59, 130, 246;
         }
 
-        /* ===== Background Noise (subtle texture) ===== */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            opacity: 0.025;
-            pointer-events: none;
-            z-index: 9998;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            background-size: 256px 256px;
-        }
-
         /* Theme: Student (default) - 晨光蓝白 */
         body.theme-student {
             background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 50%, #F0F9FF 100%);
@@ -149,10 +136,11 @@
             box-shadow: 0 0 30px var(--glow-color);
         }
 
-        /* ===== Card Styles (enhanced) ===== */
+        /* ===== Card Styles ===== */
         .emma-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 28px;
             border: 2px solid var(--border-color);
             box-shadow:
@@ -173,6 +161,7 @@
         .stat-card {
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-radius: 20px;
             border: 2px solid var(--border-color);
             border-left: 6px solid var(--accent-color);
@@ -193,53 +182,20 @@
         .nav-glass {
             background: rgba(255, 255, 255, 0.75);
             backdrop-filter: blur(20px) saturate(1.2);
+            -webkit-backdrop-filter: blur(20px) saturate(1.2);
             border-bottom: 2px solid var(--border-color);
         }
 
         /* ===== Life Grid ===== */
         .life-grid-wrapper {
             position: relative;
-            transition: transform 300ms ease;
+            transition: transform 200ms ease;
         }
 
         .life-grid {
             display: grid;
-            grid-template-columns: 32px repeat(52, 1fr);
-            grid-template-rows: 20px repeat(80, 1fr);
             gap: 2px;
             min-width: 700px;
-        }
-
-        .grid-label-row {
-            display: contents;
-        }
-
-        .grid-label-row span {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--text-color);
-            opacity: 0.5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            letter-spacing: -0.02em;
-        }
-
-        .grid-age-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-color);
-            opacity: 0.4;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 4px;
-            letter-spacing: -0.02em;
-        }
-
-        .grid-decade-divider {
-            border-top: 2px solid var(--accent-color);
-            opacity: 0.15;
         }
 
         .week-cell {
@@ -339,6 +295,7 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             opacity: 0;
             pointer-events: none;
             transition: opacity 350ms ease;
@@ -359,6 +316,7 @@
             max-width: 92vw;
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(24px) saturate(1.3);
+            -webkit-backdrop-filter: blur(24px) saturate(1.3);
             border-left: 2px solid var(--border-color);
             transform: translateX(100%);
             transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -373,9 +331,10 @@
 
         /* ===== Photo Tooltip ===== */
         .photo-tooltip {
-            position: absolute;
+            position: fixed;
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 2px solid var(--border-color);
             border-radius: 20px;
             padding: 14px;
@@ -392,7 +351,7 @@
             transform: translateY(0) scale(1);
         }
 
-        /* ===== Ticker (animated scroll) ===== */
+        /* ===== Ticker ===== */
         .ticker-bar {
             position: relative;
             background: linear-gradient(to right,
@@ -407,8 +366,8 @@
         .ticker-track {
             display: inline-block;
             white-space: nowrap;
-            animation: ticker-scroll 30s linear infinite;
-            padding: 0 24px;
+            animation: ticker-scroll 40s linear infinite;
+            padding: 0 48px;
         }
 
         .ticker-track:hover {
@@ -417,11 +376,11 @@
 
         @keyframes ticker-scroll {
             0% {
-                transform: translateX(100vw);
+                transform: translateX(0);
             }
 
             100% {
-                transform: translateX(-100%);
+                transform: translateX(-50%);
             }
         }
 
@@ -438,6 +397,7 @@
         .toast-msg {
             background: rgba(30, 30, 30, 0.92);
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             color: white;
             border-radius: 16px;
             padding: 12px 24px;
@@ -552,7 +512,6 @@
             background: var(--accent-color);
         }
 
-        /* Smooth focus */
         input:focus,
         select:focus {
             outline: none;
@@ -562,11 +521,6 @@
 </head>
 
 <body class="theme-student theme-transition min-h-screen flex flex-col overflow-x-hidden font-sans">
-
-    <!-- Background noise overlay -->
-    <div class="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
-        style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E'); background-repeat: repeat; background-size: 200px 200px;">
-    </div>
 
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container flex flex-col items-center"></div>
@@ -640,7 +594,7 @@
                         <div id="lifeGrid" class="life-grid"></div>
                     </div>
                 </div>
-                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆 · 滚轮缩放</p>
+                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆</p>
             </section>
 
             <!-- Meso + Micro Column -->
@@ -707,7 +661,7 @@
     <!-- On This Day Ticker -->
     <div class="ticker-bar py-2.5 relative z-10">
         <div id="tickerTrack" class="ticker-track text-xs sm:text-sm text-theme-text/70 font-semibold">
-            📸 正在加载 "那年今日" 回忆...
+            📸 正在加载「那年今日」回忆...
         </div>
     </div>
 
@@ -867,19 +821,16 @@
 
         // ==================== THEME SYSTEM ====================
         function setTheme(theme) {
-            const oldTheme = document.body.className.match(/theme-\w+/)?.[0] || '';
             document.body.className = document.body.className.replace(/theme-\w+/, '').trim();
             document.body.classList.add(`theme-${theme}`);
             state.currentUser = theme;
             state.profile.identityTag = theme;
             saveState();
 
-            // GSAP transition pulse
             gsap.fromTo('main', { opacity: 0.85, scale: 0.995 },
                 { opacity: 1, scale: 1, duration: 0.6, ease: 'power3.out', clearProps: 'scale' }
             );
 
-            // Update accent color RGB for ticker
             updateTickerStyle();
         }
 
@@ -924,13 +875,7 @@
             localStorage.removeItem(STATE_KEY);
             state = {
                 currentUser: 'student',
-                profile: {
-                    name: '',
-                    birthDate: '',
-                    expectedAge: 80,
-                    identityTag: 'student',
-                    immichPersonId: null
-                },
+                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', immichPersonId: null },
                 events: [],
                 targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
                 immichSync: false
@@ -948,12 +893,10 @@
             gridZoom = Math.min(gridZoom + 0.15, ZOOM_MAX);
             applyGridZoom();
         }
-
         function gridZoomOut() {
             gridZoom = Math.max(gridZoom - 0.15, ZOOM_MIN);
             applyGridZoom();
         }
-
         function applyGridZoom() {
             const wrapper = document.getElementById('lifeGridWrapper');
             if (wrapper) {
@@ -962,7 +905,7 @@
             document.getElementById('zoomLevel').textContent = `${Math.round(gridZoom * 100)}%`;
         }
 
-        // ==================== LIFE GRID (80×52) ====================
+        // ==================== LIFE GRID ====================
         function initLifeGrid() {
             const grid = document.getElementById('lifeGrid');
             grid.innerHTML = '';
@@ -972,91 +915,56 @@
             const totalWeeks = expectedAge * 52;
             const now = new Date();
 
-            // Update description
             document.getElementById('gridDescription').textContent =
                 `${expectedAge} 年 × 52 周 = ${totalWeeks.toLocaleString()} 个格子`;
 
-            // Build month labels row (top header)
+            // Month header positions (0-indexed week columns)
             const monthStarts = [0, 4, 8, 13, 17, 22, 26, 30, 35, 39, 44, 48];
             const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-            // Top-left corner (empty)
-            const corner = document.createElement('div');
-
-            // Month labels
-            for (let w = 0; w < 52; w++) {
-                const label = document.createElement('span');
-                const monthIdx = monthStarts.findIndex((s, i) =>
-                    w >= s && (i === monthStarts.length - 1 || w < monthStarts[i + 1])
-                );
-                // Only show label at the start of each month
-                if (monthStarts.includes(w)) {
-                    label.textContent = monthNames[monthStarts.indexOf(w)];
-                    label.style.fontSize = '9px';
-                    label.style.fontWeight = '700';
-                    label.style.color = 'var(--text-color)';
-                    label.style.opacity = '0.35';
-                    label.style.textAlign = 'center';
-                    label.style.gridColumn = String(w + 2);
-                    label.style.gridRow = '1';
-                }
-            }
-
-            // We'll use CSS grid positioning
+            // Set dynamic grid template
+            const totalRows = 1 + expectedAge; // 1 header row + age rows
             grid.style.gridTemplateColumns = `32px repeat(52, 1fr)`;
             grid.style.gridTemplateRows = `20px repeat(${expectedAge}, 1fr)`;
+            grid.style.width = '100%';
 
-            // Top-left corner spacer
+            // Corner spacer (top-left)
             const spacer = document.createElement('div');
             spacer.style.gridColumn = '1';
             spacer.style.gridRow = '1';
+            spacer.style.minHeight = '20px';
             grid.appendChild(spacer);
 
-            // Month labels in header row
+            // Month labels (header row)
             for (let w = 0; w < 52; w++) {
-                const monthIdx = monthStarts.findIndex((s, i) =>
-                    w >= s && (i === monthStarts.length - 1 || w < monthStarts[i + 1])
-                );
                 const label = document.createElement('div');
-                if (monthStarts.includes(w)) {
-                    label.textContent = monthNames[monthStarts.indexOf(w)];
-                } else {
-                    label.textContent = '';
-                }
-                label.style.fontSize = '8px';
-                label.style.fontWeight = '700';
-                label.style.color = 'var(--text-color)';
-                label.style.opacity = '0.3';
-                label.style.display = 'flex';
-                label.style.alignItems = 'center';
-                label.style.justifyContent = 'center';
+                const mi = monthStarts.indexOf(w);
+                label.textContent = mi !== -1 ? monthNames[mi] : '';
+                label.style.cssText =
+                    'font-size:8px;font-weight:700;color:var(--text-color);opacity:0.3;' +
+                    'display:flex;align-items:center;justify-content:center;overflow:hidden;';
                 label.style.gridColumn = String(w + 2);
                 label.style.gridRow = '1';
                 grid.appendChild(label);
             }
 
+            // Rows: year labels + week cells
             for (let year = 0; year < expectedAge; year++) {
-                // Age label column
+                const rowIdx = year + 2;
+
+                // Age label
                 const ageLabel = document.createElement('div');
-                ageLabel.textContent = `${year}`;
-                ageLabel.style.fontSize = '9px';
-                ageLabel.style.fontWeight = '700';
-                ageLabel.style.color = 'var(--text-color)';
-                ageLabel.style.opacity = '0.35';
-                ageLabel.style.display = 'flex';
-                ageLabel.style.alignItems = 'center';
-                ageLabel.style.justifyContent = 'flex-end';
-                ageLabel.style.paddingRight = '4px';
+                const isDecade = (year > 0 && year % 5 === 0);
+                ageLabel.textContent = isDecade ? `${year}` : (year % 2 === 0 ? `${year}` : '');
+                ageLabel.style.cssText =
+                    `font-size:9px;font-weight:700;color:var(--text-color);opacity:${isDecade ? 0.6 : 0.25};` +
+                    'display:flex;align-items:center;justify-content:flex-end;padding-right:4px;' +
+                    (isDecade ? 'border-top:2px solid var(--accent-color);' : '');
                 ageLabel.style.gridColumn = '1';
-                ageLabel.style.gridRow = String(year + 2);
+                ageLabel.style.gridRow = String(rowIdx);
                 grid.appendChild(ageLabel);
 
-                // Decade divider
-                if (year > 0 && year % 5 === 0) {
-                    ageLabel.style.borderTop = '2px solid var(--accent-color)';
-                    ageLabel.style.borderTopColor = 'var(--accent-color)';
-                    ageLabel.style.opacity = '0.6';
-                }
+                const isDecadeRow = (year > 0 && year % 5 === 0);
 
                 for (let week = 0; week < 52; week++) {
                     const cell = document.createElement('div');
@@ -1064,15 +972,13 @@
                     const globalWeek = year * 52 + week;
                     cell.dataset.week = globalWeek;
 
-                    // Decade divider styling
-                    if (year > 0 && year % 5 === 0) {
+                    // Decade divider line on cells
+                    if (isDecadeRow) {
                         cell.style.borderTop = '2px solid var(--accent-color)';
-                        cell.style.borderTopColor = 'var(--accent-color)';
-                        cell.style.opacity = '0.15';
                         cell.style.borderRadius = '1px';
                     }
 
-                    // Determine cell state
+                    // spent/current state
                     if (birthDate) {
                         const birthMs = birthDate.getTime();
                         const weekMs = globalWeek * 7 * 24 * 60 * 60 * 1000;
@@ -1080,35 +986,31 @@
 
                         if (cellDate < now) {
                             cell.classList.add('spent');
-                            if (year > 0 && year % 5 === 0) cell.style.borderTop = 'none';
                         }
                         if (globalWeek === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
                             cell.classList.add('current');
-                            if (year > 0 && year % 5 === 0) cell.style.borderTop = 'none';
                         }
                     }
 
-                    // GSAP stagger entrance
+                    // GSAP stagger
                     gsap.set(cell, { opacity: 0, scale: 0.3 });
                     gsap.to(cell, {
                         opacity: 1,
                         scale: 1,
-                        duration: 0.25,
-                        delay: Math.min(globalWeek * 0.0004, 1.2),
+                        duration: 0.2,
+                        delay: Math.min(globalWeek * 0.0003, 1.0),
                         ease: 'back.out(1.3)'
                     });
 
-                    // Hover tooltip
                     cell.addEventListener('mouseenter', (e) => showWeekTooltip(e, globalWeek));
                     cell.addEventListener('mouseleave', hideTooltip);
 
                     cell.style.gridColumn = String(week + 2);
-                    cell.style.gridRow = String(year + 2);
+                    cell.style.gridRow = String(rowIdx);
                     grid.appendChild(cell);
                 }
             }
 
-            // Reset zoom on regen
             gridZoom = 1.0;
             applyGridZoom();
         }
@@ -1116,39 +1018,36 @@
         function showWeekTooltip(event, weekIndex) {
             const tooltip = document.getElementById('photoTooltip');
             const rect = event.target.getBoundingClientRect();
-            let left = rect.left + window.scrollX;
-            let top = rect.top + window.scrollY - 140;
 
-            // Keep tooltip in viewport
-            if (left + 180 > window.innerWidth) {
-                left = window.innerWidth - 200;
-            }
-            if (top < 10) {
-                top = rect.bottom + window.scrollY + 10;
-            }
+            let left = rect.left + (rect.width / 2) - 90;
+            let top = rect.top - 145;
+
+            // Keep in viewport
+            if (left < 8) left = 8;
+            if (left + 180 > window.innerWidth) left = window.innerWidth - 188;
+            if (top < 8) top = rect.bottom + 8;
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
             tooltip.classList.add('visible');
 
-            // Calculate date range for this week
             let dateStr = '';
             if (state.profile.birthDate) {
                 const birth = new Date(state.profile.birthDate);
-                const weekStart = new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
-                const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                dateStr = `${fmt(weekStart)} ~ ${fmt(weekEnd)}`;
+                const ws = new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
+                const we = new Date(ws.getTime() + 6 * 24 * 60 * 60 * 1000);
+                const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                dateStr = `${f(ws)} ~ ${f(we)}`;
             }
             document.getElementById('tooltipCaption').textContent =
-                `第 ${weekIndex + 1} 周 · ${dateStr ? dateStr : '回忆加载中...'}`;
+                `第 ${weekIndex + 1} 周 · ${dateStr || '回忆加载中...'}`;
         }
 
         function hideTooltip() {
             document.getElementById('photoTooltip').classList.remove('visible');
         }
 
-        // ==================== COUNTDOWN CLOCK ====================
+        // ==================== COUNTDOWN ====================
         function updateCountdown() {
             const target = state.targetDate ? new Date(state.targetDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
             const now = new Date();
@@ -1156,27 +1055,23 @@
 
             if (diff <= 0) {
                 document.getElementById('countdown').textContent = '000:00:00:00';
-                document.getElementById('countdownProgressBar').style.width = '100%';
+                document.getElementById('countdownProgressBar').style.width = '0%';
                 return;
             }
 
-            const totalSeconds = Math.floor(diff / 1000);
-            const days = Math.floor(totalSeconds / 86400);
-            const hours = Math.floor((totalSeconds % 86400) / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
+            const totalSec = Math.floor(diff / 1000);
+            const d = Math.floor(totalSec / 86400);
+            const h = Math.floor((totalSec % 86400) / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
 
-            const formatted = `${String(days).padStart(3, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            document.getElementById('countdown').textContent = formatted;
+            document.getElementById('countdown').textContent =
+                `${String(d).padStart(3, '0')}:${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
-            // Progress bar: from now to target (0% = now, 100% = target reached)
-            const nowMs = now.getTime();
-            const targetMs = target.getTime();
-            // Use a reference: if we set target from now + X, progress is % elapsed
-            const totalDuration = 90 * 24 * 60 * 60 * 1000; // reference: 90 days
-            const elapsed = totalDuration - diff;
-            const progress = Math.min(Math.max(elapsed / totalDuration, 0), 1);
-            document.getElementById('countdownProgressBar').style.width = `${progress * 100}%`;
+            // Progress relative to 90-day default
+            const elapsed = 90 * 86400000 - diff;
+            const pct = Math.min(Math.max(elapsed / (90 * 86400000), 0), 1);
+            document.getElementById('countdownProgressBar').style.width = `${pct * 100}%`;
         }
 
         function tickCountdown() {
@@ -1187,22 +1082,19 @@
         // ==================== TIME BUDGET RING ====================
         function updateTimeBudget() {
             const now = new Date();
-            const elapsedMs = (now.getHours() * 60 + now.getMinutes()) * 60 * 1000 + now.getSeconds() * 1000;
-            const dayMs = 24 * 60 * 60 * 1000;
-            const progress = Math.min(elapsedMs / dayMs, 1);
+            const ms = (now.getHours() * 60 + now.getMinutes()) * 60 * 1000 + now.getSeconds() * 1000;
+            const progress = Math.min(ms / 86400000, 1);
 
             const ring = document.getElementById('timeRingProgress');
-            const circumference = 2 * Math.PI * 100; // r=100
-            const offset = circumference * (1 - progress);
-            ring.style.strokeDashoffset = offset;
+            const circ = 2 * Math.PI * 100;
+            ring.style.strokeDashoffset = circ * (1 - progress);
 
-            const percent = Math.round(progress * 100);
-            document.getElementById('timeElapsed').textContent = `${percent}%`;
+            document.getElementById('timeElapsed').textContent = `${Math.round(progress * 100)}%`;
 
-            const studyH = Math.floor(progress * 8);
-            const hobbyH = Math.floor(progress * 3);
-            document.getElementById('studyHours').textContent = `${studyH} 小时`;
-            document.getElementById('hobbyHours').textContent = `${hobbyH} 小时`;
+            const sh = Math.floor(progress * 8);
+            const hh = Math.floor(progress * 3);
+            document.getElementById('studyHours').textContent = `${sh} 小时`;
+            document.getElementById('hobbyHours').textContent = `${hh} 小时`;
         }
 
         function tickTimeBudget() {
@@ -1210,93 +1102,76 @@
             requestAnimationFrame(tickTimeBudget);
         }
 
-        // ==================== FLATPICKR INIT ====================
+        // ==================== FLATPICKR ====================
         function initFlatpickrs() {
+            const fpConf = (el, opts) => {
+                const base = { locale: 'zh', defaultDate: state.targetDate };
+                flatpickr(el, { ...base, ...opts });
+            };
+
+            // Target date (main card)
             flatpickr("#targetDate", {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                locale: 'zh',
+                enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (selected) => {
-                    state.targetDate = selected[0].toISOString();
-                    saveState();
-                    updateCountdown();
-                }
+                onChange: (s) => { state.targetDate = s[0].toISOString(); saveState(); updateCountdown(); }
             });
 
+            // Birth date
             flatpickr("#cfgBirthDate", {
-                dateFormat: "Y-m-d",
-                locale: 'zh',
+                dateFormat: "Y-m-d", locale: 'zh',
                 defaultDate: state.profile.birthDate || null,
-                onChange: (selected) => {
-                    state.profile.birthDate = selected[0] ? selected[0].toISOString().split('T')[0] : '';
-                    saveState();
-                    initLifeGrid();
+                onChange: (s) => {
+                    state.profile.birthDate = s[0] ? s[0].toISOString().split('T')[0] : '';
+                    saveState(); initLifeGrid();
                 }
             });
 
+            // Target date (drawer)
             flatpickr("#cfgTargetDate", {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                locale: 'zh',
+                enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (selected) => {
-                    state.targetDate = selected[0].toISOString();
-                    saveState();
-                    updateCountdown();
-                }
+                onChange: (s) => { state.targetDate = s[0].toISOString(); saveState(); updateCountdown(); }
             });
         }
 
         // ==================== TICKER ====================
         function updateTicker() {
             const now = new Date();
-            const monthDay = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+            const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
             const track = document.getElementById('tickerTrack');
             track.textContent =
-                `📸 那年今日 (${monthDay})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉 每天都是值得纪念的一天 ✨`;
+                `📸 那年今日 (${md})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉`;
         }
-
-        // Refill ticker periodically
-        let tickerInterval = null;
 
         function startTickerLoop() {
             updateTicker();
-            // Update ticker content every 30 minutes (but animation keeps scrolling)
-            tickerInterval = setInterval(updateTicker, 30 * 60 * 1000);
+            setInterval(updateTicker, 30 * 60 * 1000);
         }
 
-        // ==================== KEYBOARD SHORTCUTS ====================
+        // ==================== KEYBOARD ====================
         function initKeyboard() {
             document.addEventListener('keydown', (e) => {
-                // Escape closes drawer
                 if (e.key === 'Escape') {
                     const drawer = document.getElementById('configDrawer');
-                    if (drawer.classList.contains('open')) {
-                        toggleDrawer();
-                    }
+                    if (drawer.classList.contains('open')) toggleDrawer();
                 }
-                // '?' or '/' for help
                 if (e.key === '?' || e.key === '/') {
                     e.preventDefault();
-                    showToast('⌨️ 快捷键: ESC 关闭设置 · +/- 缩放网格');
+                    showToast('⌨️ ESC 关闭 · +/- 缩放');
                 }
             });
         }
 
         // ==================== WHEEL ZOOM ====================
         function initWheelZoom() {
-            const gridWrapper = document.getElementById('lifeGridWrapper');
-            const scrollContainer = gridWrapper?.closest('.overflow-x-auto');
-            if (scrollContainer) {
-                scrollContainer.addEventListener('wheel', (e) => {
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        if (e.deltaY < 0) gridZoomIn();
-                        else gridZoomOut();
-                    }
-                }, { passive: false });
-            }
+            const sc = document.querySelector('.overflow-x-auto');
+            if (!sc) return;
+            sc.addEventListener('wheel', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    if (e.deltaY < 0) gridZoomIn(); else gridZoomOut();
+                }
+            }, { passive: false });
         }
 
         // ==================== INIT ====================
@@ -1312,29 +1187,16 @@
             initKeyboard();
             initWheelZoom();
 
-            // Start smooth clocks
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);
 
-            // Welcome toast
             setTimeout(() => showToast(`👋 欢迎回来，${state.profile.name || "朋友"}`), 800);
 
-            // GSAP entrance for main content
             gsap.from('main .emma-card', {
-                y: 24,
-                opacity: 0,
-                duration: 0.6,
-                stagger: 0.1,
-                ease: 'power3.out',
-                delay: 0.15
+                y: 24, opacity: 0, duration: 0.5, stagger: 0.08, ease: 'power3.out', delay: 0.15
             });
-
             gsap.from('.ticker-bar', {
-                y: 20,
-                opacity: 0,
-                duration: 0.5,
-                ease: 'power2.out',
-                delay: 0.4
+                y: 20, opacity: 0, duration: 0.4, ease: 'power2.out', delay: 0.3
             });
         });
     </script>
