@@ -10,3 +10,6 @@ env.local
 # Python cache
 __pycache__/
 *.pyc
+
+# Node.js
+node_modules/
