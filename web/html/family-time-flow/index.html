@@ -703,7 +703,7 @@
                             class="text-[10px] sm:text-xs font-bold text-theme-accent/70 mt-0.5 hidden"></div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <div class="flex gap-2 text-[10px] sm:text-xs font-bold">
+                        <div class="flex flex-wrap gap-1.5 text-[10px] sm:text-xs font-bold">
                             <span class="flex items-center gap-1"><span
                                     class="w-2.5 h-2.5 rounded-sm bg-theme-accent inline-block"></span> 已度过</span>
                             <span class="flex items-center gap-1"><span
@@ -712,6 +712,12 @@
                             <span class="flex items-center gap-1"><span
                                     class="w-2.5 h-2.5 rounded-sm bg-theme-muted border-2 border-theme-border inline-block"></span>
                                 未来</span>
+                            <span id="stageLegend"
+                                class="hidden flex items-center gap-1.5 ml-1 pl-1.5 border-l-2 border-theme-border/40">
+                                <span class="flex items-center gap-0.5"><span class="stage-dot s2"></span>预初</span>
+                                <span class="flex items-center gap-0.5"><span class="stage-dot s3"></span>初中</span>
+                                <span class="flex items-center gap-0.5"><span class="stage-dot s4"></span>高中</span>
+                            </span>
                         </div>
                         <div class="zoom-controls">
                             <button onclick="gridZoomOut()" class="zoom-btn" title="缩小">−</button>
@@ -1382,6 +1388,9 @@
             // Badge
             badge.textContent = `📖 ${grade.grade}`;
             badge.classList.remove('hidden');
+
+            // Show stage color legend
+            document.getElementById('stageLegend').classList.remove('hidden');
 
             // Milestones
             const milestones = getMilestones(state.profile.birthDate);
