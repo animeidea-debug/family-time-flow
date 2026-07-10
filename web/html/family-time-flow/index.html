@@ -245,6 +245,36 @@
             }
         }
 
+        /* ===== Stage color dots ===== */
+        .stage-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 3px;
+            vertical-align: middle;
+        }
+
+        .stage-dot.s0 {
+            background: #93C5FD;
+        }
+
+        .stage-dot.s1 {
+            background: #6EE7B7;
+        }
+
+        .stage-dot.s2 {
+            background: #FCD34D;
+        }
+
+        .stage-dot.s3 {
+            background: #FB923C;
+        }
+
+        .stage-dot.s4 {
+            background: #E879F9;
+        }
+
         /* ===== Milestone stage colors on grid (distinct, applied to spent cells) ===== */
         body.theme-student .week-cell.stage-0 {
             background-color: #93C5FD;
@@ -263,25 +293,32 @@
             opacity: 0.5;
         }
 
-        /* 初中 - 浅黄 */
+        /* 预初 - 浅黄 */
         body.theme-student .week-cell.stage-3 {
+            background-color: #A78BFA;
+            opacity: 0.5;
+        }
+
+        /* 初中 - 浅紫 */
+        body.theme-student .week-cell.stage-4 {
             background-color: #FB923C;
             opacity: 0.5;
         }
 
         /* 高中 - 浅橙 */
-        body.theme-student .week-cell.stage-4 {
+        body.theme-student .week-cell.stage-5 {
             background-color: #E879F9;
             opacity: 0.4;
         }
 
-        /* 大学 - 浅紫 */
+        /* 大学 - 浅粉紫 */
 
         body.theme-worker .week-cell.stage-0,
         body.theme-worker .week-cell.stage-1,
         body.theme-worker .week-cell.stage-2,
         body.theme-worker .week-cell.stage-3,
-        body.theme-worker .week-cell.stage-4 {
+        body.theme-worker .week-cell.stage-4,
+        body.theme-worker .week-cell.stage-5 {
             background-color: var(--accent-color);
             opacity: 0.4;
         }
@@ -290,23 +327,51 @@
         body.theme-family .week-cell.stage-1,
         body.theme-family .week-cell.stage-2,
         body.theme-family .week-cell.stage-3,
-        body.theme-family .week-cell.stage-4 {
+        body.theme-family .week-cell.stage-4,
+        body.theme-family .week-cell.stage-5 {
             background-color: var(--accent-color);
             opacity: 0.4;
         }
 
-        /* Milestone marker: just a thin colored left border on the first week cell of milestone year */
-        .week-cell.milestone-border {
-            border-left: 3px solid #EF4444 !important;
-            border-radius: 2px !important;
+        /* Milestone: colored circle dot inside the cell */
+        .week-cell.milestone-dot::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7px;
+            pointer-events: none;
         }
 
-        .week-cell.milestone-border.中考 {
-            border-left-color: #F59E0B !important;
+        .week-cell.milestone-dot {
+            position: relative;
         }
 
-        .week-cell.milestone-border.高考 {
-            border-left-color: #8B5CF6 !important;
+        .week-cell.milestone-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #EF4444;
+            box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .week-cell.milestone-dot.中考::before {
+            background: #F59E0B;
+            box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+        }
+
+        .week-cell.milestone-dot.高考::before {
+            background: #8B5CF6;
+            box-shadow: 0 0 4px rgba(139, 92, 246, 0.5);
         }
 
         /* ===== Countdown ===== */
@@ -1030,16 +1095,17 @@
                 grid.appendChild(label);
             }
 
-            // Define education stage boundaries with distinct color classes
+            // Shanghai education stages: 5年小学 + 1年预初 + 3年初中 + 3年高中
             const stages = [
                 { start: 0, end: 6, cls: 'stage-0', label: '学龄前' },
-                { start: 6, end: 12, cls: 'stage-1', label: '小学' },
-                { start: 12, end: 15, cls: 'stage-2', label: '初中' },
-                { start: 15, end: 18, cls: 'stage-3', label: '高中' },
-                { start: 18, end: 22, cls: 'stage-4', label: '大学' },
+                { start: 6, end: 11, cls: 'stage-1', label: '小学' },   // 5年小学
+                { start: 11, end: 12, cls: 'stage-2', label: '预初' },  // 1年预初
+                { start: 12, end: 15, cls: 'stage-3', label: '初中' },  // 3年初中
+                { start: 15, end: 18, cls: 'stage-4', label: '高中' },  // 3年高中
+                { start: 18, end: 22, cls: 'stage-5', label: '大学' },
             ];
-            // Define milestone boundary year cells (first week of milestone year gets a red border)
-            const milestoneYears = [6, 12, 15, 18, 22];
+            // Milestone dot years (age at which milestone occurs)
+            const milestoneYears = [6, 11, 12, 15, 18, 22];
 
             for (let year = 0; year < expectedAge; year++) {
                 const rowIdx = year + 2;
@@ -1093,9 +1159,9 @@
                                 }
                             }
                         }
-                        // Milestone border at boundary years (on the first week cell of milestone year)
+                        // Milestone colored dot at boundary years
                         if (state.profile.identityTag === 'student' && milestoneYears.includes(year) && week === 0) {
-                            cell.classList.add('milestone-border');
+                            cell.classList.add('milestone-dot');
                             if (year === 15) cell.classList.add('中考');
                             if (year === 18) cell.classList.add('高考');
                         }
@@ -1246,11 +1312,12 @@
 
         // ==================== CHINA EDUCATION TIMELINE ====================
         function getGradeFromAge(ageYears) {
-            // Chinese education system: 6+3+3+4 — floor age to integer for grade indexing
+            // Shanghai education: 5年小学 + 1年预初 + 3年初中 + 3年高中 + 4年大学
             const y = Math.floor(ageYears);
             if (y < 3) return { stage: '学龄前', grade: '婴幼儿 (0-2岁)', year: 0 };
             if (y < 6) return { stage: '学龄前', grade: `幼儿园 ${['小班', '中班', '大班'][y - 3]}`, year: 0 };
-            if (y < 12) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五', '六'][y - 6]}年级`, year: y - 5 };
+            if (y < 11) return { stage: '小学', grade: `小学 ${['一', '二', '三', '四', '五'][y - 6]}年级`, year: y - 5 };
+            if (y < 12) return { stage: '预初', grade: '预初年级', year: y - 11 };
             if (y < 15) return { stage: '初中', grade: `初中 ${['一', '二', '三'][y - 12]}年级`, year: y - 11 };
             if (y < 18) return { stage: '高中', grade: `高中 ${['一', '二', '三'][y - 15]}年级`, year: y - 14 };
             if (y < 22) return { stage: '大学', grade: `大学 ${['一', '二', '三', '四'][y - 18]}年级`, year: y - 17 };
