@@ -276,17 +276,24 @@ app.delete("/api/users/:id/events/:eid", (req, res) => {
 // Immich access via internal LAN: http://192.168.6.108:2283/api
 // API Key stored in app_config table (never in git)
 
-const IMMICH_URL = 'http://172.17.0.1:22283';
+// Immich URL — stored in app_config, falls back to hardcoded Docker IP
+function getImmichUrl() {
+    const rows = queryAll("SELECT key, value FROM app_config WHERE key = 'immich_url'");
+    return rows.length > 0 ? rows[0].value : 'http://172.17.0.1:22283';
+}
+
+function getImmichKey() {
+    const rows = queryAll("SELECT key, value FROM app_config WHERE key = 'immich_api_key'");
+    return rows.length > 0 ? rows[0].value : null;
+}
 
 // Helper: proxy request to Immich API
 async function immichFetch(path) {
-    const config = queryAll("SELECT key, value FROM app_config");
-    const cfg = {};
-    config.forEach(c => cfg[c.key] = c.value);
-    const apiKey = cfg.immich_api_key;
+    const apiKey = getImmichKey();
     if (!apiKey) return null;
+    const url = getImmichUrl();
     try {
-        const resp = await fetch(`${IMMICH_URL}${path}`, {
+        const resp = await fetch(`${url}${path}`, {
             headers: { 'x-api-key': apiKey, 'Accept': 'application/json' },
             signal: AbortSignal.timeout(5000)
         });
@@ -295,13 +302,34 @@ async function immichFetch(path) {
     } catch { return null; }
 }
 
-// POST /api/immich/set-key — Store Immich API key (one-time)
+// POST /api/immich/config — Save Immich server URL + API Key, then test
+app.post("/api/immich/config", (req, res) => {
+    const { url, key } = req.body;
+    if (!url) return res.status(400).json({ error: "url required" });
+    // Ensure URL doesn't end with /api
+    const cleanUrl = url.replace(/\/+$/, '').replace(/\/api$/, '');
+    run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_url", cleanUrl]);
+    if (key) {
+        run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_api_key", key]);
+    }
+    // Test the connection
+    const apiKey = key || getImmichKey();
+    fetch(`${cleanUrl}/api/server/version`, {
+        headers: apiKey ? { 'x-api-key': apiKey } : {}
+    }).then(r => r.json()).then(v => {
+        res.json({ status: "ok", version: v, connected: true, message: "Immich connection successful" });
+    }).catch(() => {
+        res.json({ status: "warning", connected: false, message: "URL saved but Immich unreachable" });
+    });
+});
+
+// POST /api/immich/set-key — Legacy: only sets API key
 app.post("/api/immich/set-key", (req, res) => {
     const { key } = req.body;
     if (!key) return res.status(400).json({ error: "key required" });
     run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_api_key", key]);
-    // Test the key
-    fetch(`${IMMICH_URL}/api/server/version`, {
+    const url = getImmichUrl();
+    fetch(`${url}/api/server/version`, {
         headers: { 'x-api-key': key }
     }).then(r => r.json()).then(v => {
         res.json({ status: "ok", version: v, message: "Immich API key saved and verified" });
@@ -383,7 +411,7 @@ app.get("/api/immich/asset-thumb", async (req, res) => {
     const apiKey = cfg.immich_api_key;
     if (!apiKey) return res.status(401).json({ error: "no api key" });
     try {
-        const thumbResp = await fetch(`${IMMICH_URL}/api/assets/${id}/thumbnail?size=${size || 'thumbnail'}`, {
+        const thumbResp = await fetch(`${getImmichUrl()}/api/assets/${id}/thumbnail?size=${size || 'thumbnail'}`, {
             headers: { 'x-api-key': apiKey },
             signal: AbortSignal.timeout(5000)
         });

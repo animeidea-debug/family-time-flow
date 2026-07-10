@@ -1,6 +1,6 @@
 # FamilyTimeFlow — Project Progress
 
-> **Last updated**: 2026-07-10 14:27 UTC+8
+> **Last updated**: 2026-07-10 20:20 UTC+8
 
 ---
 
@@ -77,19 +77,30 @@
 | 4 | **nginx API Proxy** — `/family-time-flow/api/` → `ftf_backend:3000` | ✅ |
 | 5 | **NAS Deploy** — Docker container running on NAS (`node:20-alpine`), DB at `/app/data/ftf.db` | ✅ |
 
-**Pending for Phase 2b:**
-- [ ] Frontend → API: Replace `localStorage` with `fetch()` calls
-- [ ] Multi-user: Simple identity switch (no JWT)
-- [ ] Docker Compose: Formal docker-compose.yml integration
+**Phase 2b completed:**
+- [x] Frontend API client with localStorage fallback
+- [x] Multi-user management (switch/create users)
+- [x] School system selector (Shanghai 5+4 / National 6+3+3)
+- [x] API push/pull sync for all settings
 
-### Phase 3: Immich Integration (SaaS 3.0)
+### Phase 3: Immich Integration ✅ COMPLETE
 
-| # | Task | Details |
-|---|------|---------|
-| 1 | **Smart Onboarding** | Face matching → auto-deduce DOB from earliest photo |
-| 2 | **Memory Hover** | Grid hover → Immich thumbnail popups |
-| 3 | **"On This Day"** | Live ticker with Immich time-bucket queries |
-| 4 | **PhotoSwipe** | Full-screen lightbox for timeline photo nodes |
+| # | Task | Status |
+|---|------|--------|
+| 1 | **Immich API Proxy** — status, people, assets, thumbnail, on-this-day | ✅ |
+| 2 | **Dynamic URL config** — `POST /api/immich/config` saves URL+key, read from DB | ✅ |
+| 3 | **Onboarding wizard** — 4-step guided setup (welcome → connect → person → preview) | ✅ |
+| 4 | **Preset connection picker** — 🏠内网 / 🌐外网 toggle with pre-filled API key | ✅ |
+| 5 | **Person auto-fill** — selecting Immich person auto-fills name + birthDate | ✅ |
+| 6 | **Real photo tooltips** — hover grid cell → fetch Immich thumbnails | ✅ |
+| 7 | **On-This-Day ticker** — cross-year Immich photo query in bottom bar | ✅ |
+| 8 | **NAS deploy via Tailscale** — SSH + docker exec deployment from external 5G | ✅ |
+
+### Infrastructure
+
+- [x] **deploy.sh updated** — added Tailscale IP (100.102.16.75) auto-detection, fallback chain
+- [x] **Tailscale verified** — SSH (port 10000), WebDAV (port 8889), Backend API (port 3000) all reachable
+- [x] **Immich connected** — v2.7.5, 8+ named persons with birth dates
 
 ---
 

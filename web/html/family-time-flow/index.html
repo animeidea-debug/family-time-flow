@@ -669,6 +669,34 @@
                 <p class="text-xs text-gray-400 mt-4">我们将自动连接您的 Immich 照片库</p>
             </div>
 
+            <!-- Step 1.5: Immich Server Config -->
+            <div id="onbStep15" class="hidden">
+                <div class="text-4xl mb-3">🔗</div>
+                <h2 class="text-xl font-bold text-gray-800 mb-1">连接 Immich 照片库</h2>
+                <p class="text-xs text-gray-400 mb-2">选择连接方式，密钥已就绪</p>
+                <div class="text-left space-y-2 mb-4">
+                    <div class="flex gap-2">
+                        <button id="onbLanBtn" onclick="selectImmichPreset('lan')"
+                            class="flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left">
+                            <div class="font-bold text-sm">🏠 内网连接</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">http://192.168.6.108:22283</div>
+                        </button>
+                        <button id="onbWanBtn" onclick="selectImmichPreset('wan')"
+                            class="flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left">
+                            <div class="font-bold text-sm">🌐 外网连接</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">https://remote-access-22283.zconnect.cn</div>
+                        </button>
+                    </div>
+                    <div id="onbPresetSelected" class="text-xs text-green-500 font-bold hidden">已选择 ✅</div>
+                </div>
+                <button id="onbTestBtn" onclick="testImmichConfig()" class="btn btn-accent w-full font-bold mb-2">
+                    🔌 一键连接
+                </button>
+                <div id="onbTestResult" class="text-xs hidden mb-2"></div>
+                <button onclick="continueAfterImmichConfig()" class="btn btn-ghost btn-xs text-gray-400 mt-1">跳过
+                    →</button>
+            </div>
+
             <!-- Step 2: Loading -->
             <div id="onbStep2" class="hidden">
                 <div class="text-4xl mb-4"><span id="onbLoadingIcon"
@@ -1837,14 +1865,65 @@
         // ==================== ONBOARDING FLOW ====================
         let onboardingPersonId = null;
 
+        let selectedImmichPreset = null;
+        const IMMICH_KEY = 'gio4wP9dp7UfImtremKn9NETcxNrqgvZ5g1fBcCN00c';
+
         function showOnboarding() {
             document.getElementById('onboardingOverlay').classList.remove('hidden');
             showStep(1);
         }
 
         function showStep(n) {
-            for (let i = 1; i <= 4; i++) {
-                document.getElementById(`onbStep${i}`).classList.toggle('hidden', i !== n);
+            // Steps: 1=welcome, 15=immich config, 2=loading, 3=person select, 4=preview
+            const steps = [1, 15, 2, 3, 4];
+            steps.forEach(i => {
+                const el = document.getElementById(`onbStep${i}`);
+                if (el) el.classList.toggle('hidden', i !== n);
+            });
+        }
+
+        function selectImmichPreset(mode) {
+            selectedImmichPreset = mode;
+            document.getElementById('onbLanBtn').className = (mode === 'lan' ? 'flex-1 p-3 rounded-xl border-2 border-theme-accent bg-theme-accent/5 text-left' : 'flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left');
+            document.getElementById('onbWanBtn').className = (mode === 'wan' ? 'flex-1 p-3 rounded-xl border-2 border-theme-accent bg-theme-accent/5 text-left' : 'flex-1 p-3 rounded-xl border-2 border-gray-200 hover:border-theme-accent transition-all text-left');
+            document.getElementById('onbPresetSelected').classList.remove('hidden');
+        }
+
+        async function testImmichConfig() {
+            const url = selectedImmichPreset === 'lan' ? 'http://192.168.6.108:22283' : 'https://remote-access-22283.zconnect.cn';
+            const btn = document.getElementById('onbTestBtn');
+            const result = document.getElementById('onbTestResult');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ 连接中...';
+            result.classList.remove('hidden');
+            result.className = 'text-xs mb-2 text-gray-500';
+            result.textContent = '正在连接...';
+
+            const resp = await apiPost('/immich/config', { url, key: IMMICH_KEY });
+            if (resp && resp.connected) {
+                result.className = 'text-xs mb-2 text-green-500';
+                result.textContent = `✅ 连接成功！Immich v${resp.version.major}.${resp.version.minor}.${resp.version.patch}`;
+                immichConnected = true;
+                // Reload people
+                const peopleData = await immichGet('/people');
+                if (peopleData && peopleData.people) immichPeople = peopleData.people;
+                btn.textContent = '✅ 已连接';
+                setTimeout(() => continueAfterImmichConfig(), 1000);
+            } else {
+                result.className = 'text-xs mb-2 text-red-400';
+                result.textContent = resp ? `❌ ${resp.message}` : '❌ 无法连接，请检查地址和密钥';
+                btn.disabled = false;
+                btn.textContent = '🔌 测试连接';
+            }
+        }
+
+        function continueAfterImmichConfig() {
+            const hasPeople = immichConnected && immichPeople.length > 0;
+            if (hasPeople) {
+                showPersonSelection();
+            } else {
+                startOnboarding(); // go to loading step
             }
         }
 
