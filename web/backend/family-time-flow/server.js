@@ -321,16 +321,25 @@ app.get("/api/immich/status", async (req, res) => {
     });
 });
 
-// GET /api/immich/people — List all recognized people
+// GET /api/immich/people — List named people only (filter out unnamed)
 app.get("/api/immich/people", async (req, res) => {
-    const data = await immichFetch("/api/people?size=1000");
+    // Immich v2.7 confirmed: size=500 works reliably
+    const data = await immichFetch("/api/people?size=500");
     if (!data) return res.json({ people: [], total: 0 });
-    // Return only name + id + thumbnailPath + birthDate + assetsCount
+    // Extract people array from response
+    let peopleList = [];
+    if (Array.isArray(data)) {
+        peopleList = data;
+    } else if (data.people && Array.isArray(data.people)) {
+        peopleList = data.people;
+    }
+    // Filter: only include people with a real name
+    const named = peopleList.filter(p => p.name && p.name !== '未命名' && p.name.trim() !== '');
     res.json({
-        total: data.total,
-        people: (data.people || data || []).map(p => ({
+        total: named.length,
+        people: named.map(p => ({
             id: p.id,
-            name: p.name || '未命名',
+            name: p.name,
             birthDate: p.birthDate || null,
             thumbnailPath: p.thumbnailPath || null,
             assetsCount: p.assetsCount || 0

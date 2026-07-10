@@ -1652,10 +1652,23 @@
                     immichPeople.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p.id;
-                        opt.textContent = `${p.name} (${p.assetsCount}张照片)`;
+                        const bd = p.birthDate ? `🎂${p.birthDate}` : '';
+                        opt.textContent = `${p.name} ${bd}(${p.assetsCount}张照片)`;
+                        opt.dataset.birthDate = p.birthDate || '';
                         if (p.id === state.profile.immichPersonId) opt.selected = true;
                         personSelect.appendChild(opt);
                     });
+                    // Auto-fill birthDate when selecting a person
+                    personSelect.onchange = function () {
+                        const selected = immichPeople.find(p => p.id === this.value);
+                        if (selected && selected.birthDate) {
+                            document.getElementById('cfgBirthDate').value = selected.birthDate;
+                            state.profile.birthDate = selected.birthDate;
+                            state.profile.name = selected.name;
+                            document.getElementById('cfgName').value = selected.name;
+                            showToast(`📸 已自动填入 ${selected.name} 的出生日期`);
+                        }
+                    };
                 }
             } else {
                 immichConnected = false;
