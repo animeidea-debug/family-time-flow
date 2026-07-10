@@ -1,15 +1,787 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamilyTimeFlow</title>
+    <title>FamilyTimeFlow - 家庭时间流</title>
+
+    <!-- TailwindCSS Play CDN (JIT mode) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- daisyUI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" />
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- Tailwind Config + Custom Styles -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'theme-student': {
+                            bg: '#F0F9FF',
+                            accent: '#3B82F6',
+                            surface: '#FFFFFF',
+                            muted: '#E0F2FE',
+                            border: '#BAE6FD',
+                            text: '#0C4A6E'
+                        },
+                        'theme-worker': {
+                            bg: '#FFFBEB',
+                            accent: '#F59E0B',
+                            surface: '#FFFFFF',
+                            muted: '#FEF3C7',
+                            border: '#FDE68A',
+                            text: '#78350F'
+                        },
+                        'theme-family': {
+                            bg: '#FFF7ED',
+                            accent: '#F97316',
+                            surface: '#FFFFFF',
+                            muted: '#FFEDD5',
+                            border: '#FED7AA',
+                            text: '#7C2D12'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['"SF Mono"', 'Monaco', 'Inconsolata', '"Fira Code"', 'monospace'],
+                        sans: ['"PingFang SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --transition-duration: 700ms;
+        }
+
+        /* Theme: Student (default) - 晨光蓝白 */
+        body.theme-student {
+            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+            color: #0C4A6E;
+            --accent-color: #3B82F6;
+            --surface-color: #FFFFFF;
+            --muted-color: #E0F2FE;
+            --border-color: #BAE6FD;
+            --text-color: #0C4A6E;
+        }
+
+        /* Theme: Worker - 暖米白 */
+        body.theme-worker {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: #78350F;
+            --accent-color: #F59E0B;
+            --surface-color: #FFFFFF;
+            --muted-color: #FEF3C7;
+            --border-color: #FDE68A;
+            --text-color: #78350F;
+        }
+
+        /* Theme: Family - 浅橙白 */
+        body.theme-family {
+            background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+            color: #7C2D12;
+            --accent-color: #F97316;
+            --surface-color: #FFFFFF;
+            --muted-color: #FFEDD5;
+            --border-color: #FED7AA;
+            --text-color: #7C2D12;
+        }
+
+        /* Smooth theme transition */
+        body,
+        .theme-transition {
+            transition:
+                background var(--transition-duration) ease,
+                color var(--transition-duration) ease,
+                border-color var(--transition-duration) ease,
+                box-shadow var(--transition-duration) ease;
+        }
+
+        /* Accent utilities */
+        .text-accent {
+            color: var(--accent-color);
+        }
+
+        .bg-accent {
+            background-color: var(--accent-color);
+        }
+
+        .border-accent {
+            border-color: var(--accent-color);
+        }
+
+        .shadow-accent {
+            box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-color) 30%, transparent);
+        }
+
+        /* Life Grid */
+        .life-grid {
+            display: grid;
+            grid-template-columns: repeat(52, 1fr);
+            grid-template-rows: repeat(80, 1fr);
+            gap: 2px;
+        }
+
+        .week-cell {
+            aspect-ratio: 1 / 1;
+            border-radius: 3px;
+            background-color: var(--muted-color);
+            cursor: pointer;
+            transition: all 200ms ease;
+            position: relative;
+        }
+
+        .week-cell:hover {
+            transform: scale(1.5);
+            z-index: 10;
+            box-shadow: 0 0 12px var(--accent-color);
+            border-radius: 4px;
+        }
+
+        .week-cell.spent {
+            background-color: var(--accent-color);
+            opacity: 0.7;
+        }
+
+        .week-cell.current {
+            background-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color);
+            animation: pulse 2s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 8px var(--accent-color);
+            }
+
+            50% {
+                box-shadow: 0 0 20px var(--accent-color), 0 0 30px var(--accent-color);
+            }
+        }
+
+        /* Countdown Clock */
+        .countdown-display {
+            font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.05em;
+        }
+
+        /* Time Budget Ring */
+        .time-ring {
+            transform: rotate(-90deg);
+        }
+
+        .time-ring-bg {
+            fill: none;
+            stroke: var(--muted-color);
+            stroke-width: 8;
+        }
+
+        .time-ring-progress {
+            fill: none;
+            stroke: var(--accent-color);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 300ms ease;
+        }
+
+        /* Config Drawer */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 300ms ease;
+            z-index: 40;
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 380px;
+            max-width: 90vw;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 2px solid var(--border-color);
+            transform: translateX(100%);
+            transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 50;
+            overflow-y: auto;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .drawer-panel.open {
+            transform: translateX(0);
+        }
+
+        /* Photo Tooltip */
+        .photo-tooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 200ms ease, transform 200ms ease;
+            z-index: 30;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-tooltip.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* On This Day Ticker */
+        .ticker-bar {
+            background: linear-gradient(to right,
+                    transparent,
+                    rgba(var(--accent-color-rgb, 59, 130, 246), 0.15),
+                    transparent);
+            border-top: 2px solid var(--border-color);
+        }
+
+        /* Emma Focus style card */
+        .emma-card {
+            background: var(--surface-color);
+            border-radius: 24px;
+            border: 3px solid var(--border-color);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            transition: all 300ms ease;
+        }
+
+        .emma-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Stat card with colored left border */
+        .stat-card {
+            background: var(--surface-color);
+            border-radius: 20px;
+            border: 2px solid var(--border-color);
+            border-left: 6px solid var(--accent-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            transition: all 300ms ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 
-<body>
-    <h1>FamilyTimeFlow 🕰️</h1>
-    <p>Coming soon...</p>
+<body class="theme-student theme-transition min-h-screen flex flex-col overflow-x-hidden font-sans">
+
+    <!-- Top Navigation -->
+    <nav class="navbar px-6 py-4 bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b-2 border-theme-border">
+        <div class="flex-1">
+            <a href="/" class="text-xl font-bold tracking-tight flex items-center gap-2">
+                <span class="text-3xl">🕰️</span>
+                <span class="text-theme-text">
+                    FamilyTimeFlow
+                </span>
+            </a>
+        </div>
+        <div class="flex-none gap-2">
+            <div class="join">
+                <button onclick="setTheme('student')" data-theme="student"
+                    class="btn btn-sm join-item bg-theme-student-bg border-2 border-theme-student-accent text-theme-student-accent hover:bg-theme-student-accent hover:text-white font-bold">
+                    🎒 Student
+                </button>
+                <button onclick="setTheme('worker')" data-theme="worker"
+                    class="btn btn-sm join-item bg-theme-worker-bg border-2 border-theme-worker-accent text-theme-worker-accent hover:bg-theme-worker-accent hover:text-white font-bold">
+                    💼 Worker
+                </button>
+                <button onclick="setTheme('family')" data-theme="family"
+                    class="btn btn-sm join-item bg-theme-family-bg border-2 border-theme-family-accent text-theme-family-accent hover:bg-theme-family-accent hover:text-white font-bold">
+                    👨‍👩‍👧‍👦 Family
+                </button>
+            </div>
+            <button onclick="toggleDrawer()" class="btn btn-ghost btn-circle ml-2 text-2xl">
+                ⚙️
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Macro: Life in Weeks Grid -->
+            <section class="lg:col-span-2 emma-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-theme-text flex items-center gap-2">
+                            🗓️ Life in Weeks
+                        </h2>
+                        <p class="text-sm text-theme-text/60 mt-1 font-semibold">80 年 × 52 周 = 4,160 个格子</p>
+                    </div>
+                    <div class="flex gap-3 text-xs font-bold">
+                        <span class="flex items-center gap-1"><span
+                                class="w-3 h-3 rounded bg-theme-accent inline-block"></span> 已度过</span>
+                        <span class="flex items-center gap-1"><span
+                                class="w-3 h-3 rounded bg-theme-accent shadow-md inline-block"></span> 现在</span>
+                        <span class="flex items-center gap-1"><span
+                                class="w-3 h-3 rounded bg-theme-muted border-2 border-theme-border inline-block"></span>
+                            未来</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto pb-2">
+                    <div id="lifeGrid" class="life-grid min-w-[640px]"></div>
+                </div>
+                <p class="text-xs text-theme-text/50 mt-3 font-medium">💡 悬停格子上查看该周回忆
+                </p>
+            </section>
+
+            <!-- Meso + Micro Column -->
+            <div class="flex flex-col gap-6">
+
+                <!-- Meso: Countdown Clock -->
+                <section class="emma-card p-6">
+                    <h2 class="text-2xl font-black text-theme-text mb-1 flex items-center gap-2">
+                        🎯 战略倒计时
+                    </h2>
+                    <p class="text-sm text-theme-text/60 mb-4 font-semibold">下一个里程碑</p>
+                    <div class="text-center">
+                        <div class="text-sm font-bold text-theme-accent mb-2" id="countdownLabel">剩余天数</div>
+                        <div id="countdown" class="countdown-display text-5xl md:text-6xl font-black text-theme-accent">
+                            000:00:00:00
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <label class="text-xs font-bold text-theme-text/70 block mb-2">目标日期</label>
+                        <input type="text" id="targetDate"
+                            class="input input-bordered w-full bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                            placeholder="Select date...">
+                    </div>
+                </section>
+
+                <!-- Micro: Today's Time Account -->
+                <section class="emma-card p-6">
+                    <h2 class="text-2xl font-black text-theme-text mb-4 flex items-center gap-2">
+                        ⏰ 今日时间账户
+                    </h2>
+                    <div class="flex items-center justify-center">
+                        <div class="relative">
+                            <svg width="200" height="200" viewBox="0 0 200 200" class="time-ring">
+                                <circle cx="100" cy="100" r="85" class="time-ring-bg"></circle>
+                                <circle id="timeRingProgress" cx="100" cy="100" r="85" class="time-ring-progress"
+                                    stroke-dasharray="534" stroke-dashoffset="534"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="timeElapsed" class="text-4xl font-black text-theme-accent">0%</span>
+                                <span class="text-xs text-theme-text/60 font-bold">已过</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-sm mt-4 px-4 font-bold">
+                        <div class="stat-card px-4 py-2 flex-1 mr-2">
+                            <p class="text-theme-text/60 text-xs">📚 学习</p>
+                            <p id="studyHours" class="text-theme-accent text-lg">0h</p>
+                        </div>
+                        <div class="stat-card px-4 py-2 flex-1 ml-2">
+                            <p class="text-theme-text/60 text-xs">🎨 爱好</p>
+                            <p id="hobbyHours" class="text-theme-accent text-lg">0h</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- On This Day Ticker -->
+    <div class="ticker-bar py-3 overflow-hidden">
+        <div id="ticker" class="whitespace-nowrap text-sm text-theme-text/70 font-semibold">
+            📸 正在加载 "那年今日" 回忆...
+        </div>
+    </div>
+
+    <!-- Config Drawer Overlay -->
+    <div id="drawerOverlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
+
+    <!-- Config Drawer Panel -->
+    <aside id="configDrawer" class="drawer-panel p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-black text-theme-text">⚙️ 设置</h3>
+            <button onclick="toggleDrawer()" class="btn btn-ghost btn-sm btn-circle text-2xl">✕</button>
+        </div>
+
+        <div class="space-y-5">
+            <!-- Profile Settings -->
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-theme-text">显示名称</span></label>
+                <input type="text" id="cfgName"
+                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    placeholder="Your name">
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-theme-text">出生日期</span></label>
+                <input type="text" id="cfgBirthDate"
+                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    placeholder="YYYY-MM-DD">
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-theme-text">预期寿命</span></label>
+                <input type="number" id="cfgExpectedAge"
+                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    value="80" min="1" max="120">
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-theme-text">倒计时目标</span></label>
+                <input type="text" id="cfgTargetDate"
+                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    placeholder="Select date...">
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-theme-text">身份标签</span></label>
+                <select id="cfgIdentity"
+                    class="select select-bordered select-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent">
+                    <option value="student">🎒 Student</option>
+                    <option value="worker">💼 Worker</option>
+                    <option value="family">👨‍👩‍👧‍👦 Family</option>
+                </select>
+            </div>
+
+            <!-- Immich Sync -->
+            <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                    <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent" />
+                    <span class="label-text font-bold text-theme-text">📸 Sync Immich Metadata</span>
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveConfig()" class="btn btn-accent btn-sm flex-1 font-bold">💾 保存</button>
+                <button onclick="resetConfig()" class="btn btn-ghost btn-sm font-bold">🔄 重置</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Photo Hover Tooltip -->
+    <div id="photoTooltip" class="photo-tooltip">
+        <div class="flex gap-2">
+            <img id="tooltipImg1" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
+            <img id="tooltipImg2" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
+            <img id="tooltipImg3" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
+        </div>
+        <p id="tooltipCaption" class="text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // ==================== STATE ====================
+        const STATE_KEY = 'familyTimeFlow_state_v1';
+
+        let state = {
+            currentUser: 'student',
+            profile: {
+                name: '',
+                birthDate: '',
+                expectedAge: 80,
+                identityTag: 'student',
+                immichPersonId: null
+            },
+            events: [],
+            targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days from now
+            immichSync: false
+        };
+
+        // ==================== LOCAL STORAGE ====================
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STATE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                }
+            } catch (e) {
+                console.warn('Failed to load state:', e);
+            }
+            hydrateFormFromState();
+        }
+
+        function saveState() {
+            localStorage.setItem(STATE_KEY, JSON.stringify(state));
+        }
+
+        function hydrateFormFromState() {
+            document.getElementById('cfgName').value = state.profile.name || '';
+            document.getElementById('cfgBirthDate').value = state.profile.birthDate || '';
+            document.getElementById('cfgExpectedAge').value = state.profile.expectedAge || 80;
+            document.getElementById('cfgTargetDate').value = state.targetDate ?
+                new Date(state.targetDate).toISOString().slice(0, 16) : '';
+            document.getElementById('cfgIdentity').value = state.profile.identityTag || 'student';
+            document.getElementById('cfgImmichSync').checked = state.immichSync || false;
+            document.getElementById('targetDate').value = state.targetDate ?
+                new Date(state.targetDate).toISOString().slice(0, 16) : '';
+        }
+
+        // ==================== THEME SYSTEM ====================
+        function setTheme(theme) {
+            document.body.className = document.body.className.replace(/theme-\w+/, '').trim();
+            document.body.classList.add(`theme-${theme}`);
+            state.currentUser = theme;
+            state.profile.identityTag = theme;
+            saveState();
+
+            // Animate accent color change
+            gsap.fromTo('main', { opacity: 0.8 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' });
+        }
+
+        // ==================== CONFIG DRAWER ====================
+        function toggleDrawer() {
+            const drawer = document.getElementById('configDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            const isOpen = drawer.classList.contains('open');
+
+            if (isOpen) {
+                drawer.classList.remove('open');
+                overlay.classList.remove('open');
+            } else {
+                drawer.classList.add('open');
+                overlay.classList.add('open');
+            }
+        }
+
+        function saveConfig() {
+            state.profile.name = document.getElementById('cfgName').value;
+            state.profile.birthDate = document.getElementById('cfgBirthDate').value;
+            state.profile.expectedAge = parseInt(document.getElementById('cfgExpectedAge').value) || 80;
+            state.profile.identityTag = document.getElementById('cfgIdentity').value;
+            state.targetDate = document.getElementById('cfgTargetDate').value || state.targetDate;
+            state.immichSync = document.getElementById('cfgImmichSync').checked;
+            saveState();
+            toggleDrawer();
+            initLifeGrid();
+            updateCountdown();
+        }
+
+        function resetConfig() {
+            localStorage.removeItem(STATE_KEY);
+            state = {
+                currentUser: 'student',
+                profile: {
+                    name: '',
+                    birthDate: '',
+                    expectedAge: 80,
+                    identityTag: 'student',
+                    immichPersonId: null
+                },
+                events: [],
+                targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                immichSync: false
+            };
+            hydrateFormFromState();
+            setTheme('student');
+            saveState();
+            initLifeGrid();
+            updateCountdown();
+        }
+
+        // ==================== LIFE GRID (80×52) ====================
+        function initLifeGrid() {
+            const grid = document.getElementById('lifeGrid');
+            grid.innerHTML = '';
+
+            const birthDate = state.profile.birthDate ? new Date(state.profile.birthDate) : null;
+            const expectedAge = state.profile.expectedAge || 80;
+            const totalWeeks = expectedAge * 52;
+            const now = new Date();
+
+            for (let week = 0; week < totalWeeks; week++) {
+                const cell = document.createElement('div');
+                cell.className = 'week-cell';
+                cell.dataset.week = week;
+
+                // Determine cell state
+                if (birthDate) {
+                    const birthMs = birthDate.getTime();
+                    const weekMs = week * 7 * 24 * 60 * 60 * 1000;
+                    const cellDate = new Date(birthMs + weekMs);
+
+                    if (cellDate < now) {
+                        cell.classList.add('spent');
+                    } else if (week === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
+                        cell.classList.add('current');
+                    }
+                }
+
+                // GSAP stagger entrance
+                gsap.set(cell, { opacity: 0, scale: 0.5 });
+                gsap.to(cell, {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.3,
+                    delay: Math.min(week * 0.0005, 1.5),
+                    ease: 'back.out(1.2)'
+                });
+
+                // Hover tooltip
+                cell.addEventListener('mouseenter', (e) => showWeekTooltip(e, week));
+                cell.addEventListener('mouseleave', hideTooltip);
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function showWeekTooltip(event, weekIndex) {
+            // Placeholder: In Phase 3, query Immich /api/assets with takenDate
+            const tooltip = document.getElementById('photoTooltip');
+            const rect = event.target.getBoundingClientRect();
+            tooltip.style.left = `${rect.left + window.scrollX}px`;
+            tooltip.style.top = `${rect.top + window.scrollY - 140}px`;
+            tooltip.classList.add('visible');
+            document.getElementById('tooltipCaption').textContent = `第 ${weekIndex + 1} 周 — 回忆加载中...`;
+        }
+
+        function hideTooltip() {
+            document.getElementById('photoTooltip').classList.remove('visible');
+        }
+
+        // ==================== COUNTDOWN CLOCK ====================
+        function updateCountdown() {
+            const target = state.targetDate ? new Date(state.targetDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+            const now = new Date();
+            const diff = target - now;
+
+            if (diff <= 0) {
+                document.getElementById('countdown').textContent = '000:00:00:00';
+                return;
+            }
+
+            const totalSeconds = Math.floor(diff / 1000);
+            const days = Math.floor(totalSeconds / 86400);
+            const hours = Math.floor((totalSeconds % 86400) / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const formatted = `${String(days).padStart(3, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('countdown').textContent = formatted;
+        }
+
+        function tickCountdown() {
+            updateCountdown();
+            requestAnimationFrame(tickCountdown);
+        }
+
+        // ==================== TIME BUDGET RING ====================
+        function updateTimeBudget() {
+            const now = new Date();
+            const elapsedMs = (now.getHours() * 60 + now.getMinutes()) * 60 * 1000 + now.getSeconds() * 1000;
+            const dayMs = 24 * 60 * 60 * 1000;
+            const progress = Math.min(elapsedMs / dayMs, 1);
+
+            const ring = document.getElementById('timeRingProgress');
+            const circumference = 2 * Math.PI * 85; // r=85
+            const offset = circumference * (1 - progress);
+            ring.style.strokeDashoffset = offset;
+
+            const percent = Math.round(progress * 100);
+            document.getElementById('timeElapsed').textContent = `${percent}%`;
+
+            // Mock study/hobby split
+            const studyH = Math.floor(progress * 8);
+            const hobbyH = Math.floor(progress * 3);
+            document.getElementById('studyHours').textContent = `${studyH}h`;
+            document.getElementById('hobbyHours').textContent = `${hobbyH}h`;
+        }
+
+        function tickTimeBudget() {
+            updateTimeBudget();
+            requestAnimationFrame(tickTimeBudget);
+        }
+
+        // ==================== FLATPICKR INIT ====================
+        function initFlatpickrs() {
+            flatpickr("#targetDate", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: state.targetDate,
+                onChange: (selected) => {
+                    state.targetDate = selected[0].toISOString();
+                    saveState();
+                    updateCountdown();
+                }
+            });
+
+            flatpickr("#cfgBirthDate", {
+                dateFormat: "Y-m-d",
+                defaultDate: state.profile.birthDate || null,
+                onChange: (selected) => {
+                    state.profile.birthDate = selected[0] ? selected[0].toISOString().split('T')[0] : '';
+                    saveState();
+                    initLifeGrid();
+                }
+            });
+
+            flatpickr("#cfgTargetDate", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: state.targetDate,
+                onChange: (selected) => {
+                    state.targetDate = selected[0].toISOString();
+                    saveState();
+                    updateCountdown();
+                }
+            });
+        }
+
+        // ==================== TICKER ====================
+        function updateTicker() {
+            const now = new Date();
+            const monthDay = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+            document.getElementById('ticker').textContent =
+                `📸 那年今日 (${monthDay})：正在加载往年回忆...(Immich 集成将在 Phase 3 上线)`;
+        }
+
+        // ==================== INIT ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            setTheme(state.profile.identityTag || 'student');
+            initFlatpickrs();
+            initLifeGrid();
+            updateCountdown();
+            updateTimeBudget();
+            updateTicker();
+
+            // Start smooth clocks
+            requestAnimationFrame(tickCountdown);
+            requestAnimationFrame(tickTimeBudget);
+        });
+    </script>
+
 </body>
 
 </html>

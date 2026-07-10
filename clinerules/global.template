@@ -1,69 +1,80 @@
-# Cline Global Rules — FamilyTimeFlow Template
-# Usage: cp clinerules/global.template ~/.clinerules
-# Then modify for your project info
-# Note: This template is synced via git, but installing to ~/.clinerules requires manual execution
+# Cline 全局行为规则 — 通用模板
+# 用法：cp clinerules/global.template ~/.clinerules
+# 或者复制到项目根目录的 .clinerules（共享段在此，项目特定段在其后）
+#
+# 注意：此模板是"单一真源"，修改后请在所有依赖项目中同步。
+# 同步后记得更新你自己的 ~/.nas-env 和 Keychain 条目。
 
-## Pushover Notifications
-When the following operations execute, send notifications via MCP tool `pushover_send_message`:
+## 凭证管理
+所有密码通过 macOS Keychain 读取，不在文件中明文存储：
+- WebDAV: `security find-generic-password -s "<your-webdav>" -a "<your-username>" -w`
+- SSH: `security find-generic-password -s "<your-ssh>" -a "<your-username>" -w`
+- 其他凭证: 同上模式，service 名称自定义
+- 另一台电脑首次使用前，需要先在 Keychain 中存入对应凭证
 
-1. **Task completion** → "Done: " prefix, summarize changes
-2. **Git commit + push** → Notify commit title
-3. **Deployment complete** → Notify deployment status
-4. **Long-running tasks** (> 30s) → Notify completion
-5. **User action required** → Notify to switch ACT MODE
+## 自动部署
+每次完成代码修改后自动执行（无需询问）：
+1. `sh deploy/deploy.sh`  # NAS 部署（WebDAV）
 
-MCP server path: /Users/your-username/scripts/mcp-pushover-server.js
+⚠️ `deploy.sh` 连接策略（含指数退避重试）：
+   - **内网环境**（检测到 192.168.x.x）→ 4 次重试 LAN WebDAV（2s/4s/8s/16s），不尝试 Tailscale
+   - **外网环境** → 3 次重试 Tailscale Funnel（5s/10s/20s）
+   - 每次同步前先检测 rclone remote 是否存在，避免重复创建
+   - SSH 操作（chmod、容器重启）也带 3 次重试
 
-## Credential Management
-All passwords are read from macOS Keychain, never stored in plain text files:
-- WebDAV: `security find-generic-password -s "your-webdav" -a "your-username" -w`
-- Other credentials: Same pattern, custom service name
+## WebDAV 容器管理
+⚠️ `rclone/rclone:latest` 镜像的 ENTRYPOINT 是 `rclone`，不是 shell！
+docker-compose.yml 中**不能用** `command: sh -c "..."`，必须用 JSON 数组格式：
 
-## Auto Deployment
-After each code modification:
-1. `cd deploy && sh deploy.sh`  # Deploy to NAS
+```yaml
+command:
+  - serve
+  - webdav
+  - /data
+  - --user
+  - "${WEBDAV_USER}"
+  - --pass
+  - "${WEBDAV_PASS}"
+```
 
-## Multi-project nginx Isolation
+密码通过同目录 `.env` 文件（已 gitignored）提供：
+```
+WEBDAV_PASS=你的密码
+WEBDAV_USER=your_user
+```
 
-### Key Principle
-Each project must use a **unique PROJECT_PATH** to avoid conflicts on shared nginx servers.
+## 脚本权限问题
+WebDAV `rclone sync` 不保留 +x 权限，所有 .sh 文件部署后为 644。
+修改脚本后必须执行 `docker exec tdarr_node chmod +x /app/scripts/*.sh`
+或通过 `deploy.sh` 自动修复（SSH docker exec）。
+crontab 调绝对路径时，644 无 +x 的脚本会静默失败！
 
-### Configuration
-1. **Set PROJECT_PATH in env.local** (unique per project):
+## git push 后自动文档更新
+每次 commit + push 后，自动更新：
+1. `docs/progress.md` — 最近提交表格 + 事故记录
+2. `README.md` — 如果项目结构或部署方式变化
+
+## 多项目共享 nginx 规则
+重要：不要覆盖已有项目的首页！
+
+1. **每个项目使用独立子目录**：
+   ```
+   infra/web/html/
+   ├── index.html              # 已有项目（根路径，保留）
+   └── your-project-name/      # 新项目放这里
+       └── index.html
+   ```
+
+2. **每个项目添加独立的 nginx location 块**：
+   ```nginx
+   location /your-project-name/ {
+       alias /usr/share/nginx/html/your-project-name/;
+       try_files $uri $uri/ /your-project-name/index.html;
+   }
+   ```
+
+3. **不要修改根 location / 块**（已有项目保留）
+
+4. **部署时只同步你的项目目录**：
    ```sh
-   PROJECT_PATH="family-time-flow"  # Must be unique!
-   ```
-
-2. **Project uses dedicated subdirectory**:
-   ```
-   web/html/
-   └── index.html              # FamilyTimeFlow main page
-   ```
-
-3. **docker-compose volume mount** (must match PROJECT_PATH):
-   ```yaml
-   volumes:
-     - ./html:/usr/share/nginx/html/${PROJECT_PATH:-family-time-flow}:ro
-   ```
-
-4. **Deploy to project-specific path**:
-   ```sh
-   # Deploys to /docker/html/<PROJECT_PATH>/
-   rclone sync ./web/html/ remote:/docker/html/${PROJECT_PATH}/
-   ```
-
-5. **Access your project at**:
-   ```
-   http://localhost:8888/<PROJECT_PATH>/
-   ```
-
-### nginx.conf Template
-The `web/nginx.conf.template` uses `${PROJECT_PATH}` placeholders that are substituted during deployment:
-- `location /${PROJECT_PATH}/` → serves project HTML
-- `location /${PROJECT_PATH}/api/` → proxies to backend
-
-### For Other Projects
-When creating a new project from this template:
-1. Change `PROJECT_PATH` to a unique value (e.g., `my-blog`, `photo-gallery`)
-2. Ensure the nginx on NAS includes all project configs
-3. Each project will be accessible at its own path
+   rclone copy ./infra/web/html/your-project-name/ remote:/docker/html/your-project-name/

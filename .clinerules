@@ -1,0 +1,77 @@
+## [shared]
+# 来自 clinerules/global.template — infra-template 统一规则
+# 如需更新同步，请参考 clinerules/README.md
+
+### 凭证管理
+所有密码通过 macOS Keychain 读取，不在文件中明文存储：
+- WebDAV: `security find-generic-password -s "<your-webdav>" -a "<your-username>" -w`
+- SSH: `security find-generic-password -s "<your-ssh>" -a "<your-username>" -w`
+- 其他凭证: 同上模式，service 名称自定义
+- 另一台电脑首次使用前，需要先在 Keychain 中存入对应凭证
+
+### 自动部署
+每次完成代码修改后自动执行（无需询问）：
+1. `sh deploy/deploy.sh`  # NAS 部署（WebDAV）
+
+⚠️ `deploy.sh` 连接策略（含指数退避重试）：
+   - **内网环境**（检测到 192.168.x.x）→ 4 次重试 LAN WebDAV（2s/4s/8s/16s），不尝试 Tailscale
+   - **外网环境** → 3 次重试 Tailscale Funnel（5s/10s/20s）
+   - 每次同步前先检测 rclone remote 是否存在，避免重复创建
+   - SSH 操作（chmod、容器重启）也带 3 次重试
+
+### WebDAV 容器管理
+⚠️ `rclone/rclone:latest` 镜像的 ENTRYPOINT 是 `rclone`，不是 shell！
+docker-compose.yml 中**不能用** `command: sh -c "..."`，必须用 JSON 数组格式。
+
+### 脚本权限问题
+WebDAV `rclone sync` 不保留 +x 权限，所有 .sh 文件部署后为 644。
+修改脚本后必须通过 `deploy.sh` 自动修复（SSH docker exec）或手动 chmod。
+
+### git push 后自动文档更新
+每次 commit + push 后，自动更新：
+1. `PROGRESS.md` — 项目进度
+2. `README.md` — 如果项目结构或部署方式变化
+
+### 多项目共享 nginx 规则
+重要：不要覆盖已有项目的首页！
+- 每个项目使用独立子目录：`/docker/html/<PROJECT_PATH>/`
+- 部署时只同步本项目目录
+- 通过 `PROJECT_PATH` 环境变量实现路径隔离
+
+
+## [project]
+# FamilyTimeFlow 项目特有规则
+
+### Pushover Notifications
+当以下操作执行时，通过 MCP 工具 `pushover_send_message` 发送通知：
+
+1. **任务完成** → "Done: " 前缀，总结修改内容
+2. **Git commit + push** → 通知 commit 标题
+3. **部署完成** → 通知部署状态
+4. **长耗时任务** (> 30s) → 通知完成
+5. **需要用户操作** → 通知切换到 ACT MODE
+
+MCP server 路径：`/Users/garychen/scripts/mcp-pushover-server.js`
+
+### Immich 集成 (Phase 3)
+- Immich API 地址：NAS 上的 `http://<NAS_IP>:2283/api`
+- API 认证：`x-api-key` header（从 Immich Admin → API Keys 生成）
+- 核心端点：`/api/people`（面部分组）、`/api/assets`（照片资源）、`/api/assets/{id}/thumbnail`（缩略图）
+- 集成设计详见：`docs/IMMICH_INTEGRATION.md`
+
+### 技术栈约束
+- 前端：Vanilla JS + TailwindCSS (CDN) + daisyUI (CDN) + GSAP (CDN) — 零构建环境
+- 后端：Node.js (Express) + SQLite — 单文件数据库
+- 动画时钟：`requestAnimationFrame` 替代 `setInterval`，确保 60Hz 平滑
+- 部署：Docker Compose (nginx + Node.js)，目标平台 Synology/QNAP NAS
+
+### 主题系统
+三种角色模式，700ms Tailwind 过渡动画：
+- **Student**: #060B18 背景 + #10B981 Mint Green 强调色
+- **Worker**: #090D16 背景 + #F59E0B Amber Gold 强调色
+- **Family**: #0F0A15 背景 + Twilight Purple/Orange 渐变
+
+### 项目路径隔离
+- `PROJECT_PATH="family-time-flow"`（不可与其他项目冲突）
+- 访问地址：`http://localhost:8888/family-time-flow/`
+- HTML 部署路径：`/docker/html/family-time-flow/`

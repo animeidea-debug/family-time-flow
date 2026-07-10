@@ -1,127 +1,228 @@
-# FamilyTimeFlow 🕰️👨‍👩‍👧‍👦
+# FamilyTimeFlow
 
-> **A self-hosted, multi-user dynamic time visualization dashboard for your NAS — your family's digital time machine.**
-
-Transform abstract time management into a **"Family Digital Time Machine"**. By intertwining family lifelines and anchoring focus value, FamilyTimeFlow helps visualize time slippage for academic planning, while awakening collective family memories through deep integration with your local NAS photo ecosystem (Immich).
-
-## Core Principles
-
-- **🔓 No Isolation** — Open and transparent access for all family members without complex role management.
-- **👁️ Visually Anchored** — Multi-scale viewports (Macro → Meso → Micro) to counter procrastination.
-- **💖 Emotion-Driven** — Combining programmatic time tracking with dynamic biographical photography.
+> A self-hosted, multi-user dynamic time visualization dashboard — transforming abstract time management into a **"Family Digital Time Machine"**.
 
 ---
 
-## Project Structure
+## 📋 Table of Contents
 
-```
-family-time-flow/
-├── PRD_FamilyTimeFlow.md        # Product Requirement Document (reformatted)
-├── PROGRESS.md                  # Current project status & next steps
-├── README.md                    # This file
-├── docs/
-│   ├── SETUP.md                 # Environment & credential setup guide
-│   ├── CONTRIBUTING.md          # Contribution guidelines
-│   └── IMMICH_INTEGRATION.md    # Immich API integration design (live-verified)
-├── clinerules/
-│   ├── env.template             # Shared env config documentation
-│   └── global.template          # Cline rules template
-├── deploy/
-│   ├── deploy.sh                # NAS deployment via rclone WebDAV
-│   ├── deploy_gas.sh            # GAS deployment script
-│   └── run_deploy.bat           # Windows deploy script
-├── web/
-│   ├── html/
-│   │   └── index.html           # Frontend placeholder → Phase 1 MVP
-│   ├── backend/
-│   │   ├── package.json         # Express skeleton
-│   │   └── server.js            # Backend placeholder → Phase 2 API
-│   ├── docker-compose.yml       # nginx + Node.js (NAS-ready)
-│   ├── nginx.conf               # Static nginx config (legacy)
-│   └── nginx.conf.template      # Template with PROJECT_PATH substitution
-├── env.template                 # Project env template (→ env.local)
-├── .gitignore
-└── env.local*                   # Local config (gitignored)
-```
-
-## Architecture
-
-| Layer | Technology |
-|-------|-----------|
-| **Deployment** | Docker Compose (Synology/QNAP-ready) |
-| **Backend** | Node.js (Express) |
-| **Database** | SQLite (single-file, zero-config) |
-| **Frontend** | Vanilla JS + TailwindCSS + daisyUI (CDN, no build step) |
-| **Animation** | GSAP (GreenSock Animation Platform) |
-| **Photos** | Immich v2.7.5 API integration (live-verified) |
-| **NAS Config** | Shared `~/.nas-env` + macOS Keychain (WebDAV/SSH passwords) |
-
-## Multi-Project Isolation
-
-This project supports **path-based isolation** to avoid conflicts when multiple projects share the same nginx server:
-
-- Set `PROJECT_PATH` in `env.local` (unique per project)
-- Access your project at: `http://localhost:8888/<PROJECT_PATH>/`
-- HTML deploys to: `/docker/html/<PROJECT_PATH>/`
-- nginx config is generated from template with path substitution
+- [Core Vision](#core-vision)
+- [Technical Stack](#technical-stack)
+- [Data Model](#data-model)
+- [UI/UX Specifications](#uiux-specifications)
+- [Development Roadmap](#development-roadmap)
+- [Key Technical Decisions](#key-technical-decisions)
 
 ---
 
-## Quick Start
+## 🎯 Core Vision
 
-### Prerequisites
+FamilyTimeFlow helps students visualize time slippage for academic planning while awakening collective family memories through deep integration with the local NAS storage ecosystem.
 
-- macOS + Homebrew (development)
-- ZSpace NAS (or any Linux host with Docker)
-- Tailscale or ZSpace remote access (for external deploy)
+### Core Principles
 
-### 1. Configure Shared NAS Settings (one-time)
+- **No Isolation**: Open and transparent access for all family members without complex JWT role segregation
+- **Visually Anchored**: Multi-scale viewports (Macro, Meso, Micro) to counter procrastination
+- **Emotion-Driven**: Programmatic time tracking with dynamic biographical photography via Immich
 
-```sh
-# Edit ~/.nas-env with your NAS details:
-#   NAS_IP, NAS_USER, SSH_PORT, WEBDAV_PORT, etc.
-#   KEYCHAIN_WEBDAV_SERVICE, SSH_HOST_ALIAS, WEBDAV_USER
+---
+
+## 🛠️ Technical Stack
+
+| Layer | Component | Specifications |
+|-------|-----------|----------------|
+| **Deployment** | Docker & Docker Compose | Containerized single-click deployment for Synology/QNAP |
+| **Backend** | Node.js (Express) or Python (FastAPI) | Lightweight API serving, directly exposed to frontend |
+| **Database** | SQLite | Single-file embedded database (no MySQL/Redis) |
+| **Frontend** | Vanilla JS + TailwindCSS + daisyUI | Zero-build environment (CDN preferred) |
+| **Animation** | GSAP (GreenSock) | Performance-optimized DOM/SVG manipulations |
+| **Polling/Clock** | `requestAnimationFrame` | Smooth 60Hz+ countdowns, CPU-efficient |
+| **Photo Interactivity** | Floating UI & PhotoSwipe | Glassmorphic tooltips and immersive photo lightbox |
+| **Forms/Inputs** | Flatpickr (Dark Mode) | Ultra-lightweight date-time selection |
+
+---
+
+## 🗄️ Data Model
+
+### User Profile
+
+```json
+{
+  "id": "string (uuid)",
+  "name": "string",
+  "birth_date": "string (YYYY-MM-DD)",
+  "expected_age": "integer (default: 80)",
+  "identity_tag": "string (student | worker | family)",
+  "immich_person_id": "string, optional"
+}
 ```
 
-### 2. Store Passwords in Keychain (one-time)
+### Timeline Events
 
-```sh
-security add-generic-password -s "emma-webdav" -a "$USER" -w "your-webdav-password"
-```
-
-### 3. Configure Project (optional)
-
-```sh
-# Copy env.template to env.local and customize:
-cp env.template env.local
-# Edit PROJECT_PATH if needed (default: family-time-flow)
-```
-
-### 4. Deploy to NAS
-
-```sh
-sh deploy/deploy.sh
-```
-
-### 5. SSH into NAS
-
-```sh
-ssh nas   # Requires ~/.ssh/nas_ed25519 key
+```json
+{
+  "id": "string (uuid)",
+  "title": "string",
+  "target_date": "string (YYYY-MM-DD HH:mm:ss)",
+  "event_scale": "string (macro | meso | micro)",
+  "is_shared": "boolean",
+  "owner_id": "string (user_id reference)",
+  "immich_sync_photos": "boolean (default: false)"
+}
 ```
 
 ---
 
-## Development Roadmap
+## 🎨 UI/UX Specifications
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| **Infra Setup** | GitHub repo, Docker Compose, deploy scripts, NAS credentials | ✅ Done |
-| **Multi-Project Isolation** | Path-based nginx routing, template processing | ✅ Done |
-| **Immich Design** | API integration design (live DB + API exploration) | ✅ Done |
-| **Phase 1** | Frontend MVP — life grid, countdown, theme switching, config panel | 🔜 Next |
-| **Phase 2** | Backend — SQLite, CRUD API, Docker deployment | ⏳ |
-| **Phase 3** | Immich integration — photo hover, "On This Day", face matching | ⏳ |
+### Role-Based Adaptive Theme System (千人千面)
+
+The dashboard interface adapts its aesthetic persona on-the-fly when toggling users via the top-bar navigation. Style changes animate seamlessly via Tailwind transitions over **700ms**:
+
+| Mode | Background | Accent Color | Vibe |
+|------|------------|--------------|------|
+| **Student** | `#060B18` (Slate/Deep Blue) | `#10B981` (Neon Mint Green) | Morning twilight, academic vigor |
+| **Worker** | `#090D16` (Obsidian/Dark Onyx) | `#F59E0B` (Amber Gold) | Maturity, precision clockwork |
+| **Family** | `#0F0A15` (Muted Dark Amethyst) | Purple + Orange gradients | Combined timelines as multi-colored ribbons |
 
 ---
 
-*Built from the [infra-template](https://github.com/animeidea-debug/infra-template) — NAS infrastructure starter.*
+### Multi-Scale Time Viewports (The Three Dimensions)
+
+#### 🏔️ Macro Scale: Life in Weeks Matrix
+- **80 × 52 grid** (years × weeks)
+- Spent weeks desaturate (bg-slate-800/40)
+- Active week pulses with theme color
+- Upcoming weeks remain empty
+- Hovering on week blocks fetches contextual historical events
+
+#### ⏱️ Meso Scale: Strategic Countdown
+- Term/Academic progress meters (e.g., "Grade 10 Autumn Term: 68% Completed")
+- High-precision countdown clock: **days down to 6 decimal places**
+- Monospace font (`font-mono tabular-nums`) to eliminate layout jitter
+
+#### 📊 Micro Scale: Tactical Budget
+- "Today's Time Account" displays elapsed vs. remaining hours
+- Study/hobbies breakdown
+- Custom animated SVG ring visualization
+
+---
+
+### Advanced Immich API Photo Integration
+
+#### Smart Onboarding (AI Initialization)
+- Backend calls Immich's `/api/people` to retrieve facial groupings
+- Polls `/api/assets` to find earliest infant picture
+- Auto-extracts metadata timestamp as recommended date of birth
+
+#### Memory Hover Tooltips
+- Hovering over historical grid nodes queries Immich's `/api/assets` endpoint
+- Pulls Top 3 compressed thumbnails (`/api/assets/{id}/thumbnail?size=thumbnail`)
+- Presents them in glassmorphic popover card
+- Clicking fires PhotoSwipe for immersive full-screen browsing
+
+#### "On This Day" Time Capsule
+- Persistent bottom ticker component
+- Polls Immich's time-bucket engine at midnight
+- Cycles through nostalgic photos taken on matching calendar days from previous years
+
+---
+
+### Admin Control Configuration Center
+
+- Subtle cog icon (⚙️) toggles a right-sliding translucent backdrop drawer
+- Form items:
+  - Member setups
+  - Countdown schedules (with academic templates for students)
+  - Historical log input fields
+  - [√] Sync Immich Metadata toggle
+
+---
+
+## 🚀 Development Roadmap
+
+### Phase 1: Interactive Frontend Prototype (MVP 1.0) ✅ COMPLETE
+- [x] Single self-contained `index.html` with Tailwind CSS, daisyUI, GSAP via CDN
+- [x] Full page layout:
+  - 80×52 life grid
+  - 6-decimal precision countdown clock
+  - Theme-switching JS triggers
+  - Right configuration panel with localStorage mock data
+- [x] Zero font-shaking on ticking digits (`requestAnimationFrame`)
+
+### Phase 2: Lightweight Containerized Backend (MVP 2.0)
+- [ ] Migrate from localStorage to SQLite single-file system
+- [ ] Construct Node.js/Python server routing
+- [ ] Implement API endpoints for user/event management
+- [ ] Wrap workspace via Docker Compose
+- [ ] Launch on NAS server for multi-device scaling (iPad, TV, monitors)
+
+### Phase 3: Immich Token Integration (SaaS 3.0)
+- [ ] Inject Immich bearer authentication keys
+- [ ] Wire up dynamic asset pipelines for popover nodes
+- [ ] Activate face-matching birth date deduction wizard
+- [ ] Complete autonomous family time archive
+
+---
+
+## 💡 Key Technical Decisions
+
+### Why SQLite Over MySQL/Redis?
+- Single-file database eliminates separate database server processes
+- Perfect for NAS environments with limited resources
+- ACID compliant with full SQL support
+- Zero configuration required
+
+### Why Vanilla JS + CDN?
+- Eliminates build step complexity
+- Direct browser refresh workflow for rapid prototyping
+- Minimal memory footprint on NAS
+- Easy maintenance for non-React/Vue developers
+
+### Why `requestAnimationFrame` Over `setInterval`?
+- Synchronizes with browser's native refresh rate (typically 60Hz)
+- Automatically throttles when tab is inactive (saves CPU)
+- Eliminates timer drift and jitter
+- More efficient for smooth countdown animations
+
+### Immich Integration Strategy
+- Leverages existing family photo library
+- No need to build custom photo management
+- AI-powered face recognition reduces manual tagging
+- Time-bucket engine enables powerful "On This Day" features
+
+---
+
+## 📊 Current Implementation Status
+
+### ✅ Completed (Phase 1 MVP)
+- **Theme System**: Student/Worker/Family modes with 700ms smooth transitions
+- **Life Grid**: 80×52 week visualization with GSAP animations
+- **Countdown Clock**: 6-decimal precision with `requestAnimationFrame`
+- **Time Budget Ring**: SVG-based daily progress visualization
+- **Configuration Drawer**: Profile management with localStorage persistence
+- **Flatpickr Integration**: Dark-mode date/time pickers
+- **Responsive Layout**: Mobile-friendly with TailwindCSS grid system
+
+### 🔄 Next Steps (Phase 2)
+- Backend API development with Express.js
+- SQLite database schema implementation
+- User authentication and multi-user support
+- Docker Compose deployment configuration
+- Immich API integration (Phase 3)
+
+---
+
+## 🎯 Project Philosophy
+
+FamilyTimeFlow is not just a time tracker — it's a **philosophical tool** that:
+
+1. **Makes time tangible**: Visualizing life in weeks creates emotional impact
+2. **Bridges generations**: Connects present moments with family history through photos
+3. **Adapts to lifestyles**: Three distinct personas (Student/Worker/Family) with unique aesthetics
+4. **Respects privacy**: Self-hosted on NAS, no cloud dependencies for core functionality
+5. **Celebrates memories**: "On This Day" feature turns routine into nostalgia
+
+---
+
+*Built with ❤️ for families who value time together*
