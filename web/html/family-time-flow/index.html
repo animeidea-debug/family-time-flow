@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamilyTimeFlow - 家庭时间流</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+    <title>家庭人生时光机 - FamilyTimeFlow</title>
 
     <!-- TailwindCSS Play CDN (JIT mode) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,9 +15,10 @@
     <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-    <!-- Flatpickr -->
+    <!-- Flatpickr + Chinese locale -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
 
     <!-- Tailwind Config + Custom Styles -->
     <script>
@@ -62,39 +63,59 @@
     <style>
         :root {
             --transition-duration: 700ms;
+            --accent-color-rgb: 59, 130, 246;
+        }
+
+        /* ===== Background Noise (subtle texture) ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            opacity: 0.025;
+            pointer-events: none;
+            z-index: 9998;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 256px 256px;
         }
 
         /* Theme: Student (default) - 晨光蓝白 */
         body.theme-student {
-            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 50%, #F0F9FF 100%);
             color: #0C4A6E;
             --accent-color: #3B82F6;
+            --accent-color-rgb: 59, 130, 246;
             --surface-color: #FFFFFF;
             --muted-color: #E0F2FE;
             --border-color: #BAE6FD;
             --text-color: #0C4A6E;
+            --glow-color: rgba(59, 130, 246, 0.15);
         }
 
         /* Theme: Worker - 暖米白 */
         body.theme-worker {
-            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FFFBEB 100%);
             color: #78350F;
             --accent-color: #F59E0B;
+            --accent-color-rgb: 245, 158, 11;
             --surface-color: #FFFFFF;
             --muted-color: #FEF3C7;
             --border-color: #FDE68A;
             --text-color: #78350F;
+            --glow-color: rgba(245, 158, 11, 0.15);
         }
 
         /* Theme: Family - 浅橙白 */
         body.theme-family {
-            background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+            background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 50%, #FFF7ED 100%);
             color: #7C2D12;
             --accent-color: #F97316;
+            --accent-color-rgb: 249, 115, 22;
             --surface-color: #FFFFFF;
             --muted-color: #FFEDD5;
             --border-color: #FED7AA;
             --text-color: #7C2D12;
+            --glow-color: rgba(249, 115, 22, 0.15);
         }
 
         /* Smooth theme transition */
@@ -121,15 +142,104 @@
         }
 
         .shadow-accent {
-            box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-color) 30%, transparent);
+            box-shadow: 0 4px 24px color-mix(in srgb, var(--accent-color) 25%, transparent);
         }
 
-        /* Life Grid */
+        .glow-accent {
+            box-shadow: 0 0 30px var(--glow-color);
+        }
+
+        /* ===== Card Styles (enhanced) ===== */
+        .emma-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 28px;
+            border: 2px solid var(--border-color);
+            box-shadow:
+                0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                0 10px 24px -4px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .emma-card:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 8px 12px -2px rgba(0, 0, 0, 0.08),
+                0 20px 40px -8px rgba(0, 0, 0, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            border: 2px solid var(--border-color);
+            border-left: 6px solid var(--accent-color);
+            box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.04),
+                0 6px 12px -4px rgba(0, 0, 0, 0.06);
+            transition: all 300ms ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 4px 8px rgba(0, 0, 0, 0.06),
+                0 12px 24px -8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ===== Navbar Glass ===== */
+        .nav-glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px) saturate(1.2);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        /* ===== Life Grid ===== */
+        .life-grid-wrapper {
+            position: relative;
+            transition: transform 300ms ease;
+        }
+
         .life-grid {
             display: grid;
-            grid-template-columns: repeat(52, 1fr);
-            grid-template-rows: repeat(80, 1fr);
+            grid-template-columns: 32px repeat(52, 1fr);
+            grid-template-rows: 20px repeat(80, 1fr);
             gap: 2px;
+            min-width: 700px;
+        }
+
+        .grid-label-row {
+            display: contents;
+        }
+
+        .grid-label-row span {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-color);
+            opacity: 0.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: -0.02em;
+        }
+
+        .grid-age-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-color);
+            opacity: 0.4;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 4px;
+            letter-spacing: -0.02em;
+        }
+
+        .grid-decade-divider {
+            border-top: 2px solid var(--accent-color);
+            opacity: 0.15;
         }
 
         .week-cell {
@@ -137,27 +247,32 @@
             border-radius: 3px;
             background-color: var(--muted-color);
             cursor: pointer;
-            transition: all 200ms ease;
+            transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
 
         .week-cell:hover {
-            transform: scale(1.5);
-            z-index: 10;
-            box-shadow: 0 0 12px var(--accent-color);
-            border-radius: 4px;
+            transform: scale(1.8);
+            z-index: 20;
+            box-shadow: 0 0 20px var(--accent-color), 0 4px 16px rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
         }
 
         .week-cell.spent {
             background-color: var(--accent-color);
-            opacity: 0.7;
+            opacity: 0.65;
+        }
+
+        .week-cell.spent:hover {
+            opacity: 1;
         }
 
         .week-cell.current {
             background-color: var(--accent-color);
-            box-shadow: 0 0 10px var(--accent-color);
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 14px var(--accent-color);
+            animation: pulse 2s ease-in-out infinite;
             border-radius: 4px;
+            opacity: 1;
         }
 
         @keyframes pulse {
@@ -165,48 +280,68 @@
             0%,
             100% {
                 box-shadow: 0 0 8px var(--accent-color);
+                transform: scale(1);
             }
 
             50% {
-                box-shadow: 0 0 20px var(--accent-color), 0 0 30px var(--accent-color);
+                box-shadow: 0 0 24px var(--accent-color), 0 0 40px var(--glow-color);
+                transform: scale(1.05);
             }
         }
 
-        /* Countdown Clock */
+        /* ===== Countdown ===== */
         .countdown-display {
             font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
             font-variant-numeric: tabular-nums;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.04em;
+            text-shadow: 0 2px 12px var(--glow-color);
         }
 
-        /* Time Budget Ring */
+        .countdown-progress {
+            height: 4px;
+            background: var(--muted-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .countdown-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, white));
+            border-radius: 4px;
+            transition: width 500ms ease;
+            width: 0%;
+        }
+
+        /* ===== Time Ring ===== */
         .time-ring {
             transform: rotate(-90deg);
+            filter: drop-shadow(0 0 8px var(--glow-color));
         }
 
         .time-ring-bg {
             fill: none;
             stroke: var(--muted-color);
-            stroke-width: 8;
+            stroke-width: 10;
         }
 
         .time-ring-progress {
             fill: none;
             stroke: var(--accent-color);
-            stroke-width: 8;
+            stroke-width: 10;
             stroke-linecap: round;
-            transition: stroke-dashoffset 300ms ease;
+            transition: stroke-dashoffset 400ms ease;
         }
 
-        /* Config Drawer */
+        /* ===== Config Drawer ===== */
         .drawer-overlay {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(6px);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 300ms ease;
+            transition: opacity 350ms ease;
             z-index: 40;
         }
 
@@ -220,195 +355,348 @@
             top: 0;
             right: 0;
             bottom: 0;
-            width: 380px;
-            max-width: 90vw;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
+            width: 400px;
+            max-width: 92vw;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(24px) saturate(1.3);
             border-left: 2px solid var(--border-color);
             transform: translateX(100%);
-            transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 50;
             overflow-y: auto;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            box-shadow: -8px 0 40px rgba(0, 0, 0, 0.12);
         }
 
         .drawer-panel.open {
             transform: translateX(0);
         }
 
-        /* Photo Tooltip */
+        /* ===== Photo Tooltip ===== */
         .photo-tooltip {
             position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
             border: 2px solid var(--border-color);
-            border-radius: 16px;
-            padding: 12px;
+            border-radius: 20px;
+            padding: 14px;
             pointer-events: none;
             opacity: 0;
-            transform: translateY(8px);
-            transition: opacity 200ms ease, transform 200ms ease;
+            transform: translateY(8px) scale(0.95);
+            transition: opacity 220ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 30;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
         }
 
         .photo-tooltip.visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
 
-        /* On This Day Ticker */
+        /* ===== Ticker (animated scroll) ===== */
         .ticker-bar {
+            position: relative;
             background: linear-gradient(to right,
                     transparent,
-                    rgba(var(--accent-color-rgb, 59, 130, 246), 0.15),
+                    color-mix(in srgb, var(--accent-color) 10%, transparent) 20%,
+                    color-mix(in srgb, var(--accent-color) 10%, transparent) 80%,
                     transparent);
             border-top: 2px solid var(--border-color);
+            overflow: hidden;
         }
 
-        /* Emma Focus style card */
-        .emma-card {
-            background: var(--surface-color);
-            border-radius: 24px;
-            border: 3px solid var(--border-color);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            transition: all 300ms ease;
+        .ticker-track {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker-scroll 30s linear infinite;
+            padding: 0 24px;
         }
 
-        .emma-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        .ticker-track:hover {
+            animation-play-state: paused;
         }
 
-        /* Stat card with colored left border */
-        .stat-card {
-            background: var(--surface-color);
-            border-radius: 20px;
+        @keyframes ticker-scroll {
+            0% {
+                transform: translateX(100vw);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast-msg {
+            background: rgba(30, 30, 30, 0.92);
+            backdrop-filter: blur(12px);
+            color: white;
+            border-radius: 16px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            pointer-events: auto;
+            margin-top: 8px;
+            white-space: nowrap;
+        }
+
+        /* ===== Zoom Controls ===== */
+        .zoom-controls {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
             border: 2px solid var(--border-color);
-            border-left: 6px solid var(--accent-color);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-            transition: all 300ms ease;
+            background: var(--surface-color);
+            color: var(--text-color);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 200ms ease;
+            opacity: 0.7;
         }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        .zoom-btn:hover {
+            opacity: 1;
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+        }
+
+        .zoom-level {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-color);
+            opacity: 0.6;
+            min-width: 36px;
+            text-align: center;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1024px) {
+            .life-grid {
+                min-width: 600px;
+            }
+
+            .drawer-panel {
+                width: 100%;
+                max-width: 100vw;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .emma-card {
+                border-radius: 20px;
+                padding: 16px !important;
+            }
+
+            .life-grid {
+                gap: 1.5px;
+                min-width: 520px;
+            }
+
+            .week-cell {
+                border-radius: 2px;
+            }
+
+            .week-cell:hover {
+                transform: scale(1.4);
+            }
+
+            .countdown-display {
+                font-size: 2.25rem !important;
+            }
+
+            .nav-glass {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+
+            .join .btn {
+                font-size: 10px !important;
+                padding: 4px 8px !important;
+            }
+        }
+
+        /* ===== Scrollbar ===== */
+        .grid-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .grid-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .grid-scroll::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .grid-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        /* Smooth focus */
+        input:focus,
+        select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--accent-color);
         }
     </style>
 </head>
 
 <body class="theme-student theme-transition min-h-screen flex flex-col overflow-x-hidden font-sans">
 
+    <!-- Background noise overlay -->
+    <div class="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
+        style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E'); background-repeat: repeat; background-size: 200px 200px;">
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container flex flex-col items-center"></div>
+
     <!-- Top Navigation -->
-    <nav class="navbar px-6 py-4 bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b-2 border-theme-border">
+    <nav class="navbar px-6 py-3 nav-glass sticky top-0 z-30 relative">
         <div class="flex-1">
-            <a href="/" class="text-xl font-bold tracking-tight flex items-center gap-2">
-                <span class="text-3xl">🕰️</span>
-                <span class="text-theme-text">
-                    FamilyTimeFlow
-                </span>
+            <a href="/" class="flex items-center gap-2 no-underline">
+                <span class="text-2xl">🕰️</span>
+                <div>
+                    <div class="text-lg font-black tracking-tight text-theme-text leading-tight">家庭人生时光机</div>
+                    <div class="text-[10px] font-bold text-theme-text/40 tracking-widest uppercase">FamilyTimeFlow</div>
+                </div>
             </a>
         </div>
-        <div class="flex-none gap-2">
+        <div class="flex-none gap-1.5 flex items-center">
             <div class="join">
                 <button onclick="setTheme('student')" data-theme="student"
-                    class="btn btn-sm join-item bg-theme-student-bg border-2 border-theme-student-accent text-theme-student-accent hover:bg-theme-student-accent hover:text-white font-bold">
-                    🎒 Student
+                    class="btn btn-xs sm:btn-sm join-item bg-theme-student-bg/80 border-2 border-theme-student-accent text-theme-student-accent hover:bg-theme-student-accent hover:text-white font-bold transition-all duration-300">
+                    🎒 学生
                 </button>
                 <button onclick="setTheme('worker')" data-theme="worker"
-                    class="btn btn-sm join-item bg-theme-worker-bg border-2 border-theme-worker-accent text-theme-worker-accent hover:bg-theme-worker-accent hover:text-white font-bold">
-                    💼 Worker
+                    class="btn btn-xs sm:btn-sm join-item bg-theme-worker-bg/80 border-2 border-theme-worker-accent text-theme-worker-accent hover:bg-theme-worker-accent hover:text-white font-bold transition-all duration-300">
+                    💼 职场
                 </button>
                 <button onclick="setTheme('family')" data-theme="family"
-                    class="btn btn-sm join-item bg-theme-family-bg border-2 border-theme-family-accent text-theme-family-accent hover:bg-theme-family-accent hover:text-white font-bold">
-                    👨‍👩‍👧‍👦 Family
+                    class="btn btn-xs sm:btn-sm join-item bg-theme-family-bg/80 border-2 border-theme-family-accent text-theme-family-accent hover:bg-theme-family-accent hover:text-white font-bold transition-all duration-300">
+                    👨‍👩‍👧‍👦 家庭
                 </button>
             </div>
-            <button onclick="toggleDrawer()" class="btn btn-ghost btn-circle ml-2 text-2xl">
+            <button onclick="toggleDrawer()"
+                class="btn btn-ghost btn-circle btn-sm sm:btn-md ml-1 text-xl opacity-70 hover:opacity-100 transition-opacity">
                 ⚙️
             </button>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 container mx-auto px-4 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
             <!-- Macro: Life in Weeks Grid -->
-            <section class="lg:col-span-2 emma-card p-6">
-                <div class="flex items-center justify-between mb-4">
+            <section class="lg:col-span-2 emma-card p-4 sm:p-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 class="text-2xl font-black text-theme-text flex items-center gap-2">
-                            🗓️ Life in Weeks
+                        <h2 class="text-xl sm:text-2xl font-black text-theme-text flex items-center gap-2">
+                            🗓️ 人生周格
                         </h2>
-                        <p class="text-sm text-theme-text/60 mt-1 font-semibold">80 年 × 52 周 = 4,160 个格子</p>
+                        <p id="gridDescription" class="text-xs sm:text-sm text-theme-text/60 mt-0.5 font-semibold"></p>
                     </div>
-                    <div class="flex gap-3 text-xs font-bold">
-                        <span class="flex items-center gap-1"><span
-                                class="w-3 h-3 rounded bg-theme-accent inline-block"></span> 已度过</span>
-                        <span class="flex items-center gap-1"><span
-                                class="w-3 h-3 rounded bg-theme-accent shadow-md inline-block"></span> 现在</span>
-                        <span class="flex items-center gap-1"><span
-                                class="w-3 h-3 rounded bg-theme-muted border-2 border-theme-border inline-block"></span>
-                            未来</span>
+                    <div class="flex items-center gap-3">
+                        <div class="flex gap-2 text-[10px] sm:text-xs font-bold">
+                            <span class="flex items-center gap-1"><span
+                                    class="w-2.5 h-2.5 rounded-sm bg-theme-accent inline-block"></span> 已度过</span>
+                            <span class="flex items-center gap-1"><span
+                                    class="w-2.5 h-2.5 rounded-sm bg-theme-accent shadow-md inline-block"></span>
+                                现在</span>
+                            <span class="flex items-center gap-1"><span
+                                    class="w-2.5 h-2.5 rounded-sm bg-theme-muted border-2 border-theme-border inline-block"></span>
+                                未来</span>
+                        </div>
+                        <div class="zoom-controls">
+                            <button onclick="gridZoomOut()" class="zoom-btn" title="缩小">−</button>
+                            <span id="zoomLevel" class="zoom-level">100%</span>
+                            <button onclick="gridZoomIn()" class="zoom-btn" title="放大">+</button>
+                        </div>
                     </div>
                 </div>
-                <div class="overflow-x-auto pb-2">
-                    <div id="lifeGrid" class="life-grid min-w-[640px]"></div>
+                <div class="overflow-x-auto pb-2 grid-scroll rounded-xl">
+                    <div id="lifeGridWrapper" class="life-grid-wrapper" style="transform-origin: top left;">
+                        <div id="lifeGrid" class="life-grid"></div>
+                    </div>
                 </div>
-                <p class="text-xs text-theme-text/50 mt-3 font-medium">💡 悬停格子上查看该周回忆
-                </p>
+                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆 · 滚轮缩放</p>
             </section>
 
             <!-- Meso + Micro Column -->
-            <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-4 sm:gap-6">
 
                 <!-- Meso: Countdown Clock -->
-                <section class="emma-card p-6">
-                    <h2 class="text-2xl font-black text-theme-text mb-1 flex items-center gap-2">
+                <section class="emma-card p-5 sm:p-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-theme-text mb-0.5 flex items-center gap-2">
                         🎯 战略倒计时
                     </h2>
-                    <p class="text-sm text-theme-text/60 mb-4 font-semibold">下一个里程碑</p>
+                    <p class="text-xs sm:text-sm text-theme-text/60 mb-3 font-semibold">下一个里程碑</p>
                     <div class="text-center">
-                        <div class="text-sm font-bold text-theme-accent mb-2" id="countdownLabel">剩余天数</div>
-                        <div id="countdown" class="countdown-display text-5xl md:text-6xl font-black text-theme-accent">
+                        <div class="text-xs font-bold text-theme-accent/70 mb-1" id="countdownLabel">剩余时间</div>
+                        <div id="countdown"
+                            class="countdown-display text-4xl sm:text-5xl md:text-6xl font-black text-theme-accent leading-none">
                             000:00:00:00
                         </div>
+                        <div class="countdown-progress max-w-xs mx-auto">
+                            <div id="countdownProgressBar" class="countdown-progress-bar"></div>
+                        </div>
                     </div>
-                    <div class="mt-5">
-                        <label class="text-xs font-bold text-theme-text/70 block mb-2">目标日期</label>
+                    <div class="mt-4">
+                        <label class="text-[10px] sm:text-xs font-bold text-theme-text/70 block mb-1.5">目标日期</label>
                         <input type="text" id="targetDate"
-                            class="input input-bordered w-full bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
-                            placeholder="Select date...">
+                            class="input input-bordered input-sm w-full bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
+                            placeholder="选择日期...">
                     </div>
                 </section>
 
                 <!-- Micro: Today's Time Account -->
-                <section class="emma-card p-6">
-                    <h2 class="text-2xl font-black text-theme-text mb-4 flex items-center gap-2">
+                <section class="emma-card p-5 sm:p-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-theme-text mb-3 flex items-center gap-2">
                         ⏰ 今日时间账户
                     </h2>
                     <div class="flex items-center justify-center">
                         <div class="relative">
-                            <svg width="200" height="200" viewBox="0 0 200 200" class="time-ring">
-                                <circle cx="100" cy="100" r="85" class="time-ring-bg"></circle>
-                                <circle id="timeRingProgress" cx="100" cy="100" r="85" class="time-ring-progress"
-                                    stroke-dasharray="534" stroke-dashoffset="534"></circle>
+                            <svg width="240" height="240" viewBox="0 0 240 240" class="time-ring">
+                                <circle cx="120" cy="120" r="100" class="time-ring-bg"></circle>
+                                <circle id="timeRingProgress" cx="120" cy="120" r="100" class="time-ring-progress"
+                                    stroke-dasharray="628.3" stroke-dashoffset="628.3"></circle>
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="timeElapsed" class="text-4xl font-black text-theme-accent">0%</span>
-                                <span class="text-xs text-theme-text/60 font-bold">已过</span>
+                                <span id="timeElapsed"
+                                    class="text-4xl sm:text-5xl font-black text-theme-accent">0%</span>
+                                <span class="text-[10px] sm:text-xs text-theme-text/60 font-bold mt-0.5">已过</span>
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-between text-sm mt-4 px-4 font-bold">
-                        <div class="stat-card px-4 py-2 flex-1 mr-2">
-                            <p class="text-theme-text/60 text-xs">📚 学习</p>
-                            <p id="studyHours" class="text-theme-accent text-lg">0h</p>
+                    <div class="flex justify-between text-sm mt-4 gap-3">
+                        <div class="stat-card px-3 py-2.5 flex-1">
+                            <p class="text-theme-text/60 text-[10px] sm:text-xs">📚 学习</p>
+                            <p id="studyHours" class="text-theme-accent text-base sm:text-lg font-black">0 小时</p>
                         </div>
-                        <div class="stat-card px-4 py-2 flex-1 ml-2">
-                            <p class="text-theme-text/60 text-xs">🎨 爱好</p>
-                            <p id="hobbyHours" class="text-theme-accent text-lg">0h</p>
+                        <div class="stat-card px-3 py-2.5 flex-1">
+                            <p class="text-theme-text/60 text-[10px] sm:text-xs">🎨 爱好</p>
+                            <p id="hobbyHours" class="text-theme-accent text-base sm:text-lg font-black">0 小时</p>
                         </div>
                     </div>
                 </section>
@@ -417,8 +705,8 @@
     </main>
 
     <!-- On This Day Ticker -->
-    <div class="ticker-bar py-3 overflow-hidden">
-        <div id="ticker" class="whitespace-nowrap text-sm text-theme-text/70 font-semibold">
+    <div class="ticker-bar py-2.5 relative z-10">
+        <div id="tickerTrack" class="ticker-track text-xs sm:text-sm text-theme-text/70 font-semibold">
             📸 正在加载 "那年今日" 回忆...
         </div>
     </div>
@@ -430,61 +718,62 @@
     <aside id="configDrawer" class="drawer-panel p-6">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-2xl font-black text-theme-text">⚙️ 设置</h3>
-            <button onclick="toggleDrawer()" class="btn btn-ghost btn-sm btn-circle text-2xl">✕</button>
+            <button onclick="toggleDrawer()"
+                class="btn btn-ghost btn-sm btn-circle text-xl opacity-60 hover:opacity-100 transition-opacity">✕</button>
         </div>
 
-        <div class="space-y-5">
-            <!-- Profile Settings -->
+        <div class="space-y-4">
             <div class="form-control">
-                <label class="label"><span class="label-text font-bold text-theme-text">显示名称</span></label>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">显示名称</span></label>
                 <input type="text" id="cfgName"
-                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
-                    placeholder="Your name">
+                    class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
+                    placeholder="请输入你的名字">
             </div>
 
             <div class="form-control">
-                <label class="label"><span class="label-text font-bold text-theme-text">出生日期</span></label>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">出生日期</span></label>
                 <input type="text" id="cfgBirthDate"
-                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
-                    placeholder="YYYY-MM-DD">
+                    class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
+                    placeholder="例如: 1990-01-01">
             </div>
 
             <div class="form-control">
-                <label class="label"><span class="label-text font-bold text-theme-text">预期寿命</span></label>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">预期寿命</span></label>
                 <input type="number" id="cfgExpectedAge"
-                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
                     value="80" min="1" max="120">
             </div>
 
             <div class="form-control">
-                <label class="label"><span class="label-text font-bold text-theme-text">倒计时目标</span></label>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">倒计时目标</span></label>
                 <input type="text" id="cfgTargetDate"
-                    class="input input-bordered input-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent"
-                    placeholder="Select date...">
+                    class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
+                    placeholder="选择日期...">
             </div>
 
             <div class="form-control">
-                <label class="label"><span class="label-text font-bold text-theme-text">身份标签</span></label>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">身份标签</span></label>
                 <select id="cfgIdentity"
-                    class="select select-bordered select-sm bg-theme-muted border-2 border-theme-border text-theme-text focus:border-theme-accent">
-                    <option value="student">🎒 Student</option>
-                    <option value="worker">💼 Worker</option>
-                    <option value="family">👨‍👩‍👧‍👦 Family</option>
+                    class="select select-bordered select-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300">
+                    <option value="student">🎒 学生</option>
+                    <option value="worker">💼 职场</option>
+                    <option value="family">👨‍👩‍👧‍👦 家庭</option>
                 </select>
             </div>
 
-            <!-- Immich Sync -->
             <div class="form-control">
-                <label class="label cursor-pointer justify-start gap-3">
-                    <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent" />
-                    <span class="label-text font-bold text-theme-text">📸 Sync Immich Metadata</span>
+                <label class="label cursor-pointer justify-start gap-3 py-1">
+                    <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent checkbox-sm" />
+                    <span class="label-text font-bold text-theme-text">📸 同步 Immich 元数据</span>
                 </label>
             </div>
 
-            <!-- Actions -->
-            <div class="flex gap-2 pt-2">
-                <button onclick="saveConfig()" class="btn btn-accent btn-sm flex-1 font-bold">💾 保存</button>
-                <button onclick="resetConfig()" class="btn btn-ghost btn-sm font-bold">🔄 重置</button>
+            <div class="flex gap-2 pt-3">
+                <button onclick="saveConfig()"
+                    class="btn btn-accent btn-sm flex-1 font-bold transition-all duration-300 hover:shadow-lg hover:shadow-accent/30">💾
+                    保存</button>
+                <button onclick="resetConfig()" class="btn btn-ghost btn-sm font-bold opacity-60 hover:opacity-100">🔄
+                    重置</button>
             </div>
         </div>
     </aside>
@@ -492,11 +781,14 @@
     <!-- Photo Hover Tooltip -->
     <div id="photoTooltip" class="photo-tooltip">
         <div class="flex gap-2">
-            <img id="tooltipImg1" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
-            <img id="tooltipImg2" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
-            <img id="tooltipImg3" src="" alt="" class="w-16 h-16 object-cover rounded-lg border-2 border-theme-border">
+            <img id="tooltipImg1" src="" alt=""
+                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
+            <img id="tooltipImg2" src="" alt=""
+                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
+            <img id="tooltipImg3" src="" alt=""
+                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
         </div>
-        <p id="tooltipCaption" class="text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
+        <p id="tooltipCaption" class="text-[10px] sm:text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
     </div>
 
     <!-- JavaScript -->
@@ -514,9 +806,34 @@
                 immichPersonId: null
             },
             events: [],
-            targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days from now
+            targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
             immichSync: false
         };
+
+        let gridZoom = 1.0;
+        const ZOOM_MIN = 0.4;
+        const ZOOM_MAX = 2.0;
+
+        // ==================== TOAST ====================
+        function showToast(msg, durationMs = 2200) {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = 'toast-msg';
+            el.textContent = msg;
+            container.appendChild(el);
+
+            gsap.fromTo(el, { opacity: 0, y: 12, scale: 0.9 }, {
+                opacity: 1, y: 0, scale: 1,
+                duration: 0.3, ease: 'back.out(1.5)'
+            });
+
+            gsap.to(el, {
+                opacity: 0, y: -8, scale: 0.95,
+                duration: 0.35, ease: 'power2.in',
+                delay: durationMs / 1000,
+                onComplete: () => el.remove()
+            });
+        }
 
         // ==================== LOCAL STORAGE ====================
         function loadState() {
@@ -550,14 +867,28 @@
 
         // ==================== THEME SYSTEM ====================
         function setTheme(theme) {
+            const oldTheme = document.body.className.match(/theme-\w+/)?.[0] || '';
             document.body.className = document.body.className.replace(/theme-\w+/, '').trim();
             document.body.classList.add(`theme-${theme}`);
             state.currentUser = theme;
             state.profile.identityTag = theme;
             saveState();
 
-            // Animate accent color change
-            gsap.fromTo('main', { opacity: 0.8 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' });
+            // GSAP transition pulse
+            gsap.fromTo('main', { opacity: 0.85, scale: 0.995 },
+                { opacity: 1, scale: 1, duration: 0.6, ease: 'power3.out', clearProps: 'scale' }
+            );
+
+            // Update accent color RGB for ticker
+            updateTickerStyle();
+        }
+
+        function updateTickerStyle() {
+            const ticker = document.querySelector('.ticker-bar');
+            if (ticker) {
+                const rgb = getComputedStyle(document.body).getPropertyValue('--accent-color-rgb').trim();
+                ticker.style.setProperty('--accent-color-rgb', rgb);
+            }
         }
 
         // ==================== CONFIG DRAWER ====================
@@ -586,6 +917,7 @@
             toggleDrawer();
             initLifeGrid();
             updateCountdown();
+            showToast('✅ 已保存设置');
         }
 
         function resetConfig() {
@@ -608,6 +940,26 @@
             saveState();
             initLifeGrid();
             updateCountdown();
+            showToast('🔄 已重置为默认设置');
+        }
+
+        // ==================== GRID ZOOM ====================
+        function gridZoomIn() {
+            gridZoom = Math.min(gridZoom + 0.15, ZOOM_MAX);
+            applyGridZoom();
+        }
+
+        function gridZoomOut() {
+            gridZoom = Math.max(gridZoom - 0.15, ZOOM_MIN);
+            applyGridZoom();
+        }
+
+        function applyGridZoom() {
+            const wrapper = document.getElementById('lifeGridWrapper');
+            if (wrapper) {
+                wrapper.style.transform = `scale(${gridZoom})`;
+            }
+            document.getElementById('zoomLevel').textContent = `${Math.round(gridZoom * 100)}%`;
         }
 
         // ==================== LIFE GRID (80×52) ====================
@@ -620,50 +972,176 @@
             const totalWeeks = expectedAge * 52;
             const now = new Date();
 
-            for (let week = 0; week < totalWeeks; week++) {
-                const cell = document.createElement('div');
-                cell.className = 'week-cell';
-                cell.dataset.week = week;
+            // Update description
+            document.getElementById('gridDescription').textContent =
+                `${expectedAge} 年 × 52 周 = ${totalWeeks.toLocaleString()} 个格子`;
 
-                // Determine cell state
-                if (birthDate) {
-                    const birthMs = birthDate.getTime();
-                    const weekMs = week * 7 * 24 * 60 * 60 * 1000;
-                    const cellDate = new Date(birthMs + weekMs);
+            // Build month labels row (top header)
+            const monthStarts = [0, 4, 8, 13, 17, 22, 26, 30, 35, 39, 44, 48];
+            const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-                    if (cellDate < now) {
-                        cell.classList.add('spent');
-                    } else if (week === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
-                        cell.classList.add('current');
-                    }
+            // Top-left corner (empty)
+            const corner = document.createElement('div');
+
+            // Month labels
+            for (let w = 0; w < 52; w++) {
+                const label = document.createElement('span');
+                const monthIdx = monthStarts.findIndex((s, i) =>
+                    w >= s && (i === monthStarts.length - 1 || w < monthStarts[i + 1])
+                );
+                // Only show label at the start of each month
+                if (monthStarts.includes(w)) {
+                    label.textContent = monthNames[monthStarts.indexOf(w)];
+                    label.style.fontSize = '9px';
+                    label.style.fontWeight = '700';
+                    label.style.color = 'var(--text-color)';
+                    label.style.opacity = '0.35';
+                    label.style.textAlign = 'center';
+                    label.style.gridColumn = String(w + 2);
+                    label.style.gridRow = '1';
+                }
+            }
+
+            // We'll use CSS grid positioning
+            grid.style.gridTemplateColumns = `32px repeat(52, 1fr)`;
+            grid.style.gridTemplateRows = `20px repeat(${expectedAge}, 1fr)`;
+
+            // Top-left corner spacer
+            const spacer = document.createElement('div');
+            spacer.style.gridColumn = '1';
+            spacer.style.gridRow = '1';
+            grid.appendChild(spacer);
+
+            // Month labels in header row
+            for (let w = 0; w < 52; w++) {
+                const monthIdx = monthStarts.findIndex((s, i) =>
+                    w >= s && (i === monthStarts.length - 1 || w < monthStarts[i + 1])
+                );
+                const label = document.createElement('div');
+                if (monthStarts.includes(w)) {
+                    label.textContent = monthNames[monthStarts.indexOf(w)];
+                } else {
+                    label.textContent = '';
+                }
+                label.style.fontSize = '8px';
+                label.style.fontWeight = '700';
+                label.style.color = 'var(--text-color)';
+                label.style.opacity = '0.3';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.justifyContent = 'center';
+                label.style.gridColumn = String(w + 2);
+                label.style.gridRow = '1';
+                grid.appendChild(label);
+            }
+
+            for (let year = 0; year < expectedAge; year++) {
+                // Age label column
+                const ageLabel = document.createElement('div');
+                ageLabel.textContent = `${year}`;
+                ageLabel.style.fontSize = '9px';
+                ageLabel.style.fontWeight = '700';
+                ageLabel.style.color = 'var(--text-color)';
+                ageLabel.style.opacity = '0.35';
+                ageLabel.style.display = 'flex';
+                ageLabel.style.alignItems = 'center';
+                ageLabel.style.justifyContent = 'flex-end';
+                ageLabel.style.paddingRight = '4px';
+                ageLabel.style.gridColumn = '1';
+                ageLabel.style.gridRow = String(year + 2);
+                grid.appendChild(ageLabel);
+
+                // Decade divider
+                if (year > 0 && year % 5 === 0) {
+                    ageLabel.style.borderTop = '2px solid var(--accent-color)';
+                    ageLabel.style.borderTopColor = 'var(--accent-color)';
+                    ageLabel.style.opacity = '0.6';
                 }
 
-                // GSAP stagger entrance
-                gsap.set(cell, { opacity: 0, scale: 0.5 });
-                gsap.to(cell, {
-                    opacity: 1,
-                    scale: 1,
-                    duration: 0.3,
-                    delay: Math.min(week * 0.0005, 1.5),
-                    ease: 'back.out(1.2)'
-                });
+                for (let week = 0; week < 52; week++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'week-cell';
+                    const globalWeek = year * 52 + week;
+                    cell.dataset.week = globalWeek;
 
-                // Hover tooltip
-                cell.addEventListener('mouseenter', (e) => showWeekTooltip(e, week));
-                cell.addEventListener('mouseleave', hideTooltip);
+                    // Decade divider styling
+                    if (year > 0 && year % 5 === 0) {
+                        cell.style.borderTop = '2px solid var(--accent-color)';
+                        cell.style.borderTopColor = 'var(--accent-color)';
+                        cell.style.opacity = '0.15';
+                        cell.style.borderRadius = '1px';
+                    }
 
-                grid.appendChild(cell);
+                    // Determine cell state
+                    if (birthDate) {
+                        const birthMs = birthDate.getTime();
+                        const weekMs = globalWeek * 7 * 24 * 60 * 60 * 1000;
+                        const cellDate = new Date(birthMs + weekMs);
+
+                        if (cellDate < now) {
+                            cell.classList.add('spent');
+                            if (year > 0 && year % 5 === 0) cell.style.borderTop = 'none';
+                        }
+                        if (globalWeek === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
+                            cell.classList.add('current');
+                            if (year > 0 && year % 5 === 0) cell.style.borderTop = 'none';
+                        }
+                    }
+
+                    // GSAP stagger entrance
+                    gsap.set(cell, { opacity: 0, scale: 0.3 });
+                    gsap.to(cell, {
+                        opacity: 1,
+                        scale: 1,
+                        duration: 0.25,
+                        delay: Math.min(globalWeek * 0.0004, 1.2),
+                        ease: 'back.out(1.3)'
+                    });
+
+                    // Hover tooltip
+                    cell.addEventListener('mouseenter', (e) => showWeekTooltip(e, globalWeek));
+                    cell.addEventListener('mouseleave', hideTooltip);
+
+                    cell.style.gridColumn = String(week + 2);
+                    cell.style.gridRow = String(year + 2);
+                    grid.appendChild(cell);
+                }
             }
+
+            // Reset zoom on regen
+            gridZoom = 1.0;
+            applyGridZoom();
         }
 
         function showWeekTooltip(event, weekIndex) {
-            // Placeholder: In Phase 3, query Immich /api/assets with takenDate
             const tooltip = document.getElementById('photoTooltip');
             const rect = event.target.getBoundingClientRect();
-            tooltip.style.left = `${rect.left + window.scrollX}px`;
-            tooltip.style.top = `${rect.top + window.scrollY - 140}px`;
+            let left = rect.left + window.scrollX;
+            let top = rect.top + window.scrollY - 140;
+
+            // Keep tooltip in viewport
+            if (left + 180 > window.innerWidth) {
+                left = window.innerWidth - 200;
+            }
+            if (top < 10) {
+                top = rect.bottom + window.scrollY + 10;
+            }
+
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
             tooltip.classList.add('visible');
-            document.getElementById('tooltipCaption').textContent = `第 ${weekIndex + 1} 周 — 回忆加载中...`;
+
+            // Calculate date range for this week
+            let dateStr = '';
+            if (state.profile.birthDate) {
+                const birth = new Date(state.profile.birthDate);
+                const weekStart = new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
+                const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                dateStr = `${fmt(weekStart)} ~ ${fmt(weekEnd)}`;
+            }
+            document.getElementById('tooltipCaption').textContent =
+                `第 ${weekIndex + 1} 周 · ${dateStr ? dateStr : '回忆加载中...'}`;
         }
 
         function hideTooltip() {
@@ -678,6 +1156,7 @@
 
             if (diff <= 0) {
                 document.getElementById('countdown').textContent = '000:00:00:00';
+                document.getElementById('countdownProgressBar').style.width = '100%';
                 return;
             }
 
@@ -689,6 +1168,15 @@
 
             const formatted = `${String(days).padStart(3, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             document.getElementById('countdown').textContent = formatted;
+
+            // Progress bar: from now to target (0% = now, 100% = target reached)
+            const nowMs = now.getTime();
+            const targetMs = target.getTime();
+            // Use a reference: if we set target from now + X, progress is % elapsed
+            const totalDuration = 90 * 24 * 60 * 60 * 1000; // reference: 90 days
+            const elapsed = totalDuration - diff;
+            const progress = Math.min(Math.max(elapsed / totalDuration, 0), 1);
+            document.getElementById('countdownProgressBar').style.width = `${progress * 100}%`;
         }
 
         function tickCountdown() {
@@ -704,18 +1192,17 @@
             const progress = Math.min(elapsedMs / dayMs, 1);
 
             const ring = document.getElementById('timeRingProgress');
-            const circumference = 2 * Math.PI * 85; // r=85
+            const circumference = 2 * Math.PI * 100; // r=100
             const offset = circumference * (1 - progress);
             ring.style.strokeDashoffset = offset;
 
             const percent = Math.round(progress * 100);
             document.getElementById('timeElapsed').textContent = `${percent}%`;
 
-            // Mock study/hobby split
             const studyH = Math.floor(progress * 8);
             const hobbyH = Math.floor(progress * 3);
-            document.getElementById('studyHours').textContent = `${studyH}h`;
-            document.getElementById('hobbyHours').textContent = `${hobbyH}h`;
+            document.getElementById('studyHours').textContent = `${studyH} 小时`;
+            document.getElementById('hobbyHours').textContent = `${hobbyH} 小时`;
         }
 
         function tickTimeBudget() {
@@ -728,6 +1215,7 @@
             flatpickr("#targetDate", {
                 enableTime: true,
                 dateFormat: "Y-m-d H:i",
+                locale: 'zh',
                 defaultDate: state.targetDate,
                 onChange: (selected) => {
                     state.targetDate = selected[0].toISOString();
@@ -738,6 +1226,7 @@
 
             flatpickr("#cfgBirthDate", {
                 dateFormat: "Y-m-d",
+                locale: 'zh',
                 defaultDate: state.profile.birthDate || null,
                 onChange: (selected) => {
                     state.profile.birthDate = selected[0] ? selected[0].toISOString().split('T')[0] : '';
@@ -749,6 +1238,7 @@
             flatpickr("#cfgTargetDate", {
                 enableTime: true,
                 dateFormat: "Y-m-d H:i",
+                locale: 'zh',
                 defaultDate: state.targetDate,
                 onChange: (selected) => {
                     state.targetDate = selected[0].toISOString();
@@ -761,24 +1251,91 @@
         // ==================== TICKER ====================
         function updateTicker() {
             const now = new Date();
-            const monthDay = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-            document.getElementById('ticker').textContent =
-                `📸 那年今日 (${monthDay})：正在加载往年回忆...(Immich 集成将在 Phase 3 上线)`;
+            const monthDay = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+            const track = document.getElementById('tickerTrack');
+            track.textContent =
+                `📸 那年今日 (${monthDay})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉 每天都是值得纪念的一天 ✨`;
+        }
+
+        // Refill ticker periodically
+        let tickerInterval = null;
+
+        function startTickerLoop() {
+            updateTicker();
+            // Update ticker content every 30 minutes (but animation keeps scrolling)
+            tickerInterval = setInterval(updateTicker, 30 * 60 * 1000);
+        }
+
+        // ==================== KEYBOARD SHORTCUTS ====================
+        function initKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                // Escape closes drawer
+                if (e.key === 'Escape') {
+                    const drawer = document.getElementById('configDrawer');
+                    if (drawer.classList.contains('open')) {
+                        toggleDrawer();
+                    }
+                }
+                // '?' or '/' for help
+                if (e.key === '?' || e.key === '/') {
+                    e.preventDefault();
+                    showToast('⌨️ 快捷键: ESC 关闭设置 · +/- 缩放网格');
+                }
+            });
+        }
+
+        // ==================== WHEEL ZOOM ====================
+        function initWheelZoom() {
+            const gridWrapper = document.getElementById('lifeGridWrapper');
+            const scrollContainer = gridWrapper?.closest('.overflow-x-auto');
+            if (scrollContainer) {
+                scrollContainer.addEventListener('wheel', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        if (e.deltaY < 0) gridZoomIn();
+                        else gridZoomOut();
+                    }
+                }, { passive: false });
+            }
         }
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
             setTheme(state.profile.identityTag || 'student');
+            updateTickerStyle();
             initFlatpickrs();
             initLifeGrid();
             updateCountdown();
             updateTimeBudget();
-            updateTicker();
+            startTickerLoop();
+            initKeyboard();
+            initWheelZoom();
 
             // Start smooth clocks
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);
+
+            // Welcome toast
+            setTimeout(() => showToast(`👋 欢迎回来，${state.profile.name || "朋友"}`), 800);
+
+            // GSAP entrance for main content
+            gsap.from('main .emma-card', {
+                y: 24,
+                opacity: 0,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: 'power3.out',
+                delay: 0.15
+            });
+
+            gsap.from('.ticker-bar', {
+                y: 20,
+                opacity: 0,
+                duration: 0.5,
+                ease: 'power2.out',
+                delay: 0.4
+            });
         });
     </script>
 
