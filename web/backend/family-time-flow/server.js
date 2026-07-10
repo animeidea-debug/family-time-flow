@@ -210,9 +210,9 @@ app.get("/api/sync", (req, res) => {
 app.get("/api/users", (req, res) => res.json(queryAll("SELECT * FROM users ORDER BY id")));
 
 app.post("/api/users", (req, res) => {
-    const { name, birth_date, expected_age, identity_tag, school_system, target_date } = req.body;
-    run("INSERT INTO users (name, birth_date, expected_age, identity_tag, school_system, target_date) VALUES (?, ?, ?, ?, ?, ?)",
-        [name || '', birth_date || null, expected_age || 80, identity_tag || 'student', school_system || 'shanghai', target_date || null]);
+    const { name, birth_date, expected_age, identity_tag, school_system, target_date, immich_person_id } = req.body;
+    run("INSERT INTO users (name, birth_date, expected_age, identity_tag, school_system, target_date, immich_person_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [name || '', birth_date || null, expected_age || 80, identity_tag || 'student', school_system || 'shanghai', target_date || null, immich_person_id || null]);
     const user = queryOne("SELECT * FROM users WHERE id = ?", [lastInsertId()]);
     res.status(201).json(user);
 });
@@ -232,9 +232,9 @@ app.put("/api/users/:id", (req, res) => {
     const b = req.body;
     run(`UPDATE users SET name=COALESCE(?,name), birth_date=COALESCE(?,birth_date), expected_age=COALESCE(?,expected_age),
          identity_tag=COALESCE(?,identity_tag), school_system=COALESCE(?,school_system), target_date=COALESCE(?,target_date),
-         immich_sync=COALESCE(?,immich_sync), updated_at=datetime('now') WHERE id=?`,
+         immich_sync=COALESCE(?,immich_sync), immich_person_id=COALESCE(?,immich_person_id), updated_at=datetime('now') WHERE id=?`,
         [b.name ?? null, b.birth_date ?? null, b.expected_age ?? null, b.identity_tag ?? null,
-        b.school_system ?? null, b.target_date ?? null, b.immich_sync ?? null, req.params.id]);
+        b.school_system ?? null, b.target_date ?? null, b.immich_sync ?? null, b.immich_person_id ?? null, req.params.id]);
     const user = queryOne("SELECT * FROM users WHERE id = ?", [req.params.id]);
     user.education = getEducationInfo(user.birth_date, user.school_system);
     user.milestones = getMilestones(user.birth_date, user.school_system);
@@ -269,6 +269,13 @@ app.get("/api/users/:id/events", (req, res) => {
 app.delete("/api/users/:id/events/:eid", (req, res) => {
     run("DELETE FROM events WHERE id = ? AND user_id = ?", [req.params.eid, req.params.id]);
     res.json({ status: "deleted" });
+});
+
+// DELETE /api/users — Clear all users (for reset)
+app.delete("/api/users", (req, res) => {
+    run("DELETE FROM users");
+    run("DELETE FROM events");
+    res.json({ status: "cleared", deleted: true });
 });
 
 // ==================== IMMICH INTEGRATION (Phase 3) ====================
@@ -376,39 +383,48 @@ app.get("/api/immich/people", async (req, res) => {
 });
 
 // GET /api/immich/assets?personId=&date=&limit=3 — Query assets
+// Uses POST /api/search/metadata (Immich v2.7)
 app.get("/api/immich/assets", async (req, res) => {
     const { personId, date, limit } = req.query;
-    let params = [];
-    if (personId) params.push(`personId=${encodeURIComponent(personId)}`);
-    if (date) {
-        params.push(`takenDateAfter=${encodeURIComponent(date)}T00:00:00`);
-        params.push(`takenDateBefore=${encodeURIComponent(date)}T23:59:59`);
+    const apiKey = getImmichKey();
+    if (!apiKey) return res.json({ assets: [] });
+    const url = getImmichUrl();
+    try {
+        const body = { page: 1, size: parseInt(limit) || 5 };
+        if (personId) body.personId = personId;
+        if (date) {
+            body.takenAfter = `${date}T00:00:00.000Z`;
+            body.takenBefore = `${date}T23:59:59.000Z`;
+        }
+        const resp = await fetch(`${url}/api/search/metadata`, {
+            method: 'POST',
+            headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!resp.ok) return res.json({ assets: [] });
+        const data = await resp.json();
+        const items = (data.assets && data.assets.items) ? data.assets.items : [];
+        res.json({
+            assets: items.map(a => ({
+                id: a.id,
+                originalFileName: a.originalFileName,
+                fileCreatedAt: a.fileCreatedAt,
+                type: a.type,
+                people: (a.people || []).map(p => ({ id: p.id, name: p.name })),
+                exifInfo: a.exifInfo ? { dateTimeOriginal: a.exifInfo.dateTimeOriginal } : null
+            }))
+        });
+    } catch {
+        res.json({ assets: [] });
     }
-    params.push(`limit=${parseInt(limit) || 5}`);
-    const qs = params.join('&');
-    const data = await immichFetch(`/api/assets?${qs}`);
-    if (!data) return res.json({ assets: [] });
-    // Return only safe fields
-    res.json({
-        assets: (data.assets || data || []).map(a => ({
-            id: a.id,
-            originalFileName: a.originalFileName,
-            fileCreatedAt: a.fileCreatedAt,
-            type: a.type,
-            people: (a.people || []).map(p => ({ id: p.id, name: p.name })),
-            exifInfo: a.exifInfo ? { dateTimeOriginal: a.exifInfo.dateTimeOriginal } : null
-        }))
-    });
 });
 
 // GET /api/immich/asset-thumb?id= — Proxy thumbnail from Immich (returns image)
 app.get("/api/immich/asset-thumb", async (req, res) => {
     const { id, size } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
-    const config = queryAll("SELECT key, value FROM app_config");
-    const cfg = {};
-    config.forEach(c => cfg[c.key] = c.value);
-    const apiKey = cfg.immich_api_key;
+    const apiKey = getImmichKey();
     if (!apiKey) return res.status(401).json({ error: "no api key" });
     try {
         const thumbResp = await fetch(`${getImmichUrl()}/api/assets/${id}/thumbnail?size=${size || 'thumbnail'}`, {
@@ -425,31 +441,69 @@ app.get("/api/immich/asset-thumb", async (req, res) => {
     }
 });
 
+// GET /api/immich/person-thumb?id= — Proxy person face thumbnail from Immich
+app.get("/api/immich/person-thumb", async (req, res) => {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: "id required" });
+    const apiKey = getImmichKey();
+    if (!apiKey) return res.status(401).json({ error: "no api key" });
+    try {
+        const thumbResp = await fetch(`${getImmichUrl()}/api/people/${id}/thumbnail`, {
+            headers: { 'x-api-key': apiKey },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!thumbResp.ok) return res.status(404).json({ error: "thumbnail not found" });
+        const buffer = await thumbResp.arrayBuffer();
+        res.set('Content-Type', thumbResp.headers.get('content-type') || 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=86400');
+        res.send(Buffer.from(buffer));
+    } catch {
+        res.status(500).json({ error: "failed to fetch thumbnail" });
+    }
+});
+
 // GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     const { month, day, limit } = req.query;
-    const m = month || (new Date().getMonth() + 1).toString();
-    const d = day || new Date().getDate().toString();
-    const pad = (n) => n.toString().padStart(2, '0');
+    const m = parseInt(month) || (new Date().getMonth() + 1);
+    const d = parseInt(day) || new Date().getDate();
     const lim = parseInt(limit) || 5;
+    const apiKey = getImmichKey();
+    if (!apiKey) return res.json({ assets: [] });
+    const url = getImmichUrl();
 
-    // Query assets across multiple years (last 5 years)
-    const year = new Date().getFullYear();
     const allAssets = [];
+    const pad = n => n.toString().padStart(2, '0');
+    const year = new Date().getFullYear();
+
     for (let y = year - 5; y <= year; y++) {
         const dateStr = `${y}-${pad(m)}-${pad(d)}`;
-        const data = await immichFetch(`/api/assets?takenDateAfter=${dateStr}T00:00:00&takenDateBefore=${dateStr}T23:59:59&limit=${lim}`);
-        if (data && (data.assets || data)) {
-            const assets = (data.assets || data || []).slice(0, lim);
-            allAssets.push(...assets.map(a => ({
-                id: a.id,
-                originalFileName: a.originalFileName,
-                fileCreatedAt: a.fileCreatedAt,
-                year: y,
-                type: a.type,
-                people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
-            })));
-        }
+        try {
+            const resp = await fetch(`${url}/api/search/metadata`, {
+                method: 'POST',
+                headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    page: 1, size: lim,
+                    takenAfter: `${dateStr}T00:00:00.000Z`,
+                    takenBefore: `${dateStr}T23:59:59.000Z`
+                }),
+                signal: AbortSignal.timeout(5000)
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                const items = (data.assets && data.assets.items) || [];
+                items.slice(0, lim).forEach(a => {
+                    allAssets.push({
+                        id: a.id,
+                        originalFileName: a.originalFileName,
+                        fileCreatedAt: a.fileCreatedAt,
+                        year: y,
+                        type: a.type,
+                        people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
+                    });
+                });
+            }
+        } catch { }
         if (allAssets.length >= lim) break;
     }
     res.json({ assets: allAssets.slice(0, lim) });

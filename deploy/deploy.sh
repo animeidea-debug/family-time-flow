@@ -162,7 +162,7 @@ echo ""
 echo -e "${YELLOW}📄 同步后端代码 (→ /docker/backend/${PROJECT_PATH}/)...${NC}"
 SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend/${PROJECT_PATH}"
 if [ -d "$SOURCE_BACKEND" ]; then
-    rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" --exclude "data/" 2>&1 | grep -v "NOTICE" | tail -2 || true
     echo -e "${GREEN}✅ 后端同步完成${NC}"
 else
     echo -e "${YELLOW}⚠️  未找到 ${SOURCE_BACKEND}，跳过${NC}"
@@ -180,18 +180,28 @@ echo "   前端: ${DOMAIN}/${PROJECT_PATH}/"
 echo "   耗时: ${ELAPSED}s"
 echo "============================================="
 
-# Pushover
+# Pushover (via Keychain, fallback to env vars)
 if command -v curl >/dev/null 2>&1; then
-    COMMIT_MSG=$(cd "$SCRIPT_DIR/.." && git log -1 --oneline 2>/dev/null || echo "")
-    NOTIFY_TITLE="FamilyTimeFlow"
-    NOTIFY_MSG="✅ NAS 部署完成 (${REMOTE})"
-    [ -n "$COMMIT_MSG" ] && NOTIFY_MSG="${NOTIFY_MSG}\n${COMMIT_MSG}"
-    NOTIFY_MSG="${NOTIFY_MSG}\n路径: /${PROJECT_PATH}/"
-    NOTIFY_MSG="${NOTIFY_MSG}\n耗时: ${ELAPSED}s"
-    curl -s -X POST https://api.pushover.net/1/messages.json \
-        --data-urlencode "token=${PUSHOVER_NAS_TOKEN:-}" \
-        --data-urlencode "user=${PUSHOVER_NAS_USER:-}" \
-        --data-urlencode "title=${NOTIFY_TITLE}" \
-        --data-urlencode "message=${NOTIFY_MSG}" \
-        --data-urlencode "sound=pushover" 2>/dev/null || true
+    PUSHOVER_TOKEN="${PUSHOVER_NAS_TOKEN:-}"
+    PUSHOVER_USER="${PUSHOVER_NAS_USER:-}"
+    if [ -z "$PUSHOVER_TOKEN" ] && [ "$(uname)" = "Darwin" ]; then
+        PUSHOVER_TOKEN=$(security find-generic-password -s "pushover-emma-token" -a "garychen" -w 2>/dev/null)
+    fi
+    if [ -z "$PUSHOVER_USER" ] && [ "$(uname)" = "Darwin" ]; then
+        PUSHOVER_USER=$(security find-generic-password -s "pushover-emma-user" -a "garychen" -w 2>/dev/null)
+    fi
+    if [ -n "$PUSHOVER_TOKEN" ] && [ -n "$PUSHOVER_USER" ]; then
+        COMMIT_MSG=$(cd "$SCRIPT_DIR/.." && git log -1 --oneline 2>/dev/null || echo "")
+        NOTIFY_TITLE="FamilyTimeFlow"
+        NOTIFY_MSG="✅ NAS 部署完成 (${REMOTE})"
+        [ -n "$COMMIT_MSG" ] && NOTIFY_MSG="${NOTIFY_MSG}\n${COMMIT_MSG}"
+        NOTIFY_MSG="${NOTIFY_MSG}\n路径: /${PROJECT_PATH}/"
+        NOTIFY_MSG="${NOTIFY_MSG}\n耗时: ${ELAPSED}s"
+        curl -s -X POST https://api.pushover.net/1/messages.json \
+            --data-urlencode "token=${PUSHOVER_TOKEN}" \
+            --data-urlencode "user=${PUSHOVER_USER}" \
+            --data-urlencode "title=${NOTIFY_TITLE}" \
+            --data-urlencode "message=${NOTIFY_MSG}" \
+            --data-urlencode "sound=pushover" 2>/dev/null || true
+    fi
 fi

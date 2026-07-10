@@ -715,6 +715,17 @@
                     <button onclick="resetOnboarding()" class="btn btn-ghost btn-sm">↩ 重新选择</button>
                 </div>
             </div>
+            <div id="onbStep6" class="hidden">
+                <div class="text-5xl mb-3">👋</div>
+                <h2 class="text-2xl font-black text-gray-800 mb-1">欢迎回来</h2>
+                <p class="text-xs text-gray-400 mb-5">点击家庭成员头像进入</p>
+                <div id="existingUserGrid" class="flex flex-row flex-wrap justify-center gap-4 mb-5 px-1"></div>
+                <div class="flex flex-col gap-2">
+                    <button onclick="showUserSwitcherForAdd()" class="btn btn-accent btn-sm font-bold w-full">➕
+                        添加新成员</button>
+                    <button onclick="skipOnboarding()" class="btn btn-ghost text-xs text-gray-400">直接进入 →</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -747,15 +758,36 @@
                     👨‍👩‍👧‍👦 家庭
                 </button>
             </div>
-            <button onclick="toggleDrawer()"
-                class="btn btn-ghost btn-circle btn-sm sm:btn-md ml-1 text-xl opacity-70 hover:opacity-100 transition-opacity">
-                ⚙️
-            </button>
+            <div class="dropdown dropdown-end ml-1">
+                <label tabindex="0" id="userMenuBtn"
+                    class="btn btn-ghost btn-sm font-bold text-theme-text/70 hover:opacity-100 transition-all gap-1.5">
+                    <span id="userAvatar"
+                        class="w-6 h-6 rounded-full bg-theme-accent/20 flex items-center justify-center text-xs font-black">👤</span>
+                    <span id="userMenuName" class="hidden sm:inline text-xs max-w-[80px] truncate">用户</span>
+                </label>
+                <ul tabindex="0"
+                    class="dropdown-content menu p-2 shadow-xl bg-white/95 backdrop-blur-xl border-2 border-theme-border rounded-2xl w-52 z-50">
+                    <li class="menu-title text-[10px] text-theme-text/40 px-3 pt-1 pb-0"><span
+                            id="userMenuTitle">当前用户</span></li>
+                    <li><button onclick="showUserSwitcher()"
+                            class="font-bold text-sm gap-2 btn btn-ghost btn-sm w-full justify-start">🔄 切换用户</button>
+                    </li>
+                    <li><button onclick="toggleDrawer()"
+                            class="font-bold text-sm gap-2 btn btn-ghost btn-sm w-full justify-start">⚙️ 设置</button>
+                    </li>
+                    <li>
+                        <div class="divider my-1"></div>
+                    </li>
+                    <li><button onclick="resetOnboardingData()"
+                            class="font-bold text-sm text-red-500 gap-2 btn btn-ghost btn-sm w-full justify-start">🗑️
+                            重置所有数据</button></li>
+                </ul>
+            </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10">
+    <main id="mainContent" class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10 hidden">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
             <!-- Macro: Life in Weeks Grid -->
@@ -991,12 +1023,13 @@
     <div id="photoTooltip" class="photo-tooltip">
         <div class="flex gap-2">
             <img id="tooltipImg1" src="" alt=""
-                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
+                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
             <img id="tooltipImg2" src="" alt=""
-                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
+                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
             <img id="tooltipImg3" src="" alt=""
-                class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border-2 border-theme-border">
+                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
         </div>
+        <div id="tooltipNoPhotos" class="text-center py-3 text-theme-text/40 text-xs font-bold hidden">📷 暂无照片</div>
         <p id="tooltipCaption" class="text-[10px] sm:text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
     </div>
 
@@ -1660,16 +1693,32 @@
             state.profile.identityTag = user.identity_tag || 'student';
             state.targetDate = user.target_date || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
             state.profile.schoolSystem = user.school_system || 'shanghai';
+            state.profile.immichPersonId = user.immich_person_id || null;
             saveState();
             hydrateFormFromState();
             setTheme(state.profile.identityTag);
-            // Fetch full user data with education
-            const full = await apiGet(`/users/${userId}`);
-            if (full && full.education) state._apiEducation = full.education;
+            // Show UI immediately, then fetch extra data in background
             initLifeGrid();
             updateEducationTimeline();
             renderUserButtons();
-            showToast(`👤 切换到 ${state.profile.name || '用户'}`);
+            updateUserMenu();
+            showToast(`👤 切换到 ${state.profile.name || '用户'}`, 1200);
+            // Background fetch full user data
+            const full = await apiGet(`/users/${userId}`);
+            if (full && full.education) state._apiEducation = full.education;
+        }
+
+        function updateUserMenu() {
+            const name = state.profile.name || '用户';
+            document.getElementById('userMenuName').textContent = name;
+            document.getElementById('userMenuTitle').textContent = name;
+            const avatar = document.getElementById('userAvatar');
+            const pid = state.profile.immichPersonId;
+            if (pid) {
+                avatar.outerHTML = '<img id="userAvatar" src="' + API_BASE + '/immich/person-thumb?id=' + pid + '" class="w-6 h-6 rounded-full object-cover border-2 border-theme-accent/50" onerror="this.onerror=null;this.outerHTML=\'<span id=userAvatar class=\\\'w-6\\\\ h-6\\\\ rounded-full\\\\ bg-theme-accent/20\\\\ flex\\\\ items-center\\\\ justify-center\\\\ text-xs\\\\ font-black\\\'\\\'>' + name.charAt(0) + '</span>\'">';
+            } else {
+                avatar.textContent = name.charAt(0);
+            }
         }
 
         async function createNewUser() {
@@ -1847,7 +1896,7 @@
         }
 
         function showStep(n) {
-            const steps = [1, 2, 3, 4];
+            const steps = [1, 2, 3, 4, 6];
             steps.forEach(i => {
                 const el = document.getElementById(`onbStep${i}`);
                 if (el) el.classList.toggle('hidden', i !== n);
@@ -1955,24 +2004,98 @@
             document.getElementById('onbPreviewContent').querySelector('.text-center').textContent = `人生进度 ${lifePct}%`;
         }
 
+        function revealMainContent() {
+            const main = document.getElementById('mainContent');
+            if (!main) return;
+            main.classList.remove('hidden');
+            initLifeGrid();
+            updateCountdown();
+            updateTimeBudget();
+            updateEducationTimeline();
+            gsap.from('main .emma-card', { y: 24, opacity: 0, duration: 0.35, stagger: 0.05, ease: 'power3.out', clearProps: 'all' });
+            gsap.from('.ticker-bar', { y: 20, opacity: 0, duration: 0.3, ease: 'power2.out', clearProps: 'opacity' });
+        }
+
         function confirmOnboarding() {
             saveState();
             if (apiAvailable && activeUserId) pushToApi();
             document.getElementById('onboardingOverlay').classList.add('hidden');
             setTheme(state.profile.identityTag);
-            initLifeGrid();
-            updateEducationTimeline();
+            revealMainContent();
             showToast(`🎉 欢迎，${state.profile.name}！`);
         }
 
         function skipOnboarding() {
             document.getElementById('onboardingOverlay').classList.add('hidden');
+            revealMainContent();
             showToast('💡 点击 ⚙️ 开始设置');
         }
 
         function resetOnboarding() {
             onboardingPersonId = null;
             showStep(3);
+        }
+
+        function showExistingUsers() {
+            document.getElementById('onboardingOverlay').classList.remove('hidden');
+            showStep(6);
+            const grid = document.getElementById('existingUserGrid');
+            grid.innerHTML = '';
+            if (!remoteUsers || remoteUsers.length === 0) { skipOnboarding(); return; }
+            remoteUsers.forEach(user => {
+                const card = document.createElement('div');
+                const isActive = user.id === activeUserId;
+                const pid = user.immich_person_id;
+                const thumbUrl = pid ? API_BASE + '/immich/person-thumb?id=' + pid : '';
+                const age = user.birth_date ? Math.floor((new Date() - new Date(user.birth_date)) / 31557600000) : '?';
+                card.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg ' + (isActive ? 'border-theme-accent bg-theme-accent/5' : 'border-gray-100 hover:border-theme-accent');
+                if (isActive) card.style.cursor = 'default';
+                card.innerHTML = thumbUrl ? '<img src="' + thumbUrl + '" class="w-20 h-20 rounded-full object-cover border-2 ' + (isActive ? 'border-theme-accent' : 'border-gray-200') + '"><div class="text-center"><div class="font-bold text-sm">' + user.name + '</div><div class="text-xs text-gray-400">' + age + '岁</div></div>' : '<div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-3xl">👤</div><div class="text-center"><div class="font-bold text-sm">' + user.name + '</div><div class="text-xs text-gray-400">' + age + '岁</div></div>';
+                if (!isActive) card.onclick = function () { switchUser(user.id); document.getElementById('onboardingOverlay').classList.add('hidden'); revealMainContent(); };
+                grid.appendChild(card);
+            });
+        }
+
+        // Show user switcher (re-open step 3 with Immich people)
+        async function showUserSwitcher() {
+            showOnboarding();
+            showStep(2);
+            document.getElementById('onbStatusText').textContent = '加载中...';
+            document.getElementById('onbProgress').style.width = '10%';
+            // Refresh remoteUsers from backend
+            if (apiAvailable) {
+                try {
+                    const r = await fetch(API_BASE + '/sync', { signal: AbortSignal.timeout(3000) });
+                    if (r.ok) { const data = await r.json(); if (data && data.users) remoteUsers = data.users; }
+                } catch { }
+            }
+            document.getElementById('onbProgress').style.width = '50%';
+            if (immichPeople.length > 0) {
+                document.getElementById('onbProgress').style.width = '100%';
+                showPersonSelection();
+            } else {
+                try {
+                    const data = await immichGet('/people');
+                    if (data && data.people && data.people.length > 0) { immichPeople = data.people; showPersonSelection(); }
+                    else { showToast('⚠️ 无法加载家庭成员'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+                } catch { showToast('⚠️ 无法加载照片库'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+            }
+        }
+
+        function showUserSwitcherForAdd() {
+            showOnboarding();
+            showStep(2);
+            document.getElementById('onbStatusText').textContent = '加载中...';
+            document.getElementById('onbProgress').style.width = '10%';
+            if (immichPeople.length > 0) {
+                document.getElementById('onbProgress').style.width = '100%';
+                showPersonSelection();
+            } else {
+                immichGet('/people').then(function (data) {
+                    if (data && data.people && data.people.length > 0) { immichPeople = data.people; showPersonSelection(); }
+                    else { showToast('⚠️ 无法加载家庭成员'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+                });
+            }
         }
 
         // ==================== WHEEL ZOOM ====================
@@ -1999,36 +2122,29 @@
             setTheme(state.profile.identityTag || 'student');
             updateTickerStyle();
             initFlatpickrs();
-            initLifeGrid();
+
+            // Quick health check
+            (async () => {
+                try {
+                    const r = await fetch(API_BASE + '/health', { signal: AbortSignal.timeout(2000) });
+                    apiAvailable = r.ok;
+                } catch { }
+            })();
+
             checkImmichStatus();
-            // Try API sync (non-blocking). API will update education if available.
-            syncFromApi().then(() => {
-                if (apiAvailable) {
-                    // Refresh UI with server data
-                    updateEducationTimeline();
-                }
-            });
-            updateCountdown();
-            updateTimeBudget();
             startTickerLoop();
             initKeyboard();
             initWheelZoom();
-
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);
 
-            setTimeout(() => {
-                showToast(`👋 欢迎回来，${state.profile.name || "朋友"}`);
-                updateEducationTimeline();
-            }, 800);
-
-            gsap.from('main .emma-card', {
-                y: 24, opacity: 0, duration: 0.35, stagger: 0.05, ease: 'power3.out', delay: 0.1,
-                clearProps: 'all'
-            });
-            gsap.from('.ticker-bar', {
-                y: 20, opacity: 0, duration: 0.3, ease: 'power2.out', delay: 0.2,
-                clearProps: 'opacity'
+            // Try API sync. Decide main content vs selection vs onboarding.
+            syncFromApi().then(() => {
+                if (apiAvailable && remoteUsers.length > 0 && state.profile.name && state.profile.birthDate) {
+                    showExistingUsers(); // show user selection page
+                } else {
+                    revealMainContent(); // no backend users or offline — show dashboard
+                }
             });
         });
     </script>

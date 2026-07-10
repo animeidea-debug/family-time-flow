@@ -1,6 +1,6 @@
 # FamilyTimeFlow — Project Progress
 
-> **Last updated**: 2026-07-10 20:40 UTC+8
+> **Last updated**: 2026-07-10 23:00 UTC+8
 
 ---
 
@@ -102,12 +102,29 @@
 - [x] **Tailscale verified** — SSH (port 10000), WebDAV (port 8889), Backend API (port 3000) all reachable
 - [x] **Immich connected** — v2.7.5, 8+ named persons with birth dates
 
-## ✅ Bug Fixes (2026-07-10)
+## ✅ Bug Fixes & UX Improvements (2026-07-10)
 
+### Critical Bugs Fixed
 - [x] **Critical JS syntax error** — stray `ch ` character at line 1492 broke all JS execution after `updateEducationTimeline()` (milestones, education timeline, ticker, immich, onboarding)
 - [x] **schoolSystem localStorage persistence** — added `schoolSystem` to initial state + `hydrateFormFromState()` so school system selection survives page reload
 - [x] **resetConfig completeness** — added missing `schoolSystem` to `resetConfig()` default state
-- [x] **Deployed to NAS** via Tailscale WebDAV (24s)
+
+### Onboarding & User Management Flow
+- [x] **Removed LAN/WAN preset picker** — simplified onboarding to one-click auto-connect via backend proxy
+- [x] **Added user avatar dropdown in navbar** — name/avatar, switch user, settings, reset
+- [x] **Fixed `showPersonSelection()`** — uses `immich_person_id` (not name) to match backend users
+- [x] **Fixed `confirmOnboarding()`** — passes `immich_person_id` to backend POST/PUT
+- [x] **Fixed `showUserSwitcher()` timing** — awaits `apiGet('/sync')` before showing person list
+- [x] **Fixed `switchUser()`** — restores `immich_person_id` from backend user record
+- [x] **Fixed Step 4 button logic** — 3 states: 保存更改 / 切换到此用户 / 保存并开始
+- [x] **Fixed init phase** — added health check before full sync to set apiAvailable early
+- [x] **Added `DELETE /api/users` backend endpoint** — for complete data reset
+- [x] **Updated `resetOnboardingData()`** — calls backend DELETE + clears localStorage
+
+### Backend Stability
+- [x] **Pushover notification fix** — deploy.sh reads from macOS Keychain fallback
+- [x] **Backend DB auto-restart** — container restart creates fresh DB on startup
+- [x] **Immich config persisted** — written to `app_config` table on container start
 
 ---
 
