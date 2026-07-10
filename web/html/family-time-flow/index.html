@@ -599,16 +599,16 @@
                 <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆</p>
             </section>
 
-            <!-- Milestone Timeline (visible when Student theme) -->
-            <section id="milestoneSection" class="emma-card p-4 sm:p-5 hidden">
-                <h2 class="text-lg sm:text-xl font-black text-theme-text mb-2 flex items-center gap-2">
-                    🎓 人生大事里程碑
-                </h2>
-                <div id="milestoneList" class="space-y-2 text-xs sm:text-sm"></div>
-            </section>
-
             <!-- Meso + Micro Column -->
             <div class="flex flex-col gap-4 sm:gap-6">
+
+                <!-- Milestone Timeline (visible when Student theme) -->
+                <section id="milestoneSection" class="emma-card p-4 sm:p-5 hidden">
+                    <h2 class="text-lg sm:text-xl font-black text-theme-text mb-2 flex items-center gap-2">
+                        🎓 人生大事里程碑
+                    </h2>
+                    <div id="milestoneList" class="space-y-1.5 text-xs sm:text-sm"></div>
+                </section>
 
                 <!-- Meso: Countdown Clock -->
                 <section class="emma-card p-5 sm:p-6">
@@ -1249,11 +1249,11 @@
                 div.innerHTML = `<span>${m.label}</span><span class="text-theme-text/60 text-[10px]">✅ 已完成</span>`;
                 milestoneList.appendChild(div);
             });
-            // Show upcoming milestones
-            futureMilestones.slice(0, 4).forEach(m => {
+            // Show upcoming milestones (max 3, compact)
+            futureMilestones.slice(0, 3).forEach(m => {
                 const div = document.createElement('div');
                 const isUrgent = m.diffDays <= 365 && m.diffDays > 0;
-                div.className = `flex items-center justify-between py-1.5 border-b border-theme-border/30 ${isUrgent ? 'font-bold' : ''}`;
+                div.className = `flex items-center justify-between py-1 ${isUrgent ? 'font-bold' : ''}`;
                 div.innerHTML = `<span>${m.label}</span><span class="text-accent text-[10px] sm:text-xs font-bold">${m.remaining}</span>`;
                 milestoneList.appendChild(div);
             });
