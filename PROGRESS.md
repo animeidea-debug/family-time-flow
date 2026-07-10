@@ -1,6 +1,6 @@
 # FamilyTimeFlow — Project Progress
 
-> **Last updated**: 2026-07-10 20:20 UTC+8
+> **Last updated**: 2026-07-10 20:40 UTC+8
 
 ---
 
@@ -101,6 +101,13 @@
 - [x] **deploy.sh updated** — added Tailscale IP (100.102.16.75) auto-detection, fallback chain
 - [x] **Tailscale verified** — SSH (port 10000), WebDAV (port 8889), Backend API (port 3000) all reachable
 - [x] **Immich connected** — v2.7.5, 8+ named persons with birth dates
+
+## ✅ Bug Fixes (2026-07-10)
+
+- [x] **Critical JS syntax error** — stray `ch ` character at line 1492 broke all JS execution after `updateEducationTimeline()` (milestones, education timeline, ticker, immich, onboarding)
+- [x] **schoolSystem localStorage persistence** — added `schoolSystem` to initial state + `hydrateFormFromState()` so school system selection survives page reload
+- [x] **resetConfig completeness** — added missing `schoolSystem` to `resetConfig()` default state
+- [x] **Deployed to NAS** via Tailscale WebDAV (24s)
 
 ---
 
