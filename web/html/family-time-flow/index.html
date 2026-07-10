@@ -1054,21 +1054,21 @@
                             cell.classList.add('current');
                         }
 
-                        // Apply education stage shading (only for student theme, on spent+future)
-                        if (state.profile.identityTag === 'student') {
+                        // Apply education stage shading (ONLY on spent/past cells)
+                        if (state.profile.identityTag === 'student' && cellDate < now) {
                             const cellAgeYears = (cellDate - birthMs) / (365.25 * 24 * 60 * 60 * 1000);
                             for (const s of stages) {
-                                if (cellAgeYears >= s.start && cellAgeYears < s.end && year >= s.start) {
+                                if (cellAgeYears >= s.start && cellAgeYears < s.end) {
                                     cell.classList.add(s.cls);
                                     break;
                                 }
                             }
-                            // Milestone markers at boundary years
-                            if (milestoneYears.includes(year) && week === 0) {
-                                cell.classList.add('milestone-marker');
-                                if (year === 15) cell.classList.add('中考');
-                                if (year === 18) cell.classList.add('高考');
-                            }
+                        }
+                        // Milestone markers at boundary years (on all cells)
+                        if (state.profile.identityTag === 'student' && milestoneYears.includes(year) && week === 0) {
+                            cell.classList.add('milestone-marker');
+                            if (year === 15) cell.classList.add('中考');
+                            if (year === 18) cell.classList.add('高考');
                         }
                     }
 
@@ -1325,8 +1325,10 @@
             const birthYear = birth.getFullYear();
             const schoolYear = `第 ${currentYear - birthYear - 5 > 0 ? currentYear - birthYear - 5 : 1} 学年`;
             const m = now.getMonth(); // 0=Jan
-            const semester = (m >= 8 || m <= 1) ? '上学期' : (m >= 2 && m <= 6) ? '下学期' : (m === 7 ? '暑假中' : '上学期');
-            const semesterLabel = (m === 7 || m === 8) ? `暑假 (${grade.grade}结束)` : semester;
+            // Chinese school year: 上学期 Sep-Jan, 寒假 Feb, 下学期 Mar-Jun, 暑假 Jul-Aug
+            const isSummer = (m >= 6 && m <= 7);
+            const semester = (m >= 8 || m <= 0) ? '上学期' : (m >= 1 && m <= 1) ? '寒假' : (m >= 2 && m <= 5) ? '下学期' : '暑假中';
+            const semesterLabel = isSummer ? `暑假 (${grade.grade}结束)` : semester;
 
             // Calculate days into current school year (Sept 1)
             const schoolYearStart = new Date(now.getMonth() >= 8 ? currentYear : currentYear - 1, 8, 1);
