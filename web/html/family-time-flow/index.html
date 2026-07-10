@@ -885,10 +885,28 @@
                     class="btn btn-ghost btn-xs flex-1 font-bold opacity-60 hover:opacity-100">➕ 新建用户</button>
             </div>
 
+            <!-- Immich Integration (Phase 3) -->
+            <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">📸 Immich 照片同步</div>
+
+            <div class="form-control">
+                <div id="immichStatus" class="flex items-center gap-2 text-xs mb-2">
+                    <span class="loading loading-dots loading-xs hidden" id="immichLoading"></span>
+                    <span id="immichStatusText" class="text-theme-text/50">检查连接中...</span>
+                </div>
+            </div>
+
+            <div id="immichPersonSection" class="form-control hidden">
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">关联 Immich 人物</span></label>
+                <select id="cfgImmichPerson"
+                    class="select select-bordered select-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300">
+                    <option value="">-- 未关联 --</option>
+                </select>
+            </div>
+
             <div class="form-control">
                 <label class="label cursor-pointer justify-start gap-3 py-1">
                     <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent checkbox-sm" />
-                    <span class="label-text font-bold text-theme-text">📸 同步 Immich 元数据</span>
+                    <span class="label-text font-bold text-theme-text">📸 启用 Immich 照片同步</span>
                 </label>
             </div>
 
@@ -1214,34 +1232,6 @@
 
             gridZoom = 1.0;
             applyGridZoom();
-        }
-
-        function showWeekTooltip(event, weekIndex) {
-            const tooltip = document.getElementById('photoTooltip');
-            const rect = event.target.getBoundingClientRect();
-
-            let left = rect.left + (rect.width / 2) - 90;
-            let top = rect.top - 145;
-
-            // Keep in viewport
-            if (left < 8) left = 8;
-            if (left + 180 > window.innerWidth) left = window.innerWidth - 188;
-            if (top < 8) top = rect.bottom + 8;
-
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
-            tooltip.classList.add('visible');
-
-            let dateStr = '';
-            if (state.profile.birthDate) {
-                const birth = new Date(state.profile.birthDate);
-                const ws = new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
-                const we = new Date(ws.getTime() + 6 * 24 * 60 * 60 * 1000);
-                const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                dateStr = `${f(ws)} ~ ${f(we)}`;
-            }
-            document.getElementById('tooltipCaption').textContent =
-                `第 ${weekIndex + 1} 周 · ${dateStr || '回忆加载中...'}`;
         }
 
         function hideTooltip() {
@@ -1629,6 +1619,138 @@
             }
         }
 
+        // ==================== IMMICH CLIENT (Phase 3) ====================
+        let immichConnected = false;
+        let immichPeople = [];
+
+        async function immichGet(path) {
+            return await apiGet(`/immich${path}`);
+        }
+
+        async function checkImmichStatus() {
+            const statusEl = document.getElementById('immichStatusText');
+            const loadingEl = document.getElementById('immichLoading');
+            const personSection = document.getElementById('immichPersonSection');
+            const personSelect = document.getElementById('cfgImmichPerson');
+
+            loadingEl.classList.remove('hidden');
+            statusEl.textContent = '正在检查 Immich 连接...';
+
+            const status = await immichGet('/status');
+            loadingEl.classList.add('hidden');
+
+            if (status && status.connected) {
+                immichConnected = true;
+                statusEl.innerHTML = `<span class="text-green-500">✅</span> Immich v${status.version.major}.${status.version.minor}.${status.version.patch} 已连接`;
+
+                // Load people
+                const peopleData = await immichGet('/people');
+                if (peopleData && peopleData.people) {
+                    immichPeople = peopleData.people;
+                    personSection.classList.remove('hidden');
+                    personSelect.innerHTML = '<option value="">-- 未关联 --</option>';
+                    immichPeople.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = `${p.name} (${p.assetsCount}张照片)`;
+                        if (p.id === state.profile.immichPersonId) opt.selected = true;
+                        personSelect.appendChild(opt);
+                    });
+                }
+            } else {
+                immichConnected = false;
+                statusEl.innerHTML = `<span class="text-orange-400">⚠️</span> Immich 未连接 (请确保 API Key 已配置)`;
+                personSection.classList.add('hidden');
+            }
+        }
+
+        // Fetch photos for a date range (for tooltip)
+        async function fetchPhotosForDate(dateStr, personId) {
+            let path = `/assets?date=${dateStr}&limit=3`;
+            if (personId) path += `&personId=${personId}`;
+            const data = await immichGet(path);
+            return data && data.assets ? data.assets : [];
+        }
+
+        // Fetch "On This Day" photos (for ticker)
+        async function fetchOnThisDay() {
+            const data = await immichGet('/on-this-day');
+            return data && data.assets ? data.assets : [];
+        }
+
+        // Update tooltip when hovering a week cell (replaces placeholder)
+        function showWeekTooltip(event, weekIndex) {
+            const tooltip = document.getElementById('photoTooltip');
+            const rect = event.target.getBoundingClientRect();
+
+            let left = rect.left + (rect.width / 2) - 90;
+            let top = rect.top - 145;
+
+            if (left < 8) left = 8;
+            if (left + 180 > window.innerWidth) left = window.innerWidth - 188;
+            if (top < 8) top = rect.bottom + 8;
+
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            tooltip.classList.add('visible');
+
+            let dateStr = '';
+            if (state.profile.birthDate) {
+                const birth = new Date(state.profile.birthDate);
+                const ws = new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
+                const we = new Date(ws.getTime() + 6 * 24 * 60 * 60 * 1000);
+                const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                dateStr = `${f(ws)} ~ ${f(we)}`;
+
+                // If Immich connected, fetch real photos
+                if (immichConnected && state.immichSync) {
+                    const midDate = f(new Date(ws.getTime() + 3 * 24 * 60 * 60 * 1000));
+                    fetchPhotosForDate(midDate, state.profile.immichPersonId).then(assets => {
+                        const imgs = [1, 2, 3];
+                        imgs.forEach((i, idx) => {
+                            const img = document.getElementById(`tooltipImg${i}`);
+                            if (assets[idx]) {
+                                img.src = `${API_BASE}/immich/asset-thumb?id=${assets[idx].id}`;
+                                img.classList.remove('hidden');
+                            } else {
+                                img.src = '';
+                                img.classList.add('hidden');
+                            }
+                        });
+                        if (assets.length > 0) {
+                            document.getElementById('tooltipCaption').textContent =
+                                `第 ${weekIndex + 1} 周 · ${dateStr} (${assets.length}张照片)`;
+                        } else {
+                            document.getElementById('tooltipCaption').textContent =
+                                `第 ${weekIndex + 1} 周 · ${dateStr} 暂无照片`;
+                        }
+                    });
+                    return;
+                }
+            }
+            document.getElementById('tooltipCaption').textContent =
+                `第 ${weekIndex + 1} 周 · ${dateStr || '回忆加载中...'}`;
+        }
+
+        // Override the ticker to use real Immich data
+        async function updateTicker() {
+            const now = new Date();
+            const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+            const track = document.getElementById('tickerTrack');
+
+            if (immichConnected && state.immichSync) {
+                const assets = await fetchOnThisDay();
+                if (assets.length > 0) {
+                    const years = [...new Set(assets.map(a => a.year))].join('、');
+                    track.textContent =
+                        `📸 那年今日 (${md})：${assets.length}张照片来自 ${years} 年 ✨ 每天都是值得纪念的一天 🎉`;
+                    return;
+                }
+            }
+            track.textContent =
+                `📸 那年今日 (${md})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉`;
+        }
+
         // ==================== WHEEL ZOOM ====================
         function initWheelZoom() {
             const sc = document.querySelector('.overflow-x-auto');
@@ -1648,6 +1770,7 @@
             updateTickerStyle();
             initFlatpickrs();
             initLifeGrid();
+            checkImmichStatus();
             // Try API sync (non-blocking). API will update education if available.
             syncFromApi().then(() => {
                 if (apiAvailable) {

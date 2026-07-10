@@ -364,6 +364,30 @@ app.get("/api/immich/assets", async (req, res) => {
     });
 });
 
+// GET /api/immich/asset-thumb?id= — Proxy thumbnail from Immich (returns image)
+app.get("/api/immich/asset-thumb", async (req, res) => {
+    const { id, size } = req.query;
+    if (!id) return res.status(400).json({ error: "id required" });
+    const config = queryAll("SELECT key, value FROM app_config");
+    const cfg = {};
+    config.forEach(c => cfg[c.key] = c.value);
+    const apiKey = cfg.immich_api_key;
+    if (!apiKey) return res.status(401).json({ error: "no api key" });
+    try {
+        const thumbResp = await fetch(`${IMMICH_URL}/api/assets/${id}/thumbnail?size=${size || 'thumbnail'}`, {
+            headers: { 'x-api-key': apiKey },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!thumbResp.ok) return res.status(404).json({ error: "thumbnail not found" });
+        const buffer = await thumbResp.arrayBuffer();
+        res.set('Content-Type', thumbResp.headers.get('content-type') || 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=86400');
+        res.send(Buffer.from(buffer));
+    } catch {
+        res.status(500).json({ error: "failed to fetch thumbnail" });
+    }
+});
+
 // GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     const { month, day, limit } = req.query;
