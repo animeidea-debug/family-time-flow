@@ -63,7 +63,7 @@ MCP server 路径：`/Users/garychen/scripts/mcp-pushover-server.js`
 - 前端：Vanilla JS + TailwindCSS (CDN) + daisyUI (CDN) + GSAP (CDN) — 零构建环境
 - 后端：Node.js (Express) + SQLite — 单文件数据库
 - 动画时钟：`requestAnimationFrame` 替代 `setInterval`，确保 60Hz 平滑
-- 部署：Docker Compose (nginx + Node.js)，目标平台 Synology/QNAP NAS
+- 部署：本项目只同步应用文件；Docker Compose 和容器生命周期由 `~/Desktop/NAS` 项目统一管理
 
 ### 主题系统
 三种角色模式，700ms Tailwind 过渡动画：

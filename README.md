@@ -31,7 +31,7 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 
 | Layer | Component | Specifications |
 |-------|-----------|----------------|
-| **Deployment** | Docker & Docker Compose | Containerized single-click deployment for Synology/QNAP |
+| **Deployment** | NAS-managed Docker Compose | This project deploys application files; `~/Desktop/NAS` owns the container definition |
 | **Backend** | Node.js (Express) or Python (FastAPI) | Lightweight API serving, directly exposed to frontend |
 | **Database** | SQLite | Single-file embedded database (no MySQL/Redis) |
 | **Frontend** | Vanilla JS + TailwindCSS + daisyUI | Zero-build environment (CDN preferred) |
@@ -154,7 +154,7 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 - [ ] Migrate from localStorage to SQLite single-file system
 - [ ] Construct Node.js/Python server routing
 - [ ] Implement API endpoints for user/event management
-- [ ] Wrap workspace via Docker Compose
+- [x] Runtime container transferred to the NAS infrastructure repository
 - [ ] Launch on NAS server for multi-device scaling (iPad, TV, monitors)
 
 ### Phase 3: Immich Token Integration (SaaS 3.0)

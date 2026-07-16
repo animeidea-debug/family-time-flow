@@ -2,6 +2,8 @@
 
 > **Last updated**: 2026-07-10 23:00 UTC+8
 
+> **Infrastructure ownership update (2026-07-16):** `ftf_backend` Docker Compose is now managed by the separate NAS infrastructure repository. This project retains application code, HTML, nginx fragments, and artifact deployment only.
+
 ---
 
 ## ✅ Completed

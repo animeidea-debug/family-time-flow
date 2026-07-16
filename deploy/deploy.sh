@@ -162,7 +162,9 @@ echo ""
 echo -e "${YELLOW}📄 同步后端代码 (→ /docker/backend/${PROJECT_PATH}/)...${NC}"
 SOURCE_BACKEND="${SCRIPT_DIR}/../web/backend/${PROJECT_PATH}"
 if [ -d "$SOURCE_BACKEND" ]; then
-    rclone sync --delete-excluded "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules" --exclude "data/" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    # node_modules 和 SQLite data 由 NAS 保留；不要使用 --delete-excluded，
+    # 否则被排除的持久化目录也可能在目标端被删除。
+    rclone sync "${SOURCE_BACKEND}/" "${REMOTE}:/docker/backend/${PROJECT_PATH}/" --exclude "node_modules/**" --exclude "data/**" 2>&1 | grep -v "NOTICE" | tail -2 || true
     echo -e "${GREEN}✅ 后端同步完成${NC}"
 else
     echo -e "${YELLOW}⚠️  未找到 ${SOURCE_BACKEND}，跳过${NC}"
