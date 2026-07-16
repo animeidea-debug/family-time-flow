@@ -54,6 +54,14 @@ test('experimental admin and canvas pages are excluded from deployment', () => {
     assert.match(deploy, /--exclude "grid-canvas\.html"/);
 });
 
+test('nginx limits FamilyTimeFlow to the home LAN and internal backend network', () => {
+    const nginx = fs.readFileSync(path.join(__dirname, '..', 'conf.d', 'family-time-flow.conf'), 'utf8');
+    assert.match(nginx, /allow 192\.168\.0\.0\/16;/);
+    assert.match(nginx, /deny all;/);
+    assert.match(nginx, /proxy_pass http:\/\/ftf-backend:3000;/);
+    assert.doesNotMatch(nginx, /172\.17\.0\.1:3000/);
+});
+
 test('household home is available without Immich', () => {
     assert.match(html, /id="householdView"/);
     assert.match(applicationScript, /async function showHouseholdView/);
