@@ -107,7 +107,8 @@ async function run() {
             'function updateUserMenu',
             'function showExistingUsers',
             'function revealMainContent',
-            'function resetOnboardingData'
+            'function requestDeleteMember',
+            'function confirmDeleteMember'
         ];
         for (const fn of checks) {
             if (!html.includes(fn)) throw new Error('Missing: ' + fn);

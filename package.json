@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test": "node --test web/test/*.test.js && npm --prefix web/backend/family-time-flow test"
+  },
   "dependencies": {
     "playwright": "^1.61.1"
   }

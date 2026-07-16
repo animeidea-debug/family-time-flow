@@ -2,6 +2,8 @@
 
 > A self-hosted, multi-user dynamic time visualization dashboard — transforming abstract time management into a **"Family Digital Time Machine"**.
 
+> 当前接管后的产品与交付状态请先阅读 [`docs/PRODUCT_REDESIGN.md`](docs/PRODUCT_REDESIGN.md)、[`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md) 和 [`docs/RELEASE_CANDIDATE.md`](docs/RELEASE_CANDIDATE.md)。下方原始愿景保留为设计背景。
+
 ---
 
 ## 📋 Table of Contents
@@ -205,9 +207,10 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 - **Responsive Layout**: Mobile-friendly with TailwindCSS grid system
 
 ### 🔄 Next Steps (Phase 2)
-- Backend API development with Express.js
-- SQLite database schema implementation
-- User authentication and multi-user support
+- [x] Backend API development with Express.js
+- [x] SQLite database schema and automatic migrations
+- [x] Stable multi-member initialization and switching
+- [x] Atomic database persistence and startup backups
 - Docker Compose deployment configuration
 - Immich API integration (Phase 3)
 

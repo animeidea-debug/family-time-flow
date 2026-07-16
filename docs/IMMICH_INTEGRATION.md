@@ -1,5 +1,35 @@
 # Immich Integration Design — FamilyTimeFlow
 
+> **接管安全要求（2026-07-17）**：当前 Immich 实例升级和 NAS 联调由基础设施项目另行推进。FamilyTimeFlow 在用户确认前不得主动连接真实 Immich。旧 Key 曾进入 Git 历史，必须撤销，禁止复用。
+
+## 0. 新 API Key 安全基线
+
+正式恢复联调前创建专用 Key，名称建议为 `FamilyTimeFlow Read Only`。
+
+### 必需的最小权限
+
+- `person.read`：人物列表、人物资料和人物缩略图。
+- `asset.read`：按日期/人物搜索照片和读取照片元数据。
+- `asset.view`：读取照片缩略图。
+
+仅当后续决定直接读取 Immich 原生 Memories 时，再单独增加 `memory.read`。
+
+### 明确禁止
+
+- `all` 和所有 `admin.*` 权限。
+- `asset.update`、`asset.delete`、`asset.upload`、`asset.download`。
+- `person.update`、`person.delete`、`person.merge`、`person.reassign`。
+- `apiKey.*`、`systemConfig.*`。
+- `memory.create`、`memory.update`、`memory.delete`。
+
+### 账户与交付方式
+
+- Key 所属账户必须能看到所需家庭照片；优先使用专门的只读集成账户，通过 Immich 分享关系获得可见范围。
+- Key 不得粘贴到聊天、前端、Git、Markdown 或普通配置文件。
+- Key 只能通过 NAS 容器 Secret 或服务端环境变量 `IMMICH_API_KEY` 注入。
+- FamilyTimeFlow 后端不得通过诊断、同步或 bootstrap API 返回 Key。
+- 接入前必须按升级后的 Immich 实际版本重新验证权限与 API 路径。
+
 > **Based on live environment: Immich v2.7.5, PostgreSQL 16, 15,643 persons, ~22K assets**
 > NAS URL: `http://192.168.6.108:22283` (internal), LAN access via `192.168.6.108:22283`
 

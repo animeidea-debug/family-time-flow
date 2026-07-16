@@ -140,7 +140,8 @@ echo ""
 echo -e "${YELLOW}📄 同步前端页面 (→ /docker/html/${PROJECT_PATH}/)...${NC}"
 SOURCE_HTML="${SCRIPT_DIR}/../web/html/${PROJECT_PATH}"
 if [ -d "$SOURCE_HTML" ]; then
-    rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" 2>&1 | grep -v "NOTICE" | tail -2 || true
+    rclone sync --delete-excluded "${SOURCE_HTML}/" "${REMOTE}:/docker/html/${PROJECT_PATH}/" \
+        --exclude "admin.html" --exclude "grid-canvas.html" 2>&1 | grep -v "NOTICE" | tail -2 || true
     echo -e "${GREEN}✅ HTML 同步完成${NC}"
 else
     echo -e "${YELLOW}⚠️  未找到 ${SOURCE_HTML}，跳过${NC}"
