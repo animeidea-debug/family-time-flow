@@ -666,20 +666,22 @@
                     class="btn btn-accent btn-lg font-bold shadow-lg shadow-accent/30 transition-all duration-300 hover:scale-105">
                     🚀 一键开始
                 </button>
-                <p class="text-xs text-gray-400 mt-4">后台自动检测 · 连接后直达仪表盘</p>
+                <p class="text-xs text-gray-400 mt-4">先创建家庭成员 · 照片服务稍后可选连接</p>
             </div>
 
             <!-- Step 2: Loading -->
             <div id="onbStep2" class="hidden">
                 <div class="text-4xl mb-4"><span id="onbLoadingIcon"
                         class="loading loading-spinner loading-lg text-theme-accent"></span></div>
-                <h2 class="text-xl font-bold text-gray-800 mb-2">正在连接您的照片库...</h2>
-                <p id="onbStatusText" class="text-sm text-gray-500 mb-4">正在检查 Immich 连接</p>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">正在准备家庭空间...</h2>
+                <p id="onbStatusText" class="text-sm text-gray-500 mb-4">正在检查家庭服务</p>
                 <div class="w-full bg-gray-100 rounded-full h-2 mb-6 overflow-hidden">
                     <div id="onbProgress" class="h-full rounded-full bg-theme-accent transition-all duration-500"
                         style="width:0%"></div>
                 </div>
                 <p id="onbError" class="text-xs text-red-400 hidden"></p>
+                <button id="onbRetryButton" onclick="retryApplication()"
+                    class="btn btn-sm btn-accent w-full mt-4 hidden">重新连接家庭服务</button>
             </div>
 
             <!-- Step 3: Person Selection -->
@@ -715,6 +717,25 @@
                     <button onclick="resetOnboarding()" class="btn btn-ghost btn-sm">↩ 重新选择</button>
                 </div>
             </div>
+            <div id="onbStep5" class="hidden text-left">
+                <div class="text-center mb-5">
+                    <div class="text-4xl mb-2">👤</div>
+                    <h2 class="text-xl font-black text-gray-800">添加家庭成员</h2>
+                    <p class="text-xs text-gray-400 mt-1">先填写基础资料，照片人物以后再关联。</p>
+                </div>
+                <label class="block text-xs font-bold text-gray-600 mb-1.5" for="newMemberName">姓名</label>
+                <input id="newMemberName" type="text" maxlength="40" autocomplete="off"
+                    class="input input-bordered w-full bg-white border-2 border-gray-200 mb-3" placeholder="例如：Emma">
+                <label class="block text-xs font-bold text-gray-600 mb-1.5" for="newMemberBirthDate">出生日期</label>
+                <input id="newMemberBirthDate" type="date"
+                    class="input input-bordered w-full bg-white border-2 border-gray-200 mb-2">
+                <p id="newMemberError" class="text-xs text-red-500 min-h-5 mb-2"></p>
+                <div class="flex gap-2">
+                    <button onclick="submitNewUser()" id="newMemberSubmit"
+                        class="btn btn-accent flex-1 font-bold">保存成员</button>
+                    <button onclick="cancelNewUser()" class="btn btn-ghost font-bold">取消</button>
+                </div>
+            </div>
             <div id="onbStep6" class="hidden">
                 <div class="text-5xl mb-3">👋</div>
                 <h2 class="text-2xl font-black text-gray-800 mb-1">欢迎回来</h2>
@@ -744,7 +765,10 @@
             </a>
         </div>
         <div class="flex-none gap-1.5 flex items-center">
-            <div class="join">
+            <button onclick="showHouseholdView()"
+                class="btn btn-ghost btn-xs sm:btn-sm font-bold text-theme-text/70" title="家庭首页">🏠 <span
+                    class="hidden sm:inline">家庭</span></button>
+            <div class="join hidden sm:flex">
                 <button onclick="setTheme('student')" data-theme="student"
                     class="btn btn-xs sm:btn-sm join-item bg-theme-student-bg/80 border-2 border-theme-student-accent text-theme-student-accent hover:bg-theme-student-accent hover:text-white font-bold transition-all duration-300">
                     🎒 学生
@@ -775,12 +799,6 @@
                     <li><button onclick="toggleDrawer()"
                             class="font-bold text-sm gap-2 btn btn-ghost btn-sm w-full justify-start">⚙️ 设置</button>
                     </li>
-                    <li>
-                        <div class="divider my-1"></div>
-                    </li>
-                    <li><button onclick="resetOnboardingData()"
-                            class="font-bold text-sm text-red-500 gap-2 btn btn-ghost btn-sm w-full justify-start">🗑️
-                            重置所有数据</button></li>
                 </ul>
             </div>
         </div>
@@ -788,7 +806,57 @@
 
     <!-- Main Content -->
     <main id="mainContent" class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10 hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <section id="householdView" class="hidden space-y-4 sm:space-y-6">
+            <div class="emma-card p-5 sm:p-7 overflow-hidden relative">
+                <div class="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold text-theme-accent mb-1">今天 · <span id="householdDate"></span></p>
+                        <h1 id="householdTitle" class="text-2xl sm:text-4xl font-black text-theme-text">家庭时光</h1>
+                        <p class="text-sm text-theme-text/55 mt-2">看见彼此正在经历的阶段，也别错过值得期待的日子。</p>
+                    </div>
+                    <div class="text-left sm:text-right">
+                        <div id="householdClock" class="text-2xl font-black text-theme-accent tabular-nums">00:00</div>
+                        <div class="text-xs text-theme-text/45">此刻，和家人在一起</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg sm:text-xl font-black text-theme-text">家人</h2>
+                    <button onclick="createNewUser()" class="btn btn-ghost btn-xs font-bold">＋ 添加成员</button>
+                </div>
+                <div id="householdMemberGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <section class="emma-card p-5 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-black text-theme-text">近期值得期待</h2>
+                        <button onclick="openEventForm()" class="btn btn-ghost btn-xs font-bold">＋ 添加事件</button>
+                    </div>
+                    <div id="householdUpcoming" class="space-y-2"></div>
+                </section>
+                <section class="emma-card p-5">
+                    <h2 class="text-lg font-black text-theme-text mb-2">照片记忆</h2>
+                    <div class="rounded-2xl bg-theme-muted/70 border-2 border-theme-border p-5 text-center">
+                        <div class="text-3xl mb-2">📷</div>
+                        <p class="text-sm font-bold text-theme-text">Immich 暂未接入</p>
+                        <p class="text-xs text-theme-text/45 mt-1">家庭时间功能可以独立使用，照片服务准备好后再连接。</p>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <div id="personalView" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 hidden">
+            <section class="lg:col-span-3 flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-1">
+                <div>
+                    <button onclick="showHouseholdView()" class="text-xs font-bold text-theme-accent mb-1">← 返回家庭首页</button>
+                    <h1 id="personalViewName" class="text-2xl sm:text-3xl font-black text-theme-text">个人时间</h1>
+                    <p id="personalViewMeta" class="text-xs sm:text-sm text-theme-text/50 mt-1"></p>
+                </div>
+                <button onclick="toggleDrawer()" class="btn btn-ghost btn-sm font-bold">编辑个人资料</button>
+            </section>
 
             <!-- Macro: Life in Weeks Grid -->
             <section class="lg:col-span-2 emma-card p-4 sm:p-6">
@@ -910,10 +978,39 @@
         </div>
     </main>
 
+    <div id="eventFormOverlay"
+        class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/35 backdrop-blur-sm px-4">
+        <section class="w-full max-w-md rounded-3xl bg-white p-5 sm:p-6 shadow-2xl" role="dialog"
+            aria-labelledby="eventFormTitle">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="eventFormTitle" class="text-xl font-black text-slate-800">添加家庭事件</h2>
+                <button onclick="closeEventForm()" class="btn btn-ghost btn-sm btn-circle" aria-label="关闭事件表单">✕</button>
+            </div>
+            <input id="eventEditId" type="hidden">
+            <label class="block text-xs font-bold text-slate-600 mb-1.5" for="eventMemberId">家庭成员</label>
+            <select id="eventMemberId" class="select select-bordered w-full bg-white mb-3"></select>
+            <label class="block text-xs font-bold text-slate-600 mb-1.5" for="eventTitle">事件名称</label>
+            <input id="eventTitle" maxlength="80" class="input input-bordered w-full bg-white mb-3"
+                placeholder="例如：暑假旅行">
+            <label class="block text-xs font-bold text-slate-600 mb-1.5" for="eventDate">日期</label>
+            <input id="eventDate" type="date" class="input input-bordered w-full bg-white mb-3">
+            <label class="block text-xs font-bold text-slate-600 mb-1.5" for="eventNotes">备注（可选）</label>
+            <textarea id="eventNotes" maxlength="300" class="textarea textarea-bordered w-full bg-white mb-1"
+                rows="3" placeholder="写下一点期待或准备事项"></textarea>
+            <p id="eventFormError" class="text-xs text-red-500 min-h-5 mb-2"></p>
+            <div class="flex gap-2">
+                <button onclick="submitEventForm()" id="eventFormSubmit"
+                    class="btn btn-accent flex-1 font-bold">保存事件</button>
+                <button onclick="requestDeleteEvent()" id="eventDeleteButton"
+                    class="btn btn-ghost text-red-500 font-bold hidden">删除</button>
+            </div>
+        </section>
+    </div>
+
     <!-- On This Day Ticker -->
     <div class="ticker-bar py-2.5 relative z-10">
         <div id="tickerTrack" class="ticker-track text-xs sm:text-sm text-theme-text/70 font-semibold">
-            📸 正在加载「那年今日」回忆...
+            ✨ 今天也值得被认真生活和记住
         </div>
     </div>
 
@@ -928,7 +1025,17 @@
                 class="btn btn-ghost btn-sm btn-circle text-xl opacity-60 hover:opacity-100 transition-opacity">✕</button>
         </div>
 
-        <div class="space-y-4">
+        <div class="grid grid-cols-3 gap-1 rounded-xl bg-theme-muted/70 p-1 mb-5">
+            <button id="settingsTabMember" onclick="openSettingsTab('member')"
+                class="btn btn-sm btn-ghost font-bold">成员</button>
+            <button id="settingsTabHousehold" onclick="openSettingsTab('household')"
+                class="btn btn-sm btn-ghost font-bold">家庭</button>
+            <button id="settingsTabSystem" onclick="openSettingsTab('system')"
+                class="btn btn-sm btn-ghost font-bold">系统</button>
+        </div>
+
+        <div id="settingsMemberPanel" class="space-y-4">
+            <p id="settingsNoMember" class="hidden rounded-xl bg-amber-50 p-3 text-xs text-amber-700">请先选择一位家庭成员。</p>
             <div class="form-control">
                 <label class="label py-1"><span class="label-text font-bold text-theme-text">显示名称</span></label>
                 <input type="text" id="cfgName"
@@ -948,6 +1055,12 @@
                 <input type="number" id="cfgExpectedAge"
                     class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300"
                     value="80" min="1" max="120">
+            </div>
+
+            <div class="form-control">
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">个人颜色</span></label>
+                <input type="color" id="cfgMemberColor"
+                    class="h-10 w-full rounded-lg border-2 border-theme-border bg-theme-muted/80 p-1" value="#3B82F6">
             </div>
 
             <div class="form-control">
@@ -976,21 +1089,52 @@
                 </select>
             </div>
 
-            <!-- User Management -->
-            <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">👤 用户管理</div>
+            <div class="flex gap-2 pt-3">
+                <button onclick="saveConfig()"
+                    class="btn btn-accent btn-sm flex-1 font-bold transition-all duration-300 hover:shadow-lg hover:shadow-accent/30">💾
+                    保存成员资料</button>
+            </div>
+        </div>
+
+        <div id="settingsHouseholdPanel" class="space-y-4 hidden">
+            <div class="form-control">
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">家庭名称</span></label>
+                <input type="text" id="cfgHouseholdName" maxlength="60"
+                    class="input input-bordered input-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent"
+                    placeholder="例如：陈家的时光">
+            </div>
+            <button onclick="saveHouseholdConfig()" class="btn btn-accent btn-sm w-full font-bold">保存家庭设置</button>
+            <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">👤 家庭成员</div>
             <div id="userSelectContainer" class="flex flex-wrap gap-1.5"></div>
             <div class="flex gap-2 mt-1">
                 <button onclick="createNewUser()"
-                    class="btn btn-ghost btn-xs flex-1 font-bold opacity-60 hover:opacity-100">➕ 新建用户</button>
+                    class="btn btn-ghost btn-sm flex-1 font-bold opacity-70 hover:opacity-100">➕ 添加家庭成员</button>
             </div>
+            <div id="memberDeletePanel" class="hidden rounded-xl border-2 border-red-200 bg-red-50 p-4">
+                <p id="memberDeleteSummary" class="text-sm font-bold text-red-700"></p>
+                <p id="memberDeleteImpact" class="text-xs text-red-600/80 mt-1"></p>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="confirmDeleteMember()" id="confirmDeleteMemberButton"
+                        class="btn btn-sm bg-red-600 hover:bg-red-500 text-white border-0 flex-1">确认删除</button>
+                    <button onclick="cancelDeleteMember()" class="btn btn-sm btn-ghost">取消</button>
+                </div>
+            </div>
+        </div>
 
-            <!-- Immich Integration (Phase 3) -->
-            <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">📸 Immich 照片同步</div>
-
+        <div id="settingsSystemPanel" class="space-y-4 hidden">
+            <div class="rounded-xl bg-theme-muted/60 border-2 border-theme-border p-4">
+                <div class="text-xs text-theme-text/45">家庭服务</div>
+                <div id="systemBackendStatus" class="font-bold text-theme-text mt-1">正在读取...</div>
+            </div>
+            <div class="rounded-xl bg-theme-muted/60 border-2 border-theme-border p-4">
+                <div class="text-xs text-theme-text/45">照片服务</div>
+                <div class="font-bold text-theme-text mt-1">Immich 暂停接入</div>
+                <p class="text-xs text-theme-text/45 mt-1">需要新的只读 Key，并在接入前取得确认。</p>
+            </div>
             <div class="form-control">
                 <div id="immichStatus" class="flex items-center gap-2 text-xs mb-2">
                     <span class="loading loading-dots loading-xs hidden" id="immichLoading"></span>
-                    <span id="immichStatusText" class="text-theme-text/50">检查连接中...</span>
+                    <span id="immichStatusText" class="text-theme-text/50">暂未启用 · 接入前需确认</span>
                 </div>
             </div>
 
@@ -1004,18 +1148,11 @@
 
             <div class="form-control">
                 <label class="label cursor-pointer justify-start gap-3 py-1">
-                    <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent checkbox-sm" />
+                    <input type="checkbox" id="cfgImmichSync" class="checkbox checkbox-accent checkbox-sm" disabled />
                     <span class="label-text font-bold text-theme-text">📸 启用 Immich 照片同步</span>
                 </label>
             </div>
-
-            <div class="flex gap-2 pt-3">
-                <button onclick="saveConfig()"
-                    class="btn btn-accent btn-sm flex-1 font-bold transition-all duration-300 hover:shadow-lg hover:shadow-accent/30">💾
-                    保存</button>
-                <button onclick="resetConfig()" class="btn btn-ghost btn-sm font-bold opacity-60 hover:opacity-100">🔄
-                    重置</button>
-            </div>
+            <button onclick="refreshSystemStatus()" class="btn btn-ghost btn-sm w-full font-bold">刷新系统状态</button>
         </div>
     </aside>
 
@@ -1037,6 +1174,8 @@
     <script>
         // ==================== STATE ====================
         const STATE_KEY = 'familyTimeFlow_state_v1';
+        const ACTIVE_MEMBER_KEY = 'familyTimeFlow_activeMemberId_v1';
+        const PREFERENCES_KEY = 'familyTimeFlow_devicePreferences_v1';
 
         let state = {
             currentUser: 'student',
@@ -1046,6 +1185,7 @@
                 expectedAge: 80,
                 identityTag: 'student',
                 schoolSystem: 'shanghai',
+                color: '#3B82F6',
                 immichPersonId: null
             },
             events: [],
@@ -1081,11 +1221,15 @@
         // ==================== LOCAL STORAGE ====================
         function loadState() {
             try {
-                const saved = localStorage.getItem(STATE_KEY);
+                // Full profiles are server-owned. Remove the legacy browser copy
+                // after reading only harmless display preferences.
+                const saved = localStorage.getItem(PREFERENCES_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
-                    state = { ...state, ...parsed };
+                    state.currentUser = parsed.theme || state.currentUser;
+                    if (Number.isFinite(parsed.gridZoom)) gridZoom = parsed.gridZoom;
                 }
+                localStorage.removeItem(STATE_KEY);
             } catch (e) {
                 console.warn('Failed to load state:', e);
             }
@@ -1093,13 +1237,17 @@
         }
 
         function saveState() {
-            localStorage.setItem(STATE_KEY, JSON.stringify(state));
+            localStorage.setItem(PREFERENCES_KEY, JSON.stringify({
+                theme: state.currentUser,
+                gridZoom
+            }));
         }
 
         function hydrateFormFromState() {
             document.getElementById('cfgName').value = state.profile.name || '';
             document.getElementById('cfgBirthDate').value = state.profile.birthDate || '';
             document.getElementById('cfgExpectedAge').value = state.profile.expectedAge || 80;
+            document.getElementById('cfgMemberColor').value = state.profile.color || '#3B82F6';
             document.getElementById('cfgTargetDate').value = state.targetDate ?
                 new Date(state.targetDate).toISOString().slice(0, 16) : '';
             document.getElementById('cfgIdentity').value = state.profile.identityTag || 'student';
@@ -1114,7 +1262,6 @@
             document.body.className = document.body.className.replace(/theme-\w+/, '').trim();
             document.body.classList.add(`theme-${theme}`);
             state.currentUser = theme;
-            state.profile.identityTag = theme;
             saveState();
 
             gsap.fromTo('main', { opacity: 0.85, scale: 0.995 },
@@ -1133,7 +1280,30 @@
         }
 
         // ==================== CONFIG DRAWER ====================
-        function toggleDrawer() {
+        function openSettingsTab(tab) {
+            const tabs = ['member', 'household', 'system'];
+            tabs.forEach(name => {
+                const panel = document.getElementById(`settings${name.charAt(0).toUpperCase() + name.slice(1)}Panel`);
+                const button = document.getElementById(`settingsTab${name.charAt(0).toUpperCase() + name.slice(1)}`);
+                panel.classList.toggle('hidden', name !== tab);
+                button.classList.toggle('btn-accent', name === tab);
+                button.classList.toggle('btn-ghost', name !== tab);
+            });
+            if (tab === 'member') {
+                const noMember = !activeUserId;
+                document.getElementById('settingsNoMember').classList.toggle('hidden', !noMember);
+                document.querySelectorAll('#settingsMemberPanel input, #settingsMemberPanel select, #settingsMemberPanel button')
+                    .forEach(element => { element.disabled = noMember; });
+            }
+            if (tab === 'household') {
+                document.getElementById('cfgHouseholdName').value = householdViewModel && householdViewModel.household
+                    ? householdViewModel.household.name : '家庭时光';
+                renderUserButtons();
+            }
+            if (tab === 'system') refreshSystemStatus();
+        }
+
+        function toggleDrawer(preferredTab) {
             const drawer = document.getElementById('configDrawer');
             const overlay = document.getElementById('drawerOverlay');
             const isOpen = drawer.classList.contains('open');
@@ -1142,198 +1312,240 @@
                 drawer.classList.remove('open');
                 overlay.classList.remove('open');
             } else {
+                openSettingsTab(preferredTab || (activeUserId ? 'member' : 'household'));
                 drawer.classList.add('open');
                 overlay.classList.add('open');
             }
         }
 
-        function saveConfig() {
+        async function saveHouseholdConfig() {
+            const name = document.getElementById('cfgHouseholdName').value.trim();
+            if (!name) {
+                showToast('请填写家庭名称');
+                return;
+            }
+            const saved = await apiPatch('/household', { name });
+            if (!saved) {
+                showToast('⚠️ 家庭设置保存失败');
+                return;
+            }
+            if (householdViewModel) householdViewModel.household = saved;
+            document.getElementById('householdTitle').textContent = saved.name;
+            showToast('✅ 家庭设置已保存');
+        }
+
+        async function refreshSystemStatus() {
+            const status = document.getElementById('systemBackendStatus');
+            status.textContent = '正在读取...';
+            const health = await apiGet('/health');
+            status.textContent = health && health.status === 'ok'
+                ? `运行正常 · v${health.version}` : '暂时不可用';
+            status.className = health && health.status === 'ok'
+                ? 'font-bold text-green-600 mt-1' : 'font-bold text-red-500 mt-1';
+        }
+
+        async function saveConfig() {
             state.profile.name = document.getElementById('cfgName').value;
             state.profile.birthDate = document.getElementById('cfgBirthDate').value;
             state.profile.expectedAge = parseInt(document.getElementById('cfgExpectedAge').value) || 80;
+            state.profile.color = document.getElementById('cfgMemberColor').value || '#3B82F6';
             state.profile.identityTag = document.getElementById('cfgIdentity').value;
             state.targetDate = document.getElementById('cfgTargetDate').value || state.targetDate;
             state.immichSync = document.getElementById('cfgImmichSync').checked;
             state.profile.schoolSystem = document.getElementById('cfgSchoolSystem').value;
-            saveState();
-            pushToApi();
+            const saved = await pushToApi();
+            if (!saved) {
+                showToast('⚠️ 保存失败，请检查家庭服务');
+                return;
+            }
+            const remote = remoteUsers.find(user => String(user.id) === String(activeUserId));
+            if (remote) {
+                remote.name = state.profile.name;
+                remote.birth_date = state.profile.birthDate;
+                remote.expected_age = state.profile.expectedAge;
+                remote.color = state.profile.color;
+                remote.identity_tag = state.profile.identityTag;
+                remote.school_system = state.profile.schoolSystem;
+                remote.target_date = state.targetDate;
+                remote.immich_sync = state.immichSync ? 1 : 0;
+            }
             toggleDrawer();
             initLifeGrid();
             updateCountdown();
-            showToast('✅ 已保存设置');
+            updateUserMenu();
+            renderUserButtons();
+            showToast('✅ 已保存到家庭服务');
         }
 
         function resetConfig() {
             localStorage.removeItem(STATE_KEY);
             state = {
                 currentUser: 'student',
-                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', immichPersonId: null },
+                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', color: '#3B82F6', immichPersonId: null },
                 events: [],
                 targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
                 immichSync: false
             };
             hydrateFormFromState();
             setTheme('student');
-            saveState();
             initLifeGrid();
             updateCountdown();
             showToast('🔄 已重置为默认设置');
         }
 
-        // ==================== GRID ZOOM ====================
+        // ==================== GRID ZOOM (reflow) ====================
+        // Zoom changes the number of columns so all cells stay visible — no clipping, no scrollbars.
+        const ZOOM_PRESETS = [
+            { level: 0.25, cols: 4, label: '4列' },
+            { level: 0.35, cols: 6, label: '6列' },
+            { level: 0.45, cols: 8, label: '8列' },
+            { level: 0.55, cols: 10, label: '10列' },
+            { level: 0.65, cols: 13, label: '13列' },
+            { level: 0.8, cols: 17, label: '17列' },
+            { level: 1.0, cols: 26, label: '26列' },
+            { level: 1.2, cols: 35, label: '35列' },
+            { level: 1.5, cols: 52, label: '52列' }
+        ];
+        function getPreset(z) {
+            if (z < 0.3) return ZOOM_PRESETS[0];
+            if (z < 0.4) return ZOOM_PRESETS[1];
+            if (z < 0.5) return ZOOM_PRESETS[2];
+            if (z < 0.6) return ZOOM_PRESETS[3];
+            if (z < 0.7) return ZOOM_PRESETS[4];
+            if (z < 0.9) return ZOOM_PRESETS[5];
+            if (z < 1.1) return ZOOM_PRESETS[6];
+            if (z < 1.35) return ZOOM_PRESETS[7];
+            return ZOOM_PRESETS[8];
+        }
         function gridZoomIn() {
-            gridZoom = Math.min(gridZoom + 0.15, ZOOM_MAX);
-            applyGridZoom();
+            const p = getPreset(gridZoom);
+            const i = ZOOM_PRESETS.indexOf(p);
+            if (i < ZOOM_PRESETS.length - 1) { gridZoom = ZOOM_PRESETS[i + 1].level; applyGridZoom(); }
         }
         function gridZoomOut() {
-            gridZoom = Math.max(gridZoom - 0.15, ZOOM_MIN);
-            applyGridZoom();
+            const p = getPreset(gridZoom);
+            const i = ZOOM_PRESETS.indexOf(p);
+            if (i > 0) { gridZoom = ZOOM_PRESETS[i - 1].level; applyGridZoom(); }
         }
         function applyGridZoom() {
-            const wrapper = document.getElementById('lifeGridWrapper');
-            if (wrapper) {
-                wrapper.style.transform = `scale(${gridZoom})`;
-            }
+            const p = getPreset(gridZoom);
             document.getElementById('zoomLevel').textContent = `${Math.round(gridZoom * 100)}%`;
+            // Rebuild grid with new column count (fast — innerHTML rebuild)
+            initLifeGrid(p.cols);
         }
 
-        // ==================== LIFE GRID ====================
-        function initLifeGrid() {
-            const grid = document.getElementById('lifeGrid');
-            grid.innerHTML = '';
+        // ==================== LIFE GRID (DOM optimized) ====================
+        // Event delegation: one listener for all grid cells
+        let gridCache = null; // { rows: string[], weekOffset: number, birthDate: Date, expectedAge: number }
 
+        function initLifeGrid(overrideCols) {
             const birthDate = state.profile.birthDate ? new Date(state.profile.birthDate) : null;
             const expectedAge = state.profile.expectedAge || 80;
+            const cols = overrideCols || 52;
             const totalWeeks = expectedAge * 52;
-            const now = new Date();
+            const totalRows = Math.ceil(totalWeeks / cols);
 
             document.getElementById('gridDescription').textContent =
-                `${expectedAge} 年 × 52 周 = ${totalWeeks.toLocaleString()} 个格子`;
+                `${expectedAge} 年 × ${cols} 列 = ${totalWeeks.toLocaleString()} 个格子 (${totalRows} 行)`;
 
-            // Month header positions (0-indexed week columns)
-            const monthStarts = [0, 4, 8, 13, 17, 22, 26, 30, 35, 39, 44, 48];
             const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            // Map each week-of-year to a month label (hide most, show only first of each month)
+            const weekMonthLabel = {};
+            const monthStarts = [0, 4, 8, 13, 17, 22, 26, 30, 35, 39, 44, 48];
+            monthStarts.forEach((ws, i) => { weekMonthLabel[ws] = monthNames[i]; });
 
-            // Set dynamic grid template
-            const totalRows = 1 + expectedAge; // 1 header row + age rows
-            grid.style.gridTemplateColumns = `32px repeat(52, 1fr)`;
-            grid.style.gridTemplateRows = `20px repeat(${expectedAge}, 1fr)`;
-            grid.style.width = '100%';
-
-            // Corner spacer (top-left)
-            const spacer = document.createElement('div');
-            spacer.style.gridColumn = '1';
-            spacer.style.gridRow = '1';
-            spacer.style.minHeight = '20px';
-            grid.appendChild(spacer);
-
-            // Month labels (header row)
-            for (let w = 0; w < 52; w++) {
-                const label = document.createElement('div');
-                const mi = monthStarts.indexOf(w);
-                label.textContent = mi !== -1 ? monthNames[mi] : '';
-                label.style.cssText =
-                    'font-size:8px;font-weight:700;color:var(--text-color);opacity:0.3;' +
-                    'display:flex;align-items:center;justify-content:center;overflow:hidden;';
-                label.style.gridColumn = String(w + 2);
-                label.style.gridRow = '1';
-                grid.appendChild(label);
-            }
-
-            // Shanghai education stages: 5年小学 + 1年预初 + 3年初中 + 3年高中
             const stages = [
-                { start: 0, end: 6, cls: 'stage-0', label: '学龄前' },
-                { start: 6, end: 11, cls: 'stage-1', label: '小学' },   // 5年小学
-                { start: 11, end: 12, cls: 'stage-2', label: '预初' },  // 1年预初
-                { start: 12, end: 15, cls: 'stage-3', label: '初中' },  // 3年初中
-                { start: 15, end: 18, cls: 'stage-4', label: '高中' },  // 3年高中
-                { start: 18, end: 22, cls: 'stage-5', label: '大学' },
+                { start: 0, end: 6, cls: 'stage-0' }, { start: 6, end: 11, cls: 'stage-1' },
+                { start: 11, end: 12, cls: 'stage-2' }, { start: 12, end: 15, cls: 'stage-3' },
+                { start: 15, end: 18, cls: 'stage-4' }, { start: 18, end: 22, cls: 'stage-5' }
             ];
-            // Milestone dot years (age at which milestone occurs)
             const milestoneYears = [6, 11, 12, 15, 18, 22];
+            const now = new Date();
+            const birthMs = birthDate ? birthDate.getTime() : null;
+            const nowMs = now.getTime();
+            const isStudent = state.profile.identityTag === 'student';
+            const currentWeek = birthMs ? Math.floor((nowMs - birthMs) / (7 * 86400000)) : -1;
 
-            for (let year = 0; year < expectedAge; year++) {
-                const rowIdx = year + 2;
+            let html = '';
 
-                // Age label
-                const ageLabel = document.createElement('div');
-                const isDecade = (year > 0 && year % 5 === 0);
-                ageLabel.textContent = isDecade ? `${year}` : (year % 2 === 0 ? `${year}` : '');
-                ageLabel.style.cssText =
-                    `font-size:9px;font-weight:700;color:var(--text-color);opacity:${isDecade ? 0.6 : 0.25};` +
-                    'display:flex;align-items:center;justify-content:flex-end;padding-right:4px;' +
-                    (isDecade ? 'border-top:2px solid var(--accent-color);' : '');
-                ageLabel.style.gridColumn = '1';
-                ageLabel.style.gridRow = String(rowIdx);
-                grid.appendChild(ageLabel);
+            // Build cells in week order, assign to grid position based on cols
+            for (let g = 0; g < totalWeeks; g++) {
+                // Calculate row & column based on dynamic column count
+                const col = g % cols;
+                const row = Math.floor(g / cols);
+                const rowInGrid = row + 2; // +1 for age label column, +1 for row offset
+                const colInGrid = col + 2; // +1 for age label column
 
-                const isDecadeRow = (year > 0 && year % 5 === 0);
-
-                for (let week = 0; week < 52; week++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'week-cell';
-                    const globalWeek = year * 52 + week;
-                    cell.dataset.week = globalWeek;
-
-                    // Decade divider line on cells
-                    if (isDecadeRow) {
-                        cell.style.borderTop = '2px solid var(--accent-color)';
-                        cell.style.borderRadius = '1px';
-                    }
-
-                    // spent/current state + education stage coloring
-                    if (birthDate) {
-                        const birthMs = birthDate.getTime();
-                        const weekMs = globalWeek * 7 * 24 * 60 * 60 * 1000;
-                        const cellDate = new Date(birthMs + weekMs);
-
-                        if (cellDate < now) {
-                            cell.classList.add('spent');
-                        }
-                        if (globalWeek === Math.floor((now - birthDate) / (7 * 24 * 60 * 60 * 1000))) {
-                            cell.classList.add('current');
-                        }
-
-                        // Apply education stage shading (ONLY on spent/past cells)
-                        if (state.profile.identityTag === 'student' && cellDate < now) {
-                            const cellAgeYears = (cellDate - birthMs) / (365.25 * 24 * 60 * 60 * 1000);
-                            for (const s of stages) {
-                                if (cellAgeYears >= s.start && cellAgeYears < s.end) {
-                                    cell.classList.add(s.cls);
-                                    break;
-                                }
-                            }
-                        }
-                        // Milestone colored dot at boundary years
-                        if (state.profile.identityTag === 'student' && milestoneYears.includes(year) && week === 0) {
-                            cell.classList.add('milestone-dot');
-                            if (year === 15) cell.classList.add('中考');
-                            if (year === 18) cell.classList.add('高考');
-                        }
-                    }
-
-                    // GSAP stagger - no CSS transition conflict via clearProps
-                    gsap.set(cell, { opacity: 0, scale: 0.3 });
-                    gsap.to(cell, {
-                        opacity: 1,
-                        scale: 1,
-                        duration: 0.15,
-                        delay: Math.min(globalWeek * 0.00025, 0.8),
-                        ease: 'back.out(1.2)',
-                        clearProps: 'opacity'
-                    });
-
-                    cell.addEventListener('mouseenter', (e) => showWeekTooltip(e, globalWeek));
-                    cell.addEventListener('mouseleave', hideTooltip);
-
-                    cell.style.gridColumn = String(week + 2);
-                    cell.style.gridRow = String(rowIdx);
-                    grid.appendChild(cell);
+                // First row: month labels
+                if (row === 0 && col < cols) {
+                    const label = weekMonthLabel[col] || '';
+                    html += `<div style="grid-column:${col + 2};grid-row:1;font-size:8px;font-weight:700;color:var(--text-color);opacity:0.3;display:flex;align-items:center;justify-content:center;overflow:hidden">${label}</div>`;
                 }
+
+                // First column: age labels
+                if (col === 0) {
+                    const yr = row;
+                    const isDecade = yr > 0 && yr % 5 === 0;
+                    const labelText = isDecade ? `${yr}` : (yr % 2 === 0 ? `${yr}` : '');
+                    html += `<div style="grid-column:1;grid-row:${rowInGrid};font-size:9px;font-weight:700;color:var(--text-color);opacity:${isDecade ? 0.6 : 0.25};display:flex;align-items:center;justify-content:flex-end;padding-right:4px;${isDecade ? 'border-top:2px solid var(--accent-color)' : ''}">${labelText}</div>`;
+                }
+
+                // Cell styling
+                const yearNum = Math.floor(g / 52);
+                const weekInYear = g % 52;
+                let cls = 'week-cell';
+                let styles = '';
+
+                if (yearNum > 0 && yearNum % 5 === 0) {
+                    styles += 'border-top:2px solid var(--accent-color);border-radius:1px;';
+                }
+
+                if (birthMs) {
+                    const cellDateMs = birthMs + g * 7 * 86400000;
+                    if (cellDateMs < nowMs) cls += ' spent';
+                    if (g === currentWeek) cls += ' current';
+
+                    if (isStudent && cellDateMs < nowMs) {
+                        const cellAgeYears = (cellDateMs - birthMs) / 31557600000;
+                        for (const s of stages) {
+                            if (cellAgeYears >= s.start && cellAgeYears < s.end) { cls += ' ' + s.cls; break; }
+                        }
+                    }
+                    if (isStudent && milestoneYears.includes(yearNum) && weekInYear === 0) {
+                        cls += ' milestone-dot';
+                        if (yearNum === 15) cls += ' 中考';
+                        if (yearNum === 18) cls += ' 高考';
+                    }
+                }
+
+                html += `<div class="${cls}" data-week="${g}" style="grid-column:${colInGrid};grid-row:${rowInGrid};${styles}"></div>`;
             }
 
-            gridZoom = 1.0;
-            applyGridZoom();
+            const grid = document.getElementById('lifeGrid');
+            grid.innerHTML = html;
+            grid.style.gridTemplateColumns = '32px repeat(' + cols + ', 1fr)';
+            grid.style.gridTemplateRows = '20px repeat(' + totalRows + ', 1fr)';
+            grid.style.width = '100%';
+            grid.style.minWidth = 'unset';
+
+            gsap.fromTo(grid, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power1.out', clearProps: 'opacity' });
+        }
+
+        // Event delegation: one listener on the grid wrapper for all cells
+        function initGridEvents() {
+            const wrapper = document.querySelector('.grid-scroll');
+            if (!wrapper) return;
+            const grid = document.getElementById('lifeGrid');
+            wrapper.addEventListener('mouseover', (e) => {
+                const cell = e.target.closest('.week-cell');
+                if (!cell) { hideTooltip(); return; }
+                showWeekTooltip(e, parseInt(cell.dataset.week));
+            });
+            wrapper.addEventListener('mouseout', (e) => {
+                if (!e.target.closest('.week-cell')) return;
+                hideTooltip();
+            });
+            // Remove old per-cell listeners by replacing the grid content (done in initLifeGrid)
         }
 
         function hideTooltip() {
@@ -1375,6 +1587,10 @@
         // ==================== TIME BUDGET RING ====================
         function updateTimeBudget() {
             const now = new Date();
+            const householdClock = document.getElementById('householdClock');
+            if (householdClock) {
+                householdClock.textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            }
             const ms = (now.getHours() * 60 + now.getMinutes()) * 60 * 1000 + now.getSeconds() * 1000;
             const progress = Math.min(ms / 86400000, 1);
 
@@ -1406,7 +1622,7 @@
             flatpickr("#targetDate", {
                 enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (s) => { state.targetDate = s[0].toISOString(); saveState(); updateCountdown(); }
+                onChange: (s) => { state.targetDate = s[0].toISOString(); updateCountdown(); pushToApi(); }
             });
 
             // Birth date
@@ -1415,7 +1631,7 @@
                 defaultDate: state.profile.birthDate || null,
                 onChange: (s) => {
                     state.profile.birthDate = s[0] ? s[0].toISOString().split('T')[0] : '';
-                    saveState(); initLifeGrid();
+                    initLifeGrid();
                 }
             });
 
@@ -1423,7 +1639,7 @@
             flatpickr("#cfgTargetDate", {
                 enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (s) => { state.targetDate = s[0].toISOString(); saveState(); updateCountdown(); }
+                onChange: (s) => { state.targetDate = s[0].toISOString(); updateCountdown(); }
             });
         }
 
@@ -1592,10 +1808,270 @@
         }
 
         // ==================== API CLIENT (Phase 2b) ====================
-        const API_BASE = window.location.pathname.includes('/family-time-flow/') ? '/family-time-flow/api' : 'http://192.168.6.108:3000/api';
+        const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const API_BASE = IS_LOCAL_PREVIEW
+            ? `${window.location.origin}/api`
+            : (window.location.pathname.includes('/family-time-flow/') ? '/family-time-flow/api' : '/api');
         let remoteUsers = [];
         let activeUserId = null;
         let apiAvailable = false;
+        let householdViewModel = null;
+
+        function memberDtoToLegacy(member) {
+            return {
+                id: String(member.id),
+                name: member.name,
+                birth_date: member.birthDate,
+                expected_age: member.expectedAge,
+                identity_tag: member.profileTemplate,
+                school_system: member.schoolSystem,
+                target_date: member.targetDate,
+                color: member.color || '#3B82F6',
+                sort_order: member.sortOrder,
+                immich_person_id: member.immich && member.immich.personId,
+                immich_sync: member.immich && member.immich.syncEnabled ? 1 : 0
+            };
+        }
+
+        function showPersonalView() {
+            document.getElementById('householdView').classList.add('hidden');
+            document.getElementById('personalView').classList.remove('hidden');
+        }
+
+        async function showHouseholdView() {
+            activeUserId = null;
+            localStorage.removeItem(ACTIVE_MEMBER_KEY);
+            document.getElementById('onboardingOverlay').classList.add('hidden');
+            revealMainContent();
+            document.getElementById('personalView').classList.add('hidden');
+            document.getElementById('householdView').classList.remove('hidden');
+            document.getElementById('userMenuName').textContent = '家庭';
+            document.getElementById('userMenuTitle').textContent = '家庭首页';
+            const avatar = document.getElementById('userAvatar');
+            avatar.outerHTML = '<span id="userAvatar" class="w-6 h-6 rounded-full bg-theme-accent/20 flex items-center justify-center text-xs font-black">⚙️</span>';
+            await loadHouseholdView();
+        }
+
+        function addHouseholdEmptyState(container, message) {
+            const empty = document.createElement('div');
+            empty.className = 'rounded-xl border-2 border-dashed border-theme-border p-5 text-center text-sm text-theme-text/45';
+            empty.textContent = message;
+            container.appendChild(empty);
+        }
+
+        function renderHouseholdView(data) {
+            householdViewModel = data;
+            document.getElementById('householdTitle').textContent = data.household.name || '家庭时光';
+            document.getElementById('householdDate').textContent = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+            });
+
+            const memberGrid = document.getElementById('householdMemberGrid');
+            memberGrid.innerHTML = '';
+            if (!data.members.length) addHouseholdEmptyState(memberGrid, '还没有家庭成员');
+            data.members.forEach(member => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'emma-card p-4 text-left transition-transform hover:-translate-y-0.5 focus:outline-none';
+                card.addEventListener('click', () => switchUser(member.id));
+
+                const top = document.createElement('div');
+                top.className = 'flex items-center gap-3';
+                const avatar = document.createElement('div');
+                avatar.className = 'w-12 h-12 rounded-full bg-theme-accent/15 flex items-center justify-center text-xl font-black text-theme-accent';
+                avatar.style.backgroundColor = `${member.color || '#3B82F6'}22`;
+                avatar.style.color = member.color || '#3B82F6';
+                avatar.textContent = (member.name || '家').charAt(0);
+                const identity = document.createElement('div');
+                const name = document.createElement('div');
+                name.className = 'font-black text-theme-text';
+                name.textContent = member.name || '未命名成员';
+                const meta = document.createElement('div');
+                meta.className = 'text-xs text-theme-text/45 mt-0.5';
+                meta.textContent = [member.age == null ? null : `${member.age} 岁`, member.stageLabel].filter(Boolean).join(' · ') || '资料待完善';
+                identity.append(name, meta);
+                top.append(avatar, identity);
+
+                const next = document.createElement('div');
+                next.className = 'mt-3 pt-3 border-t border-theme-border/60 text-xs text-theme-text/60';
+                next.textContent = member.nextMilestone
+                    ? `下一站：${member.nextMilestone.label} · ${member.nextMilestone.remaining}`
+                    : member.targetDate ? `目标日期：${member.targetDate.slice(0, 10)}` : '点击查看人生时间页';
+                card.append(top, next);
+                memberGrid.appendChild(card);
+            });
+
+            const upcoming = document.getElementById('householdUpcoming');
+            upcoming.innerHTML = '';
+            if (!data.upcomingEvents.length) addHouseholdEmptyState(upcoming, '近期还没有家庭事件，可以从个人页面添加目标。');
+            data.upcomingEvents.forEach(event => {
+                const row = document.createElement('div');
+                row.className = 'w-full flex items-center gap-3 rounded-xl bg-theme-muted/60 px-3 py-2.5 text-left';
+                const date = document.createElement('div');
+                date.className = 'text-xs font-black text-theme-accent min-w-[76px]';
+                date.textContent = event.date.slice(0, 10);
+                const detail = document.createElement('div');
+                const title = document.createElement('div');
+                title.className = 'text-sm font-bold text-theme-text';
+                title.textContent = event.title;
+                const owner = document.createElement('div');
+                owner.className = 'text-[10px] text-theme-text/45';
+                owner.textContent = event.memberName;
+                detail.append(title, owner);
+                detail.classList.add('flex-1');
+                const edit = document.createElement('button');
+                edit.type = 'button';
+                edit.className = 'btn btn-ghost btn-xs font-bold';
+                edit.textContent = '编辑';
+                edit.addEventListener('click', () => openEventForm(event.id));
+                row.append(date, detail, edit);
+                upcoming.appendChild(row);
+            });
+        }
+
+        async function loadHouseholdView() {
+            const data = await apiGet('/household/view');
+            if (data && Array.isArray(data.members)) {
+                renderHouseholdView(data);
+                return;
+            }
+            renderHouseholdView({
+                household: { name: '家庭时光' },
+                members: remoteUsers.map(user => ({
+                    id: String(user.id), name: user.name, age: null, stageLabel: null,
+                    nextMilestone: null, targetDate: user.target_date
+                })),
+                upcomingEvents: []
+            });
+            showToast('⚠️ 家庭概览暂时无法更新', 3000);
+        }
+
+        function closeEventForm() {
+            const overlay = document.getElementById('eventFormOverlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        function openEventForm(eventId = null) {
+            const overlay = document.getElementById('eventFormOverlay');
+            const memberSelect = document.getElementById('eventMemberId');
+            const editId = document.getElementById('eventEditId');
+            const deleteButton = document.getElementById('eventDeleteButton');
+            const event = eventId && householdViewModel
+                ? householdViewModel.upcomingEvents.find(item => String(item.id) === String(eventId))
+                : null;
+
+            memberSelect.innerHTML = '';
+            const members = householdViewModel ? householdViewModel.members : [];
+            members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = String(member.id);
+                option.textContent = member.name;
+                memberSelect.appendChild(option);
+            });
+            if (!members.length) {
+                showToast('请先添加家庭成员');
+                return;
+            }
+
+            editId.value = event ? String(event.id) : '';
+            memberSelect.value = event ? String(event.memberId) : (activeUserId || String(members[0].id));
+            memberSelect.disabled = Boolean(event);
+            document.getElementById('eventTitle').value = event ? event.title : '';
+            document.getElementById('eventDate').value = event ? event.date.slice(0, 10) : '';
+            document.getElementById('eventNotes').value = event && event.notes ? event.notes : '';
+            document.getElementById('eventFormError').textContent = '';
+            document.getElementById('eventFormTitle').textContent = event ? '编辑家庭事件' : '添加家庭事件';
+            deleteButton.classList.toggle('hidden', !event);
+            deleteButton.dataset.confirm = '';
+            deleteButton.textContent = '删除';
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.getElementById('eventTitle').focus();
+        }
+
+        async function submitEventForm() {
+            const eventId = document.getElementById('eventEditId').value;
+            const memberId = document.getElementById('eventMemberId').value;
+            const title = document.getElementById('eventTitle').value.trim();
+            const date = document.getElementById('eventDate').value;
+            const notes = document.getElementById('eventNotes').value.trim();
+            const error = document.getElementById('eventFormError');
+            const submit = document.getElementById('eventFormSubmit');
+            if (!title || !date) {
+                error.textContent = '请填写事件名称和日期。';
+                return;
+            }
+            submit.disabled = true;
+            submit.textContent = '保存中...';
+            const payload = { title, date, notes: notes || null };
+            const saved = eventId
+                ? await apiPut(`/users/${memberId}/events/${eventId}`, payload)
+                : await apiPost(`/users/${memberId}/events`, payload);
+            submit.disabled = false;
+            submit.textContent = '保存事件';
+            if (!saved) {
+                error.textContent = '保存失败，请稍后重试。';
+                return;
+            }
+            closeEventForm();
+            await loadHouseholdView();
+            showToast(eventId ? '✅ 事件已更新' : '✅ 事件已添加');
+        }
+
+        async function requestDeleteEvent() {
+            const button = document.getElementById('eventDeleteButton');
+            if (button.dataset.confirm !== 'armed') {
+                button.dataset.confirm = 'armed';
+                button.textContent = '再次点击确认';
+                return;
+            }
+            const eventId = document.getElementById('eventEditId').value;
+            const memberId = document.getElementById('eventMemberId').value;
+            button.disabled = true;
+            const deleted = await apiDelete(`/users/${memberId}/events/${eventId}`);
+            button.disabled = false;
+            if (!deleted) {
+                document.getElementById('eventFormError').textContent = '删除失败，请稍后重试。';
+                return;
+            }
+            closeEventForm();
+            await loadHouseholdView();
+            showToast('事件已删除');
+        }
+
+        async function bootstrapApplication() {
+            const requestedMemberId = localStorage.getItem(ACTIVE_MEMBER_KEY);
+            const query = requestedMemberId ? `?activeMemberId=${encodeURIComponent(requestedMemberId)}` : '';
+            const data = await apiGet(`/bootstrap${query}`);
+
+            if (!data || !Array.isArray(data.members)) {
+                apiAvailable = false;
+                showServiceUnavailable();
+                return;
+            }
+
+            apiAvailable = true;
+            remoteUsers = data.members.map(memberDtoToLegacy);
+
+            if (data.state === 'empty') {
+                activeUserId = null;
+                localStorage.removeItem(ACTIVE_MEMBER_KEY);
+                showOnboarding();
+                return;
+            }
+
+            if (data.selectedMemberId) {
+                await switchUser(String(data.selectedMemberId));
+                document.getElementById('onboardingOverlay').classList.add('hidden');
+                revealMainContent();
+            } else {
+                await showHouseholdView();
+            }
+
+            // Immich remains explicitly paused. Do not perform any automatic
+            // connectivity check until the user approves the integration stage.
+        }
 
         async function apiGet(path) {
             try {
@@ -1605,10 +2081,10 @@
             } catch { return null; }
         }
 
-        async function apiPost(path, data) {
+        async function apiPost(path, data, options = {}) {
             try {
                 const r = await fetch(`${API_BASE}${path}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
                     body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
                 });
                 if (!r.ok) throw new Error('API error');
@@ -1621,6 +2097,27 @@
                 const r = await fetch(`${API_BASE}${path}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
+                });
+                if (!r.ok) throw new Error('API error');
+                return await r.json();
+            } catch { return null; }
+        }
+
+        async function apiPatch(path, data) {
+            try {
+                const r = await fetch(`${API_BASE}${path}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
+                });
+                if (!r.ok) throw new Error('API error');
+                return await r.json();
+            } catch { return null; }
+        }
+
+        async function apiDelete(path) {
+            try {
+                const r = await fetch(`${API_BASE}${path}`, {
+                    method: 'DELETE', signal: AbortSignal.timeout(3000)
                 });
                 if (!r.ok) throw new Error('API error');
                 return await r.json();
@@ -1650,6 +2147,8 @@
                 if (match.education) {
                     state._apiEducation = match.education;
                 }
+                state.profile.immichPersonId = match.immich_person_id || state.profile.immichPersonId;
+                state.immichSync = match.immich_sync ? true : (state.immichSync || false);
                 saveState();
                 hydrateFormFromState();
                 renderUserButtons();
@@ -1658,13 +2157,14 @@
         }
 
         async function pushToApi() {
-            if (!apiAvailable || !activeUserId) return;
-            await apiPut(`/users/${activeUserId}`, {
+            if (!apiAvailable || !activeUserId) return null;
+            return await apiPut(`/users/${activeUserId}`, {
                 name: state.profile.name,
                 birth_date: state.profile.birthDate || null,
                 expected_age: state.profile.expectedAge,
                 identity_tag: state.profile.identityTag,
                 school_system: state.profile.schoolSystem || 'shanghai',
+                color: state.profile.color || '#3B82F6',
                 target_date: state.targetDate || null,
                 immich_sync: state.immichSync ? 1 : 0
             });
@@ -1673,28 +2173,129 @@
         function renderUserButtons() {
             const container = document.getElementById('userSelectContainer');
             container.innerHTML = '';
-            remoteUsers.forEach(u => {
-                const btn = document.createElement('button');
-                const isActive = u.id === activeUserId;
-                btn.className = `btn btn-xs ${isActive ? 'btn-accent' : 'btn-ghost'} font-bold`;
-                btn.textContent = u.name || `用户 ${u.id}`;
-                btn.onclick = () => switchUser(u.id);
-                container.appendChild(btn);
+            remoteUsers.forEach((u, index) => {
+                const row = document.createElement('div');
+                row.className = 'w-full flex items-center gap-2 rounded-xl border border-theme-border bg-theme-muted/50 p-2';
+                const dot = document.createElement('span');
+                dot.className = 'w-3 h-3 rounded-full shrink-0';
+                dot.style.backgroundColor = u.color || '#3B82F6';
+                const name = document.createElement('button');
+                name.type = 'button';
+                name.className = 'min-w-0 flex-1 text-left text-sm font-bold truncate';
+                name.textContent = u.name || `用户 ${u.id}`;
+                name.onclick = () => switchUser(u.id);
+                const up = document.createElement('button');
+                up.type = 'button';
+                up.className = 'btn btn-ghost btn-xs px-2';
+                up.textContent = '↑';
+                up.title = '上移';
+                up.disabled = index === 0;
+                up.onclick = () => moveMember(u.id, -1);
+                const down = document.createElement('button');
+                down.type = 'button';
+                down.className = 'btn btn-ghost btn-xs px-2';
+                down.textContent = '↓';
+                down.title = '下移';
+                down.disabled = index === remoteUsers.length - 1;
+                down.onclick = () => moveMember(u.id, 1);
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn btn-ghost btn-xs px-2 text-red-500';
+                remove.textContent = '删除';
+                remove.onclick = () => requestDeleteMember(u.id);
+                row.append(dot, name, up, down, remove);
+                container.appendChild(row);
             });
         }
 
+        async function moveMember(memberId, direction) {
+            const from = remoteUsers.findIndex(user => String(user.id) === String(memberId));
+            const to = from + direction;
+            if (from < 0 || to < 0 || to >= remoteUsers.length) return;
+            const next = [...remoteUsers];
+            [next[from], next[to]] = [next[to], next[from]];
+            const saved = await apiPatch('/users/order', { memberIds: next.map(user => user.id) });
+            if (!Array.isArray(saved)) {
+                showToast('⚠️ 成员顺序保存失败');
+                return;
+            }
+            remoteUsers = saved.map(memberDtoToLegacy);
+            renderUserButtons();
+            await loadHouseholdView();
+            showToast('成员顺序已更新');
+        }
+
+        async function requestDeleteMember(memberId) {
+            const preview = await apiGet(`/users/${memberId}/delete-preview`);
+            if (!preview || !preview.member) {
+                showToast('⚠️ 无法读取删除影响');
+                return;
+            }
+            const panel = document.getElementById('memberDeletePanel');
+            panel.dataset.memberId = String(memberId);
+            document.getElementById('memberDeleteSummary').textContent = `删除“${preview.member.name}”？`;
+            document.getElementById('memberDeleteImpact').textContent = preview.impact.eventCount
+                ? `将同时删除 ${preview.impact.eventCount} 个关联事件。此操作无法撤销。`
+                : '该成员没有关联事件。此操作无法撤销。';
+            panel.classList.remove('hidden');
+        }
+
+        function cancelDeleteMember() {
+            const panel = document.getElementById('memberDeletePanel');
+            panel.classList.add('hidden');
+            delete panel.dataset.memberId;
+        }
+
+        async function confirmDeleteMember() {
+            const panel = document.getElementById('memberDeletePanel');
+            const memberId = panel.dataset.memberId;
+            if (!memberId) return;
+            const button = document.getElementById('confirmDeleteMemberButton');
+            button.disabled = true;
+            const deleted = await apiDelete(`/users/${memberId}`);
+            button.disabled = false;
+            if (!deleted) {
+                showToast('⚠️ 成员删除失败');
+                return;
+            }
+            remoteUsers = remoteUsers.filter(user => String(user.id) !== String(memberId));
+            if (String(activeUserId) === String(memberId)) {
+                activeUserId = null;
+                localStorage.removeItem(ACTIVE_MEMBER_KEY);
+            }
+            cancelDeleteMember();
+            if (!remoteUsers.length) {
+                showOnboarding();
+                return;
+            }
+            renderUserButtons();
+            await showHouseholdView();
+            showToast('成员已删除');
+        }
+
         async function switchUser(userId) {
-            const user = remoteUsers.find(u => u.id === userId);
+            const normalizedId = String(userId);
+            const user = remoteUsers.find(u => String(u.id) === normalizedId);
             if (!user) return;
-            activeUserId = userId;
+            activeUserId = normalizedId;
+            localStorage.setItem(ACTIVE_MEMBER_KEY, normalizedId);
             state.profile.name = user.name || '';
             state.profile.birthDate = user.birth_date || '';
             state.profile.expectedAge = user.expected_age || 80;
+            state.profile.color = user.color || '#3B82F6';
             state.profile.identityTag = user.identity_tag || 'student';
             state.targetDate = user.target_date || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
             state.profile.schoolSystem = user.school_system || 'shanghai';
             state.profile.immichPersonId = user.immich_person_id || null;
-            saveState();
+            showPersonalView();
+            document.getElementById('personalViewName').textContent = state.profile.name || '个人时间';
+            const age = state.profile.birthDate
+                ? Math.max(0, Math.floor((Date.now() - new Date(state.profile.birthDate).getTime()) / 31557600000))
+                : null;
+            document.getElementById('personalViewMeta').textContent = [
+                age == null ? null : `${age} 岁`,
+                state.profile.birthDate ? `出生于 ${state.profile.birthDate}` : '出生日期待完善'
+            ].filter(Boolean).join(' · ');
             hydrateFormFromState();
             setTheme(state.profile.identityTag);
             // Show UI immediately, then fetch extra data in background
@@ -1704,7 +2305,7 @@
             updateUserMenu();
             showToast(`👤 切换到 ${state.profile.name || '用户'}`, 1200);
             // Background fetch full user data
-            const full = await apiGet(`/users/${userId}`);
+            const full = await apiGet(`/users/${normalizedId}`);
             if (full && full.education) state._apiEducation = full.education;
         }
 
@@ -1718,22 +2319,52 @@
                 avatar.outerHTML = '<img id="userAvatar" src="' + API_BASE + '/immich/person-thumb?id=' + pid + '" class="w-6 h-6 rounded-full object-cover border-2 border-theme-accent/50" onerror="this.onerror=null;this.outerHTML=\'<span id=userAvatar class=\\\'w-6\\\\ h-6\\\\ rounded-full\\\\ bg-theme-accent/20\\\\ flex\\\\ items-center\\\\ justify-center\\\\ text-xs\\\\ font-black\\\'\\\'>' + name.charAt(0) + '</span>\'">';
             } else {
                 avatar.textContent = name.charAt(0);
+                avatar.style.backgroundColor = `${state.profile.color || '#3B82F6'}22`;
+                avatar.style.color = state.profile.color || '#3B82F6';
             }
         }
 
-        async function createNewUser() {
-            const name = prompt('请输入新用户名称:', '');
-            if (!name) return;
+        function createNewUser() {
+            document.getElementById('onboardingOverlay').classList.remove('hidden');
+            document.getElementById('newMemberName').value = '';
+            document.getElementById('newMemberBirthDate').value = '';
+            document.getElementById('newMemberError').textContent = '';
+            showStep(5);
+            document.getElementById('newMemberName').focus();
+        }
+
+        function cancelNewUser() {
+            if (remoteUsers.length > 0) showExistingUsers();
+            else showStep(1);
+        }
+
+        async function submitNewUser() {
+            const name = document.getElementById('newMemberName').value.trim();
+            const birthDate = document.getElementById('newMemberBirthDate').value || null;
+            const error = document.getElementById('newMemberError');
+            const submit = document.getElementById('newMemberSubmit');
+            if (!name) {
+                error.textContent = '请填写成员姓名。';
+                return;
+            }
+            error.textContent = '';
+            submit.disabled = true;
+            submit.textContent = '保存中...';
+            const creationKey = crypto.randomUUID ? crypto.randomUUID() : `member-${Date.now()}-${Math.random()}`;
             const user = await apiPost('/users', {
-                name, birth_date: null, expected_age: 80,
+                name, birth_date: birthDate, expected_age: 80,
                 identity_tag: 'student', school_system: 'shanghai'
-            });
+            }, { headers: { 'Idempotency-Key': creationKey } });
+            submit.disabled = false;
+            submit.textContent = '保存成员';
             if (user) {
+                const normalized = { ...user, id: String(user.id) };
+                remoteUsers.push(normalized);
                 await switchUser(user.id);
-                // Refresh the remote user list
-                await syncFromApi();
+                document.getElementById('onboardingOverlay').classList.add('hidden');
+                revealMainContent();
             } else {
-                showToast('⚠️ 后端不可用，请在本地设置中配置');
+                error.textContent = '创建失败，请检查家庭服务后重试。';
             }
         }
 
@@ -1882,21 +2513,41 @@
                 }
             }
             track.textContent =
-                `📸 那年今日 (${md})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉`;
+                `✨ ${md}：今天也值得被认真生活和记住`;
         }
 
         // ==================== ONBOARDING FLOW ====================
         let onboardingPersonId = null;
-
-        const IMMICH_KEY = 'gio4wP9dp7UfImtremKn9NETcxNrqgvZ5g1fBcCN00c';
 
         function showOnboarding() {
             document.getElementById('onboardingOverlay').classList.remove('hidden');
             showStep(1);
         }
 
+        function showServiceUnavailable() {
+            document.getElementById('onboardingOverlay').classList.remove('hidden');
+            showStep(2);
+            document.getElementById('onbStatusText').textContent = '家庭服务暂时不可用';
+            document.getElementById('onbProgress').style.width = '100%';
+            const error = document.getElementById('onbError');
+            error.textContent = '你的家庭数据仍保存在服务端。请检查服务后重新连接。';
+            error.classList.remove('hidden');
+            document.getElementById('onbRetryButton').classList.remove('hidden');
+        }
+
+        async function retryApplication() {
+            const button = document.getElementById('onbRetryButton');
+            button.disabled = true;
+            button.textContent = '正在重新连接...';
+            document.getElementById('onbError').classList.add('hidden');
+            await bootstrapApplication();
+            button.disabled = false;
+            button.textContent = '重新连接家庭服务';
+            if (apiAvailable) button.classList.add('hidden');
+        }
+
         function showStep(n) {
-            const steps = [1, 2, 3, 4, 6];
+            const steps = [1, 2, 3, 4, 5, 6];
             steps.forEach(i => {
                 const el = document.getElementById(`onbStep${i}`);
                 if (el) el.classList.toggle('hidden', i !== n);
@@ -1904,65 +2555,46 @@
         }
 
         async function startOnboarding() {
-            // Step 1 → Step 2: show loading animation
             showStep(2);
             const statusEl = document.getElementById('onbStatusText');
             const progressEl = document.getElementById('onbProgress');
             const errorEl = document.getElementById('onbError');
 
-            statusEl.textContent = '正在检测后端服务...';
-            progressEl.style.width = '20%';
+            statusEl.textContent = '正在准备家庭空间...';
+            progressEl.style.width = '50%';
             errorEl.classList.add('hidden');
+            document.getElementById('onbRetryButton').classList.add('hidden');
 
-            // 1. Try sync from API backend
-            const synced = await syncFromApi();
-            if (synced) {
-                progressEl.style.width = '50%';
-                statusEl.textContent = '后端已连接，正在检查照片库...';
-
-                // 2. Try Immich connection (via backend proxy)
-                const status = await immichGet('/status');
-                if (status && status.connected) {
-                    immichConnected = true;
-                    // Save Immich config
-                    await apiPost('/immich/config', { url: 'http://172.17.0.1:22283', key: IMMICH_KEY });
-
-                    progressEl.style.width = '75%';
-                    statusEl.textContent = '照片库已连接，加载家庭成员...';
-
-                    // 3. Load people
-                    const peopleData = await immichGet('/people');
-                    if (peopleData && peopleData.people && peopleData.people.length > 0) {
-                        immichPeople = peopleData.people;
-                        progressEl.style.width = '100%';
-                        // Auto-select first person with birth date, or first person
-                        const best = immichPeople.find(p => p.birthDate) || immichPeople[0];
-                        selectPerson(best);
-                        setTimeout(() => confirmOnboarding(), 800);
-                        return;
-                    }
-                }
+            if (!apiAvailable) {
+                progressEl.style.width = '100%';
+                statusEl.textContent = '家庭服务暂时不可用';
+                errorEl.textContent = '请确认后端服务启动后重试。照片服务不会影响家庭空间启动。';
+                errorEl.classList.remove('hidden');
+                return;
             }
 
-            // Fallback: no backend or no Immich people — go directly to dashboard
             progressEl.style.width = '100%';
-            statusEl.textContent = '已就绪';
-            setTimeout(() => skipOnboarding(), 500);
+            statusEl.textContent = '家庭空间已就绪';
+            setTimeout(() => {
+                createNewUser();
+            }, 350);
         }
 
         function showPersonSelection() {
             showStep(3);
             const list = document.getElementById('onbPersonList');
             list.innerHTML = '';
+            const initializedIds = new Set(remoteUsers.filter(u => u.immich_person_id).map(u => u.immich_person_id));
             immichPeople.forEach(p => {
                 const card = document.createElement('div');
                 const age = p.birthDate ? Math.floor((new Date() - new Date(p.birthDate)) / (365.25 * 24 * 60 * 60 * 1000)) : '?';
                 const grade = p.birthDate ? getGradeFromAge(age).grade : '';
-                card.className = 'flex items-center gap-3 p-3 rounded-xl border-2 border-gray-100 hover:border-theme-accent cursor-pointer transition-all duration-200 hover:shadow-md';
+                const isInitialized = initializedIds.has(p.id);
+                card.className = `flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${isInitialized ? 'border-green-300 bg-green-50' : 'border-gray-100 hover:border-theme-accent'}`;
                 card.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-theme-accent/10 flex items-center justify-center text-lg">👤</div>
+                    <div class="w-10 h-10 rounded-full ${isInitialized ? 'bg-green-100' : 'bg-theme-accent/10'} flex items-center justify-center text-lg">👤</div>
                     <div class="flex-1 text-left">
-                        <div class="font-bold text-sm">${p.name}</div>
+                        <div class="font-bold text-sm">${p.name}<span class="${isInitialized ? 'text-green-600' : 'text-gray-400'} text-[10px] ml-1">${isInitialized ? '📋 已初始化' : '🆕 未初始化'}</span></div>
                         <div class="text-xs text-gray-400">🎂 ${p.birthDate || '未设置'} · ${age}岁 · ${grade}</div>
                     </div>
                 `;
@@ -2016,12 +2648,33 @@
             gsap.from('.ticker-bar', { y: 20, opacity: 0, duration: 0.3, ease: 'power2.out', clearProps: 'opacity' });
         }
 
-        function confirmOnboarding() {
+        async function confirmOnboarding() {
             saveState();
-            if (apiAvailable && activeUserId) pushToApi();
+            if (apiAvailable) {
+                if (activeUserId) {
+                    await pushToApi();
+                } else if (state.profile.name) {
+                    const user = await apiPost('/users', {
+                        name: state.profile.name,
+                        birth_date: state.profile.birthDate || null,
+                        expected_age: state.profile.expectedAge,
+                        identity_tag: state.profile.identityTag,
+                        school_system: state.profile.schoolSystem || 'shanghai',
+                        target_date: state.targetDate || null,
+                        immich_person_id: state.profile.immichPersonId || null
+                    });
+                    if (user) {
+                        activeUserId = String(user.id);
+                        localStorage.setItem(ACTIVE_MEMBER_KEY, activeUserId);
+                        remoteUsers.push({ ...user, id: activeUserId });
+                        renderUserButtons();
+                    }
+                }
+            }
             document.getElementById('onboardingOverlay').classList.add('hidden');
             setTheme(state.profile.identityTag);
             revealMainContent();
+            updateUserMenu();
             showToast(`🎉 欢迎，${state.profile.name}！`);
         }
 
@@ -2056,7 +2709,7 @@
             });
         }
 
-        // Show user switcher (re-open step 3 with Immich people)
+        // Show user switcher — shows Step 6 for existing users, or Step 3 for new ones
         async function showUserSwitcher() {
             showOnboarding();
             showStep(2);
@@ -2070,32 +2723,27 @@
                 } catch { }
             }
             document.getElementById('onbProgress').style.width = '50%';
-            if (immichPeople.length > 0) {
+            // If there are existing backend users, show Step 6 (welcome back grid)
+            if (remoteUsers.length > 0) {
                 document.getElementById('onbProgress').style.width = '100%';
-                showPersonSelection();
+                showExistingUsers();
             } else {
-                try {
-                    const data = await immichGet('/people');
-                    if (data && data.people && data.people.length > 0) { immichPeople = data.people; showPersonSelection(); }
-                    else { showToast('⚠️ 无法加载家庭成员'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
-                } catch { showToast('⚠️ 无法加载照片库'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+                // No existing users — show Immich person selection
+                if (immichPeople.length > 0) {
+                    document.getElementById('onbProgress').style.width = '100%';
+                    showPersonSelection();
+                } else {
+                    try {
+                        const data = await immichGet('/people');
+                        if (data && data.people && data.people.length > 0) { immichPeople = data.people; showPersonSelection(); }
+                        else { showToast('⚠️ 无法加载家庭成员'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+                    } catch { showToast('⚠️ 无法加载照片库'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
+                }
             }
         }
 
         function showUserSwitcherForAdd() {
-            showOnboarding();
-            showStep(2);
-            document.getElementById('onbStatusText').textContent = '加载中...';
-            document.getElementById('onbProgress').style.width = '10%';
-            if (immichPeople.length > 0) {
-                document.getElementById('onbProgress').style.width = '100%';
-                showPersonSelection();
-            } else {
-                immichGet('/people').then(function (data) {
-                    if (data && data.people && data.people.length > 0) { immichPeople = data.people; showPersonSelection(); }
-                    else { showToast('⚠️ 无法加载家庭成员'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
-                });
-            }
+            createNewUser();
         }
 
         // ==================== WHEEL ZOOM ====================
@@ -2114,38 +2762,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
 
-            // Show onboarding if no profile configured (first visit)
-            if (!state.profile.name && !state.profile.birthDate) {
-                showOnboarding();
-            }
-
             setTheme(state.profile.identityTag || 'student');
             updateTickerStyle();
             initFlatpickrs();
-
-            // Quick health check
-            (async () => {
-                try {
-                    const r = await fetch(API_BASE + '/health', { signal: AbortSignal.timeout(2000) });
-                    apiAvailable = r.ok;
-                } catch { }
-            })();
-
-            checkImmichStatus();
             startTickerLoop();
             initKeyboard();
             initWheelZoom();
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);
-
-            // Try API sync. Decide main content vs selection vs onboarding.
-            syncFromApi().then(() => {
-                if (apiAvailable && remoteUsers.length > 0 && state.profile.name && state.profile.birthDate) {
-                    showExistingUsers(); // show user selection page
-                } else {
-                    revealMainContent(); // no backend users or offline — show dashboard
-                }
-            });
+            bootstrapApplication();
         });
     </script>
 
