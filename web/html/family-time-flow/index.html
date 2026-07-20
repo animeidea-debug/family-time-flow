@@ -687,33 +687,26 @@
             <!-- Step 3: Person Selection -->
             <div id="onbStep3" class="hidden">
                 <div class="text-4xl mb-3">👨‍👩‍👧‍👦</div>
-                <h2 class="text-xl font-bold text-gray-800 mb-1">请选择您的身份</h2>
-                <p class="text-xs text-gray-400 mb-5">从照片库中找到以下家庭成员，选择以自动完成设置</p>
+                <h2 class="text-xl font-bold text-gray-800 mb-1">选择家庭成员</h2>
+                <p class="text-xs text-gray-400 mb-5">可一次选择多位；已创建的人物不会重复导入</p>
                 <div id="onbPersonList" class="space-y-2 mb-5 max-h-60 overflow-y-auto px-2"></div>
-                <button onclick="skipOnboarding()" class="btn btn-ghost btn-xs text-gray-400">跳过，手动设置 →</button>
+                <p id="onbPersonError" class="text-xs text-red-500 min-h-5 mb-2"></p>
+                <div class="flex gap-2">
+                    <button id="onbReviewPeople" onclick="reviewSelectedPeople()" disabled
+                        class="btn btn-accent flex-1 font-bold">预览所选成员</button>
+                    <button onclick="createNewUser()" class="btn btn-ghost text-gray-500">手动添加</button>
+                </div>
             </div>
 
             <!-- Step 4: Preview -->
             <div id="onbStep4" class="hidden">
                 <div class="text-4xl mb-3">🎉</div>
-                <h2 id="onbPreviewName" class="text-xl font-bold text-gray-800 mb-1"></h2>
-                <div id="onbPreviewContent" class="text-left bg-gray-50 rounded-2xl p-5 space-y-2 text-sm mb-5">
-                    <div class="flex justify-between"><span>📅 出生日期</span><span id="onbPreviewBirth"
-                            class="font-bold text-theme-accent"></span></div>
-                    <div class="flex justify-between"><span>📖 当前年级</span><span id="onbPreviewGrade"
-                            class="font-bold text-theme-accent"></span></div>
-                    <div class="flex justify-between"><span>🎯 中考</span><span id="onbPreviewZhongkao"
-                            class="font-bold text-theme-accent"></span></div>
-                    <div class="flex justify-between"><span>🏆 高考</span><span id="onbPreviewGaokao"
-                            class="font-bold text-theme-accent"></span></div>
-                    <div class="w-full h-1.5 bg-gray-200 rounded-full mt-2">
-                        <div class="h-full rounded-full bg-theme-accent" style="width:15%"></div>
-                    </div>
-                    <div class="text-center text-[10px] text-gray-400">人生进度 15%</div>
-                </div>
+                <h2 id="onbPreviewName" class="text-xl font-bold text-gray-800 mb-1">确认家庭成员资料</h2>
+                <p class="text-xs text-gray-400 mb-4">可修正姓名，并补充 Immich 中缺失的出生日期</p>
+                <div id="onbPreviewContent" class="text-left space-y-3 mb-3 max-h-72 overflow-y-auto px-1"></div>
+                <p id="onbImportError" class="text-xs text-red-500 min-h-5 mb-2"></p>
                 <div class="flex gap-2">
-                    <button onclick="confirmOnboarding()" class="btn btn-accent flex-1 font-bold shadow-lg">🚀
-                        开始时光之旅</button>
+                    <button id="onbImportButton" onclick="confirmOnboarding()" class="btn btn-accent flex-1 font-bold shadow-lg">创建家庭成员</button>
                     <button onclick="resetOnboarding()" class="btn btn-ghost btn-sm">↩ 重新选择</button>
                 </div>
             </div>
@@ -2518,6 +2511,7 @@
 
         // ==================== ONBOARDING FLOW ====================
         let onboardingPersonId = null;
+        let onboardingPersonIds = new Set();
 
         function showOnboarding() {
             document.getElementById('onboardingOverlay').classList.remove('hidden');
@@ -2573,67 +2567,119 @@
                 return;
             }
 
+            statusEl.textContent = '正在检查照片人物...';
+            progressEl.style.width = '75%';
+            const status = await immichGet('/status');
+            if (status && status.connected) {
+                const peopleData = await immichGet('/people');
+                if (peopleData && Array.isArray(peopleData.people) && peopleData.people.length) {
+                    immichConnected = true;
+                    immichPeople = peopleData.people;
+                    progressEl.style.width = '100%';
+                    statusEl.textContent = '已找到可导入的家庭人物';
+                    setTimeout(showPersonSelection, 250);
+                    return;
+                }
+            }
+
             progressEl.style.width = '100%';
-            statusEl.textContent = '家庭空间已就绪';
-            setTimeout(() => {
-                createNewUser();
-            }, 350);
+            statusEl.textContent = '照片人物暂时不可用';
+            errorEl.textContent = '你仍可手动创建成员，之后再从 Immich 导入。';
+            errorEl.classList.remove('hidden');
+            setTimeout(createNewUser, 500);
         }
 
         function showPersonSelection() {
             showStep(3);
             const list = document.getElementById('onbPersonList');
             list.innerHTML = '';
+            document.getElementById('onbPersonError').textContent = '';
             const initializedIds = new Set(remoteUsers.filter(u => u.immich_person_id).map(u => u.immich_person_id));
             immichPeople.forEach(p => {
-                const card = document.createElement('div');
-                const age = p.birthDate ? Math.floor((new Date() - new Date(p.birthDate)) / (365.25 * 24 * 60 * 60 * 1000)) : '?';
-                const grade = p.birthDate ? getGradeFromAge(age).grade : '';
+                const card = document.createElement('label');
                 const isInitialized = initializedIds.has(p.id);
-                card.className = `flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${isInitialized ? 'border-green-300 bg-green-50' : 'border-gray-100 hover:border-theme-accent'}`;
-                card.innerHTML = `
-                    <div class="w-10 h-10 rounded-full ${isInitialized ? 'bg-green-100' : 'bg-theme-accent/10'} flex items-center justify-center text-lg">👤</div>
-                    <div class="flex-1 text-left">
-                        <div class="font-bold text-sm">${p.name}<span class="${isInitialized ? 'text-green-600' : 'text-gray-400'} text-[10px] ml-1">${isInitialized ? '📋 已初始化' : '🆕 未初始化'}</span></div>
-                        <div class="text-xs text-gray-400">🎂 ${p.birthDate || '未设置'} · ${age}岁 · ${grade}</div>
-                    </div>
-                `;
-                card.onclick = () => selectPerson(p);
+                card.className = `flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${isInitialized ? 'border-green-200 bg-green-50 opacity-70' : 'border-gray-100 cursor-pointer hover:border-theme-accent'}`;
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'checkbox checkbox-accent checkbox-sm';
+                checkbox.disabled = isInitialized;
+                checkbox.checked = onboardingPersonIds.has(p.id);
+                checkbox.addEventListener('change', () => toggleOnboardingPerson(p.id, checkbox.checked));
+                const avatar = document.createElement('img');
+                avatar.className = 'w-11 h-11 rounded-full object-cover bg-gray-100';
+                avatar.src = `${API_BASE}/immich/person-thumb?id=${encodeURIComponent(p.id)}`;
+                avatar.alt = '';
+                avatar.onerror = () => { avatar.style.visibility = 'hidden'; };
+                const details = document.createElement('div');
+                details.className = 'flex-1 min-w-0 text-left';
+                const name = document.createElement('div');
+                name.className = 'font-bold text-sm truncate';
+                name.textContent = p.name;
+                const metadata = document.createElement('div');
+                metadata.className = `text-xs ${p.birthDate ? 'text-gray-400' : 'text-amber-600'}`;
+                metadata.textContent = isInitialized ? '已创建' : (p.birthDate ? `出生日期 ${p.birthDate}` : '需要补充出生日期');
+                details.append(name, metadata);
+                card.append(checkbox, avatar, details);
                 list.appendChild(card);
             });
+            updateOnboardingSelectionButton();
         }
 
-        function selectPerson(person) {
-            onboardingPersonId = person.id;
-            state.profile.name = person.name;
-            state.profile.birthDate = person.birthDate || '';
-            state.profile.immichPersonId = person.id;
-            state.immichSync = true;
+        function toggleOnboardingPerson(personId, checked) {
+            if (checked) onboardingPersonIds.add(personId);
+            else onboardingPersonIds.delete(personId);
+            updateOnboardingSelectionButton();
+        }
 
-            // Determine identity tag based on age
-            if (person.birthDate) {
-                const age = Math.floor((new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000));
-                if (age < 22) state.profile.identityTag = 'student';
-                else if (age < 60) state.profile.identityTag = 'worker';
-                else state.profile.identityTag = 'family';
+        function updateOnboardingSelectionButton() {
+            const button = document.getElementById('onbReviewPeople');
+            button.disabled = onboardingPersonIds.size === 0;
+            button.textContent = onboardingPersonIds.size ? `预览所选成员（${onboardingPersonIds.size}）` : '预览所选成员';
+        }
+
+        function profileTemplateForBirthDate(birthDate) {
+            if (!birthDate) return 'family';
+            const age = Math.floor((new Date() - new Date(birthDate)) / 31557600000);
+            if (age < 22) return 'student';
+            if (age < 60) return 'worker';
+            return 'family';
+        }
+
+        function reviewSelectedPeople() {
+            const selected = immichPeople.filter(person => onboardingPersonIds.has(person.id));
+            if (!selected.length) {
+                document.getElementById('onbPersonError').textContent = '请至少选择一位家庭成员。';
+                return;
             }
-
-            // Preview
             showStep(4);
-            const grade = person.birthDate ? getGradeFromAge(Math.floor((new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000))) : {};
-            const milestones = person.birthDate ? getMilestones(person.birthDate) : [];
-            const zhongkao = milestones.find(m => m.label.includes('中考'));
-            const gaokao = milestones.find(m => m.label.includes('高考'));
-            const ageYears = person.birthDate ? (new Date() - new Date(person.birthDate)) / (365.25 * 24 * 60 * 60 * 1000) : 0;
-            const lifePct = Math.min(Math.round(ageYears / 80 * 100), 100);
-
-            document.getElementById('onbPreviewName').textContent = `👋 你好，${person.name}！`;
-            document.getElementById('onbPreviewBirth').textContent = person.birthDate || '未设置';
-            document.getElementById('onbPreviewGrade').textContent = grade.grade || '未知';
-            document.getElementById('onbPreviewZhongkao').textContent = zhongkao ? zhongkao.remaining : '已过';
-            document.getElementById('onbPreviewGaokao').textContent = gaokao ? gaokao.remaining : '已过';
-            document.getElementById('onbPreviewContent').querySelector('.h-full').style.width = `${lifePct}%`;
-            document.getElementById('onbPreviewContent').querySelector('.text-center').textContent = `人生进度 ${lifePct}%`;
+            document.getElementById('onbImportError').textContent = '';
+            const container = document.getElementById('onbPreviewContent');
+            container.innerHTML = '';
+            selected.forEach(person => {
+                const row = document.createElement('div');
+                row.className = 'rounded-2xl border-2 border-gray-100 bg-gray-50 p-3';
+                row.dataset.personId = person.id;
+                const title = document.createElement('div');
+                title.className = 'text-xs font-bold text-gray-500 mb-2';
+                title.textContent = 'Immich 人物资料';
+                const fields = document.createElement('div');
+                fields.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2';
+                const name = document.createElement('input');
+                name.className = 'input input-bordered input-sm bg-white';
+                name.value = person.name;
+                name.maxLength = 40;
+                name.dataset.field = 'name';
+                name.setAttribute('aria-label', '姓名');
+                const birth = document.createElement('input');
+                birth.type = 'date';
+                birth.className = `input input-bordered input-sm bg-white ${person.birthDate ? '' : 'border-amber-400'}`;
+                birth.value = person.birthDate || '';
+                birth.dataset.field = 'birthDate';
+                birth.setAttribute('aria-label', '出生日期');
+                fields.append(name, birth);
+                row.append(title, fields);
+                container.appendChild(row);
+            });
         }
 
         function revealMainContent() {
@@ -2649,33 +2695,39 @@
         }
 
         async function confirmOnboarding() {
-            saveState();
-            if (apiAvailable) {
-                if (activeUserId) {
-                    await pushToApi();
-                } else if (state.profile.name) {
-                    const user = await apiPost('/users', {
-                        name: state.profile.name,
-                        birth_date: state.profile.birthDate || null,
-                        expected_age: state.profile.expectedAge,
-                        identity_tag: state.profile.identityTag,
-                        school_system: state.profile.schoolSystem || 'shanghai',
-                        target_date: state.targetDate || null,
-                        immich_person_id: state.profile.immichPersonId || null
-                    });
-                    if (user) {
-                        activeUserId = String(user.id);
-                        localStorage.setItem(ACTIVE_MEMBER_KEY, activeUserId);
-                        remoteUsers.push({ ...user, id: activeUserId });
-                        renderUserButtons();
-                    }
-                }
+            const error = document.getElementById('onbImportError');
+            const button = document.getElementById('onbImportButton');
+            const people = [...document.querySelectorAll('#onbPreviewContent [data-person-id]')].map(row => {
+                const birthDate = row.querySelector('[data-field="birthDate"]').value || null;
+                return {
+                    personId: row.dataset.personId,
+                    name: row.querySelector('[data-field="name"]').value.trim(),
+                    birthDate,
+                    profileTemplate: profileTemplateForBirthDate(birthDate)
+                };
+            });
+            if (people.some(person => !person.name)) {
+                error.textContent = '每位成员都需要姓名。';
+                return;
+            }
+            error.textContent = '';
+            button.disabled = true;
+            button.textContent = '正在创建...';
+            const imported = await apiPost('/onboarding/immich-import', { people });
+            button.disabled = false;
+            button.textContent = '创建家庭成员';
+            if (!imported || !Array.isArray(imported.results)) {
+                error.textContent = '导入失败。Immich 数据可能已变化，请返回刷新后重试。';
+                return;
+            }
+            const refreshed = await apiGet('/bootstrap');
+            if (refreshed && Array.isArray(refreshed.members)) {
+                remoteUsers = refreshed.members.map(memberDtoToLegacy);
             }
             document.getElementById('onboardingOverlay').classList.add('hidden');
-            setTheme(state.profile.identityTag);
-            revealMainContent();
-            updateUserMenu();
-            showToast(`🎉 欢迎，${state.profile.name}！`);
+            onboardingPersonIds = new Set();
+            await showHouseholdView();
+            showToast(`已导入 ${imported.results.filter(result => result.created).length} 位家庭成员`);
         }
 
         function skipOnboarding() {
@@ -2686,7 +2738,7 @@
 
         function resetOnboarding() {
             onboardingPersonId = null;
-            showStep(3);
+            showPersonSelection();
         }
 
         function showExistingUsers() {

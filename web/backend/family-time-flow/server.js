@@ -32,7 +32,8 @@ const BACKUP_DIR = process.env.BACKUP_DIR || path.join(dbDir, "backups");
 const BACKUP_LIMIT = Math.max(1, Number.parseInt(process.env.BACKUP_LIMIT || "7", 10) || 7);
 const DIAGNOSTICS_ENABLED = process.env.ENABLE_DIAGNOSTICS === "1";
 const IMMICH_ENABLED = process.env.ENABLE_IMMICH === "1";
-const IMMICH_ADMIN_ENABLED = process.env.ENABLE_IMMICH_ADMIN === "1";
+const IMMICH_URL = (process.env.IMMICH_URL || "").replace(/\/+$/, "").replace(/\/api$/, "");
+const IMMICH_API_KEY = process.env.IMMICH_API_KEY || "";
 
 const initSqlJs = require("sql.js");
 let db;
@@ -158,6 +159,19 @@ function runTransaction(operations) {
         operations.forEach(({ sql, params = [] }) => db.run(sql, params));
         db.run("COMMIT");
         saveDb();
+    } catch (error) {
+        db.run("ROLLBACK");
+        throw error;
+    }
+}
+
+function runTransactionWithResult(callback) {
+    db.run("BEGIN");
+    try {
+        const result = callback();
+        db.run("COMMIT");
+        saveDb();
+        return result;
     } catch (error) {
         db.run("ROLLBACK");
         throw error;
@@ -343,9 +357,9 @@ app.get("/api/bootstrap", (req, res) => {
         selectedMemberId,
         integrations: {
             immich: {
-                configured: Boolean(publicConfig.immich_api_key_configured),
+                configured: Boolean(IMMICH_URL && IMMICH_API_KEY),
                 status: IMMICH_ENABLED
-                    ? (publicConfig.immich_api_key_configured ? "unchecked" : "not_configured")
+                    ? (IMMICH_URL && IMMICH_API_KEY ? "unchecked" : "not_configured")
                     : "disabled"
             }
         }
@@ -583,89 +597,69 @@ app.use("/api/immich", (req, res, next) => {
     next();
 });
 
-function requireImmichAdmin(req, res, next) {
-    if (!IMMICH_ADMIN_ENABLED) return res.status(403).json({ error: "Immich administration is disabled" });
-    next();
-}
-
-// Immich URL — stored in app_config, falls back to hardcoded Docker IP
+// Credentials are injected at process start. The database may contain legacy
+// values from old releases, but they are deliberately ignored.
 function getImmichUrl() {
-    const rows = queryAll("SELECT key, value FROM app_config WHERE key = 'immich_url'");
-    return rows.length > 0 ? rows[0].value : 'http://172.17.0.1:22283';
+    return IMMICH_URL;
 }
 
 function getImmichKey() {
-    const rows = queryAll("SELECT key, value FROM app_config WHERE key = 'immich_api_key'");
-    return rows.length > 0 ? rows[0].value : null;
+    return IMMICH_API_KEY || null;
 }
 
 // Helper: proxy request to Immich API
 async function immichFetch(path) {
     const apiKey = getImmichKey();
-    if (!apiKey) return null;
     const url = getImmichUrl();
+    if (!apiKey || !url) return { ok: false, kind: "not_configured", status: null, data: null };
     try {
         const resp = await fetch(`${url}${path}`, {
             headers: { 'x-api-key': apiKey, 'Accept': 'application/json' },
             signal: AbortSignal.timeout(5000)
         });
-        if (!resp.ok) return null;
-        return await resp.json();
-    } catch { return null; }
+        if (!resp.ok) {
+            return {
+                ok: false,
+                kind: resp.status === 401 || resp.status === 403 ? "unauthorized" : "upstream_error",
+                status: resp.status,
+                data: null
+            };
+        }
+        return { ok: true, kind: "available", status: resp.status, data: await resp.json() };
+    } catch {
+        return { ok: false, kind: "unreachable", status: null, data: null };
+    }
 }
 
-// POST /api/immich/config — Save Immich server URL + API Key, then test
-app.post("/api/immich/config", requireImmichAdmin, (req, res) => {
-    const { url, key } = req.body;
-    if (!url) return res.status(400).json({ error: "url required" });
-    // Ensure URL doesn't end with /api
-    const cleanUrl = url.replace(/\/+$/, '').replace(/\/api$/, '');
-    run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_url", cleanUrl]);
-    if (key) {
-        run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_api_key", key]);
-    }
-    // Test the connection
-    const apiKey = key || getImmichKey();
-    fetch(`${cleanUrl}/api/server/version`, {
-        headers: apiKey ? { 'x-api-key': apiKey } : {}
-    }).then(r => r.json()).then(v => {
-        res.json({ status: "ok", version: v, connected: true, message: "Immich connection successful" });
-    }).catch(() => {
-        res.json({ status: "warning", connected: false, message: "URL saved but Immich unreachable" });
-    });
+// Legacy browser-based credential configuration is permanently retired.
+app.post("/api/immich/config", (req, res) => {
+    res.status(410).json({ error: "Configure Immich with server environment variables" });
 });
 
-// POST /api/immich/set-key — Legacy: only sets API key
-app.post("/api/immich/set-key", requireImmichAdmin, (req, res) => {
-    const { key } = req.body;
-    if (!key) return res.status(400).json({ error: "key required" });
-    run("INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)", ["immich_api_key", key]);
-    const url = getImmichUrl();
-    fetch(`${url}/api/server/version`, {
-        headers: { 'x-api-key': key }
-    }).then(r => r.json()).then(v => {
-        res.json({ status: "ok", version: v, message: "Immich API key saved and verified" });
-    }).catch(() => {
-        res.json({ status: "warning", message: "Key saved but Immich unreachable" });
-    });
+// Legacy alias: credentials must never be accepted from a browser.
+app.post("/api/immich/set-key", (req, res) => {
+    res.status(410).json({ error: "Configure Immich with server environment variables" });
 });
 
 // GET /api/immich/status — Check Immich connectivity
 app.get("/api/immich/status", async (req, res) => {
     const version = await immichFetch("/api/server/version");
-    const ping = await immichFetch("/api/server/ping");
     res.json({
-        connected: !!version,
-        version: version || null,
-        ping: ping || null
+        configured: Boolean(getImmichUrl() && getImmichKey()),
+        connected: version.ok,
+        status: version.kind,
+        version: version.ok ? version.data : null
     });
 });
 
 // GET /api/immich/people — List named people only (filter out unnamed)
 app.get("/api/immich/people", async (req, res) => {
-    // Immich v2.7 confirmed: size=500 works reliably
-    const data = await immichFetch("/api/people?size=500");
-    if (!data) return res.json({ people: [], total: 0 });
+    const result = await immichFetch("/api/people?page=1&size=100&withHidden=false");
+    if (!result.ok) {
+        const statusCode = result.kind === "unauthorized" ? 502 : 503;
+        return res.status(statusCode).json({ error: "Immich people unavailable", status: result.kind });
+    }
+    const data = result.data;
     // Extract people array from response
     let peopleList = [];
     if (Array.isArray(data)) {
@@ -674,17 +668,72 @@ app.get("/api/immich/people", async (req, res) => {
         peopleList = data.people;
     }
     // Filter: only include people with a real name
-    const named = peopleList.filter(p => p.name && p.name !== '未命名' && p.name.trim() !== '');
+    const linkedIds = new Set(queryAll("SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL").map(row => row.immich_person_id));
+    const named = peopleList.filter(p => p.name && p.name !== '未命名' && p.name.trim() !== '' && !p.isHidden);
     res.json({
         total: named.length,
         people: named.map(p => ({
             id: p.id,
-            name: p.name,
-            birthDate: p.birthDate || null,
-            thumbnailPath: p.thumbnailPath || null,
-            assetsCount: p.assetsCount || 0
+            name: p.name.trim(),
+            birthDate: p.birthDate ? String(p.birthDate).slice(0, 10) : null,
+            hasThumbnail: Boolean(p.thumbnailPath),
+            thumbnailUrl: `/api/immich/person-thumb?id=${encodeURIComponent(p.id)}`,
+            linked: linkedIds.has(p.id),
+            updatedAt: p.updatedAt || null
         }))
     });
+});
+
+app.post("/api/onboarding/immich-import", async (req, res) => {
+    if (!IMMICH_ENABLED) return res.status(503).json({ error: "Immich integration is disabled" });
+    const entries = Array.isArray(req.body.people) ? req.body.people : [];
+    if (entries.length < 1 || entries.length > 30) {
+        return res.status(400).json({ error: "select between 1 and 30 people" });
+    }
+    const personIds = entries.map(entry => typeof entry.personId === "string" ? entry.personId.trim() : "");
+    if (personIds.some(id => !id) || new Set(personIds).size !== personIds.length) {
+        return res.status(400).json({ error: "invalid or duplicate Immich person" });
+    }
+    for (const entry of entries) {
+        const name = typeof entry.name === "string" ? entry.name.trim() : "";
+        if (!name || name.length > 40) return res.status(400).json({ error: "invalid member name" });
+        if (entry.birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(entry.birthDate)) {
+            return res.status(400).json({ error: "invalid birth date" });
+        }
+        if (entry.profileTemplate && !["student", "worker", "family"].includes(entry.profileTemplate)) {
+            return res.status(400).json({ error: "invalid profile template" });
+        }
+    }
+
+    const peopleResult = await immichFetch("/api/people?page=1&size=100&withHidden=false");
+    if (!peopleResult.ok) {
+        return res.status(503).json({ error: "Immich unavailable", status: peopleResult.kind });
+    }
+    const upstreamPeople = Array.isArray(peopleResult.data)
+        ? peopleResult.data
+        : (Array.isArray(peopleResult.data.people) ? peopleResult.data.people : []);
+    const availableIds = new Set(upstreamPeople.filter(person => person.name && !person.isHidden).map(person => person.id));
+    if (personIds.some(id => !availableIds.has(id))) {
+        return res.status(409).json({ error: "Immich person changed; refresh preview" });
+    }
+
+    const palette = ["#3B82F6", "#F97316", "#8B5CF6", "#10B981", "#EC4899", "#F59E0B"];
+    const created = runTransactionWithResult(() => {
+        let nextOrder = Number(queryOne("SELECT COALESCE(MAX(sort_order), 0) + 1 AS value FROM users").value);
+        return entries.map((entry, index) => {
+            const existing = queryOne("SELECT * FROM users WHERE immich_person_id = ?", [entry.personId]);
+            if (existing) return { member: toMemberDto(existing), created: false };
+            db.run(`INSERT INTO users
+                (name, birth_date, expected_age, identity_tag, school_system, immich_person_id, immich_sync, creation_key, color, sort_order)
+                VALUES (?, ?, 80, ?, 'shanghai', ?, 0, ?, ?, ?)`, [
+                entry.name.trim(), entry.birthDate || null, entry.profileTemplate || "family",
+                entry.personId, `immich:${entry.personId}`, palette[(nextOrder - 1 + index) % palette.length], nextOrder + index
+            ]);
+            const member = queryOne("SELECT * FROM users WHERE immich_person_id = ?", [entry.personId]);
+            return { member: toMemberDto(member), created: true };
+        });
+    });
+    res.status(created.some(item => item.created) ? 201 : 200).json({ results: created });
 });
 
 // GET /api/immich/assets?personId=&date=&limit=3 — Query assets
