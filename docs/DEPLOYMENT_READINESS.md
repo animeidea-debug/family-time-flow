@@ -1,5 +1,19 @@
 # 部署前检查清单
 
+## 正式发布命令
+
+生产发布由 NAS 基础设施仓库统一管理：
+
+```sh
+nas-deploy family-time-flow --ref <完整的40位提交SHA>
+nas-deploy status
+nas-deploy doctor
+```
+
+发布脚本会先运行本文件要求的测试，备份 `ftf.db`，再切换 release 并重建
+`ftf_backend` 与共享前端。数据库、启动备份和运行配置保持在 release 外部。
+本仓库的 WebDAV 脚本仅作为迁移期应急路径保留。
+
 ## 当前安全边界
 
 FamilyTimeFlow 的成员、事件和家庭设置接口暂时没有登录鉴权。这符合家庭局域网内快速使用的产品选择，但意味着：

@@ -4,6 +4,22 @@
 
 > 当前接管后的产品与交付状态请先阅读 [`docs/PRODUCT_REDESIGN.md`](docs/PRODUCT_REDESIGN.md)、[`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md) 和 [`docs/RELEASE_CANDIDATE.md`](docs/RELEASE_CANDIDATE.md)。下方原始愿景保留为设计背景。
 
+## Production deployment
+
+The NAS infrastructure repository owns the production release command, Docker
+Compose, persistent data mount, health check, and rollback:
+
+```sh
+nas-deploy family-time-flow --ref <full-commit-sha>
+# After the main branch has been reviewed:
+nas-deploy family-time-flow --latest
+```
+
+The command fetches the immutable commit on the NAS, runs all frontend and
+backend tests, creates a readable `ftf.db` backup, switches the frontend/backend
+release, and verifies `/api/health`. The historical `deploy/deploy.sh` WebDAV
+script remains an emergency migration fallback, not the normal production path.
+
 ---
 
 ## 📋 Table of Contents
