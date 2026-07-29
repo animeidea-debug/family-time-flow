@@ -1,16 +1,17 @@
 # Immich Integration Design — FamilyTimeFlow
 
-> **接管安全要求（2026-07-17）**：当前 Immich 实例升级和 NAS 联调由基础设施项目另行推进。FamilyTimeFlow 在用户确认前不得主动连接真实 Immich。旧 Key 曾进入 Git 历史，必须撤销，禁止复用。
+> **当前状态（2026-07-20）**：Immich 3.0.2 已完成只读联调验证。新版 Key 仅用于服务端读取人物；旧 Key 曾进入 Git 历史，必须保持撤销，禁止复用。
 
 ## 0. 新 API Key 安全基线
 
 正式恢复联调前创建专用 Key，名称建议为 `FamilyTimeFlow Read Only`。
 
-### 必需的最小权限
+### 人物初始化所需权限
 
 - `person.read`：人物列表、人物资料和人物缩略图。
-- `asset.read`：按日期/人物搜索照片和读取照片元数据。
-- `asset.view`：读取照片缩略图。
+- `person.statistics`：可选；读取人物照片统计，本阶段验证可用但不作为导入依赖。
+
+照片时间线阶段才需要另行增加 `asset.read` 和缩略图读取权限；人物初始化不需要这些权限。
 
 仅当后续决定直接读取 Immich 原生 Memories 时，再单独增加 `memory.read`。
 
@@ -30,8 +31,8 @@
 - FamilyTimeFlow 后端不得通过诊断、同步或 bootstrap API 返回 Key。
 - 接入前必须按升级后的 Immich 实际版本重新验证权限与 API 路径。
 
-> **Based on live environment: Immich v2.7.5, PostgreSQL 16, 15,643 persons, ~22K assets**
-> NAS URL: `http://192.168.6.108:22283` (internal), LAN access via `192.168.6.108:22283`
+> **Live validation (2026-07-20): Immich 3.0.2**
+> 当前 Key 可见 10 位已命名人物：10 位有头像，7 位有出生日期；人物详情、头像和统计接口均返回 200。
 
 ---
 
@@ -46,16 +47,16 @@ Settings → API Keys → Create New
 Header: x-api-key: <your-api-key>
 ```
 
-**FamilyTimeFlow key status**: ✅ Created and validated (full admin access)
+**FamilyTimeFlow key status**: 已创建并验证人物只读权限；不使用管理员权限。
 
 ```sh
 curl -H "x-api-key: <key>" http://192.168.6.108:22283/api/server/version
-# → {"major":2,"minor":7,"patch":5}
+# → {"major":3,"minor":0,"patch":2}
 ```
 
 ### Where to store
 
-- **Backend env**: Stored in `.env` (gitignored) on the server
+- **Backend env/secret**: 通过 NAS 端受保护的环境或容器 Secret 注入
 - **Backend code**: Only referenced via environment variable `IMMICH_API_KEY`
 
 ---
@@ -67,7 +68,7 @@ curl -H "x-api-key: <key>" http://192.168.6.108:22283/api/server/version
 Base URL: `GET /api/people`
 
 ```json
-// Response shape (live data — 15,643 people):
+// Response shape (Immich 3.0.2, paginated):
 {
   "total": 15643,
   "hidden": 0,
@@ -79,14 +80,27 @@ Base URL: `GET /api/people`
       "thumbnailPath": "/upload/thumbs/...",
       "isHidden": false,
       "isFavorite": false,
-      "assetsCount": 142,
       "updatedAt": "2026-07-08T..."
     }
   ]
 }
 ```
 
-**PRD Use Case**: Smart Onboarding — when creating a profile, fetch all people to let user select which family member this is. The `birthDate` field (nullable) can be auto-filled via asset timeline scanning.
+**当前用例**：Smart Onboarding 获取已命名、未隐藏人物，显示头像并支持批量选择。`birthDate` 为空时由用户在确认页补充；本阶段不根据最早照片猜测生日。
+
+FamilyTimeFlow 对浏览器返回稳定 DTO，不暴露 `thumbnailPath`：
+
+```json
+{
+  "id": "person-id",
+  "name": "家庭成员",
+  "birthDate": "2012-03-04",
+  "hasThumbnail": true,
+  "thumbnailUrl": "/api/immich/person-thumb?id=person-id",
+  "linked": false,
+  "updatedAt": "2026-07-20T..."
+}
+```
 
 ### 2.2 Assets (Photos & Videos)
 
@@ -281,7 +295,7 @@ async function checkImmichStatus() {
 ```bash
 # .env (gitignored)
 IMMICH_URL=http://192.168.6.108:22283
-IMMICH_API_KEY=VsfIiZ...
+IMMICH_API_KEY=<injected-secret>
 ```
 
 ---

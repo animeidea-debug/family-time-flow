@@ -79,6 +79,17 @@ test('member creation uses an in-page form instead of prompt', () => {
     assert.doesNotMatch(applicationScript, /\bprompt\s*\(/);
 });
 
+test('Immich onboarding supports multi-select preview with manual fallback', () => {
+    for (const id of ['onbPersonList', 'onbReviewPeople', 'onbPreviewContent', 'onbImportButton']) {
+        assert.match(html, new RegExp(`id=["']${id}["']`));
+    }
+    for (const functionName of ['showPersonSelection', 'reviewSelectedPeople', 'confirmOnboarding', 'createNewUser']) {
+        assert.match(applicationScript, new RegExp(`function\\s+${functionName}\\s*\\(`));
+    }
+    assert.match(applicationScript, /\/onboarding\/immich-import/);
+    assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
+});
+
 test('household events use in-page create, edit, and two-step delete controls', () => {
     assert.match(html, /id="eventFormOverlay"/);
     assert.match(applicationScript, /async function submitEventForm/);

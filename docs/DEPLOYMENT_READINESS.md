@@ -23,8 +23,8 @@ FamilyTimeFlow 的成员、事件和家庭设置接口暂时没有登录鉴权�
 - 当前 nginx 基线只允许 `192.168.0.0/16` 家庭局域网及 NAS 本机访问；Tailscale、Funnel 和 zConnect 默认拒绝。
 - nginx 与后端应保持同源访问；后端不再向任意网页提供 CORS 授权。
 - 实验诊断接口默认关闭。只有临时排障时才设置 `ENABLE_DIAGNOSTICS=1`，完成后立即关闭。
-- Immich 全部能力默认关闭。只有取得确认并完成只读 Key 配置后才设置 `ENABLE_IMMICH=1`。
-- `ENABLE_IMMICH_ADMIN` 默认必须保持 `0`；它允许修改服务端 Immich 凭据，不能在无鉴权的公网环境开启。
+- Immich 默认关闭。人物只读联调已获确认并通过；仅在 NAS 端安全注入 `IMMICH_URL`、`IMMICH_API_KEY` 后设置 `ENABLE_IMMICH=1`。
+- 浏览器配置 Immich 凭据的旧接口已退役；凭据只能在服务启动前由 NAS 安全注入。
 
 ## 数据与卷
 
@@ -43,7 +43,6 @@ PORT=3000
 BACKUP_LIMIT=7
 ENABLE_DIAGNOSTICS=0
 ENABLE_IMMICH=0
-ENABLE_IMMICH_ADMIN=0
 ```
 
 - 健康检查使用 `GET /api/health`，必须返回 `storage.ready: true`。
@@ -56,9 +55,9 @@ ENABLE_IMMICH_ADMIN=0
 - 部署前运行根目录 `npm test`，所有测试通过后再同步文件。
 - 部署后依次验证家庭首页、成员切换、设置保存、事件创建与服务重启恢复。
 
-## 尚未授权的工作
+## 仍不在本阶段范围内的工作
 
-- 不启用或探测真实 Immich。
-- 不写入新的 Immich Key。
+- 不把新的 Immich Key 写入 Git、SQLite、浏览器或普通文档。
+- 不启用 Immich 写权限，也不修改 Immich 人物或照片。
 - 不修改 NAS 项目的容器或反向代理配置。
 - 不对公网开放尚未鉴权的家庭 API。
