@@ -2,6 +2,9 @@
 
 > A self-hosted, multi-user dynamic time visualization dashboard — transforming abstract time management into a **"Family Digital Time Machine"**.
 
+> 新的维护会话应先阅读 [`AGENTS.md`](AGENTS.md) 的长期边界和安全规则，再阅读
+> [`docs/progress.md`](docs/progress.md) 的当前交接状态。
+
 > 当前接管后的产品与交付状态请先阅读 [`docs/PRODUCT_REDESIGN.md`](docs/PRODUCT_REDESIGN.md)、[`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md) 和 [`docs/RELEASE_CANDIDATE.md`](docs/RELEASE_CANDIDATE.md)。下方原始愿景保留为设计背景。
 
 ## Production deployment
