@@ -799,6 +799,7 @@ app.get("/api/immich/asset-thumb", async (req, res) => {
 app.get("/api/immich/person-thumb", async (req, res) => {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
+    if (!/^[A-Za-z0-9-]{1,100}$/.test(id)) return res.status(400).json({ error: "invalid person id" });
     const apiKey = getImmichKey();
     if (!apiKey) return res.status(401).json({ error: "no api key" });
     try {

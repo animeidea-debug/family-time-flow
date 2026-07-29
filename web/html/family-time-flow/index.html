@@ -2078,7 +2078,7 @@
             try {
                 const r = await fetch(`${API_BASE}${path}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-                    body: JSON.stringify(data), signal: AbortSignal.timeout(3000)
+                    body: JSON.stringify(data), signal: AbortSignal.timeout(options.timeoutMs || 3000)
                 });
                 if (!r.ok) throw new Error('API error');
                 return await r.json();
@@ -2713,7 +2713,7 @@
             error.textContent = '';
             button.disabled = true;
             button.textContent = '正在创建...';
-            const imported = await apiPost('/onboarding/immich-import', { people });
+            const imported = await apiPost('/onboarding/immich-import', { people }, { timeoutMs: 10000 });
             button.disabled = false;
             button.textContent = '创建家庭成员';
             if (!imported || !Array.isArray(imported.results)) {

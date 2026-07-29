@@ -102,6 +102,11 @@ test('never accepts Immich credentials from the browser', async () => {
     assert.equal((await response.text()).includes('browser-secret'), false);
 });
 
+test('rejects path-like person thumbnail identifiers', async () => {
+    const response = await fetch(`${baseUrl}/immich/person-thumb?id=..%2Fserver%2Fversion`);
+    assert.equal(response.status, 400);
+});
+
 test('imports selected people transactionally and is idempotent by Immich person', async () => {
     const payload = {
         people: [

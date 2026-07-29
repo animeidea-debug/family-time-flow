@@ -87,6 +87,7 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
         assert.match(applicationScript, new RegExp(`function\\s+${functionName}\\s*\\(`));
     }
     assert.match(applicationScript, /\/onboarding\/immich-import/);
+    assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
 });
 
 test('household events use in-page create, edit, and two-step delete controls', () => {
