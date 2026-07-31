@@ -3,7 +3,7 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-07-30
+> Last verified: 2026-08-01
 
 ## Repository state
 
@@ -18,6 +18,10 @@
   `web/html/family-time-flow/admin.html` and
   `web/html/family-time-flow/grid-canvas.html`.
 - They remain excluded from staging and production deployment.
+- The legacy WebDAV script was renamed to
+  `deploy/legacy-webdav-push.sh`; `AGENTS.md` names
+  `nas-deploy family-time-flow --ref <sha>` as the only production
+  deployment path.
 - GitHub SSH fetch and push are configured for this checkout.
 
 ## Current implementation
@@ -44,16 +48,17 @@
   container (Node 22.23.1 / npm 10.9.8).
 - The merged feature validation baseline is 13 frontend tests and 19 backend
   tests.
-- This documentation change passed `npm test`,
+- The unified documentation change and the deploy-script rename passed
+  `npm test` (13 frontend + 19 backend tests),
   `node --check web/backend/family-time-flow/server.js`, and
-  `git diff --check` on 2026-07-30.
+  `git diff --check` on 2026-08-01.
 - No production deployment, NAS infrastructure change, secret injection, or
   production data mutation is part of this documentation update.
 
 ## Next steps
 
-1. Review and publish this unified documentation change separately from the
-   merged Immich feature.
+1. Publish this unified documentation change (reviewed 2026-08-01) separately
+   from the merged Immich feature.
 2. Keep the two experimental HTML files local and excluded unless a separate
    decision explicitly promotes or archives them.
 3. Design NAS-side secret injection for `IMMICH_URL` and `IMMICH_API_KEY`
