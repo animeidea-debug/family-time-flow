@@ -242,7 +242,7 @@ family-time-flow/
 ├── docs/
 │   └── PRD.md                  # 本文档
 ├── deploy/
-│   └── deploy.sh               # NAS 部署脚本
+│   └── legacy-webdav-push.sh   # ⚠️ 旧 WebDAV 推送，非常规发布路径
 └── README.md                   # 项目概述
 ```
 

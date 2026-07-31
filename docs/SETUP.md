@@ -57,11 +57,15 @@ Click "Use this template" on GitHub → clone locally.
 
 ### 5. Deploy to NAS
 
-```sh
-# macOS: Keychain-based auth (auto-reads ~/.nas-env)
-sh deploy/deploy.sh
+> ⚠️ **常规发布不使用 WebDAV 脚本。** 生产发布用 NAS 上的
+> `nas-deploy family-time-flow --ref <full-sha>`。下面这个
+> `legacy-webdav-push.sh` 只保留为 bootstrap / 灾难恢复兜底。
 
-# Windows: env var-based auth
+```sh
+# macOS: Keychain-based auth (auto-reads ~/.nas-env) — 仅应急
+sh deploy/legacy-webdav-push.sh
+
+# Windows: env var-based auth — 仅应急
 .\deploy\run_deploy.bat
 ```
 

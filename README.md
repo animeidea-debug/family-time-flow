@@ -20,8 +20,9 @@ nas-deploy family-time-flow --latest
 
 The command fetches the immutable commit on the NAS, runs all frontend and
 backend tests, creates a readable `ftf.db` backup, switches the frontend/backend
-release, and verifies `/api/health`. The historical `deploy/deploy.sh` WebDAV
-script remains an emergency migration fallback, not the normal production path.
+release, and verifies `/api/health`. The historical
+`deploy/legacy-webdav-push.sh` WebDAV script remains an emergency
+migration fallback, not the normal production path.
 
 ---
 

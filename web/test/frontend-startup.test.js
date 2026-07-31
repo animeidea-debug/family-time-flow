@@ -49,7 +49,7 @@ test('frontend contains no embedded Immich credential or automatic configuration
 });
 
 test('experimental admin and canvas pages are excluded from deployment', () => {
-    const deploy = fs.readFileSync(path.join(__dirname, '..', '..', 'deploy', 'deploy.sh'), 'utf8');
+    const deploy = fs.readFileSync(path.join(__dirname, '..', '..', 'deploy', 'legacy-webdav-push.sh'), 'utf8');
     assert.match(deploy, /--exclude "admin\.html"/);
     assert.match(deploy, /--exclude "grid-canvas\.html"/);
 });

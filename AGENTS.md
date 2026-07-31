@@ -1,5 +1,30 @@
 # Family Time Flow collaboration guide
 
+## Deployment interface (hard rule)
+
+Production deployment MUST use the NAS-owned release command, run on
+the NAS:
+
+```sh
+nas-deploy family-time-flow --ref <full-40-char-commit-sha>
+# or, only after the default branch has been reviewed:
+nas-deploy family-time-flow --latest
+```
+
+- `deploy/legacy-webdav-push.sh` in THIS repository is the legacy
+  WebDAV file-push path. It is **NOT** the production deployment path.
+  Do not invoke it for a normal release. It remains only for
+  infrastructure bootstrap or explicit disaster recovery when the NAS
+  cannot reach GitHub.
+- `NAS/deploy/deploy.sh` (in the sibling NAS repository, not here)
+  IS correct for its job — it deploys Docker Compose definitions.
+  Do not confuse it with this repository's `deploy/` script.
+- The authoritative matrix lives at
+  `NAS/docs/deployment-interfaces.md`. Read it before any deploy.
+
+If you are about to run `deploy/legacy-webdav-push.sh`, stop and use
+`nas-deploy family-time-flow`.
+
 ## Product purpose and ownership
 
 Family Time Flow is a private, self-hosted family time-visualization application
