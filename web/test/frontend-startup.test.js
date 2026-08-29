@@ -93,6 +93,8 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
+    assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
+    assert.match(applicationScript, /人物档案已连接 · 照片回忆功能将在后续版本开放/);
 });
 
 test('brand navigation stays within the deployed application path', () => {
