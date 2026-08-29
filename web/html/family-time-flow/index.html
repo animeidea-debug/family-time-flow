@@ -735,7 +735,7 @@
                 <p class="text-xs text-gray-400 mb-5">点击家庭成员头像进入</p>
                 <div id="existingUserGrid" class="flex flex-row flex-wrap justify-center gap-4 mb-5 px-1"></div>
                 <div class="flex flex-col gap-2">
-                    <button onclick="showUserSwitcherForAdd()" class="btn btn-accent btn-sm font-bold w-full">➕
+                    <button onclick="startAddMemberFlow()" class="btn btn-accent btn-sm font-bold w-full">➕
                         添加新成员</button>
                     <button onclick="skipOnboarding()" class="btn btn-ghost text-xs text-gray-400">直接进入 →</button>
                 </div>
@@ -817,7 +817,7 @@
             <div>
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-lg sm:text-xl font-black text-theme-text">家人</h2>
-                    <button onclick="createNewUser()" class="btn btn-ghost btn-xs font-bold">＋ 添加成员</button>
+                    <button onclick="startAddMemberFlow()" class="btn btn-ghost btn-xs font-bold">＋ 添加成员</button>
                 </div>
                 <div id="householdMemberGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             </div>
@@ -1100,7 +1100,7 @@
             <div class="divider text-[10px] text-theme-text/40 font-bold mt-2 mb-1">👤 家庭成员</div>
             <div id="userSelectContainer" class="flex flex-wrap gap-1.5"></div>
             <div class="flex gap-2 mt-1">
-                <button onclick="createNewUser()"
+                <button onclick="startAddMemberFlow()"
                     class="btn btn-ghost btn-sm flex-1 font-bold opacity-70 hover:opacity-100">➕ 添加家庭成员</button>
             </div>
             <div id="memberDeletePanel" class="hidden rounded-xl border-2 border-red-200 bg-red-50 p-4">
@@ -2622,6 +2622,12 @@
             setTimeout(createNewUser, 500);
         }
 
+        async function startAddMemberFlow() {
+            document.getElementById('onboardingOverlay').classList.remove('hidden');
+            onboardingPersonIds = new Set();
+            await startOnboarding();
+        }
+
         function showPersonSelection() {
             showStep(3);
             const list = document.getElementById('onbPersonList');
@@ -2630,7 +2636,7 @@
             const initializedIds = new Set(remoteUsers.filter(u => u.immich_person_id).map(u => u.immich_person_id));
             immichPeople.forEach(p => {
                 const card = document.createElement('label');
-                const isInitialized = initializedIds.has(p.id);
+                const isInitialized = p.linked === true || initializedIds.has(p.id);
                 card.className = `flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${isInitialized ? 'border-green-200 bg-green-50 opacity-70' : 'border-gray-100 cursor-pointer hover:border-theme-accent'}`;
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
@@ -2825,10 +2831,6 @@
                     } catch { showToast('⚠️ 无法加载照片库'); document.getElementById('onboardingOverlay').classList.add('hidden'); }
                 }
             }
-        }
-
-        function showUserSwitcherForAdd() {
-            createNewUser();
         }
 
         // ==================== WHEEL ZOOM ====================
