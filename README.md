@@ -244,9 +244,9 @@ separately validated.
 
 ### 🔄 Next steps
 
-1. Complete the first household initialization from the home LAN by selecting
-   the intended family members; this human choice is deliberately not automated.
-2. Verify member switching, household settings, one event round trip, and
+1. Add the remaining intended family members from the home LAN; these human
+   identity choices are deliberately not automated.
+2. Verify multi-member switching, household settings, one event round trip, and
    restart persistence with the real household data.
 3. Replace production CDN dependencies with reviewed local assets so the core
    interface remains fully styled when the internet is unavailable.

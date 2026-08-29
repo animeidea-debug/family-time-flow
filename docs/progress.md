@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `1c690f37bc1eb8f77dde3355c2d45a9e19fa3b0c`
+- Production runs commit `3af8283c9bfd782af018939ebdaf9acec06cbda2`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -21,23 +21,25 @@
   multi-select person picker. The picker shows known birth dates, flags missing
   dates for completion, loads all 10 person thumbnails, and reports no business
   console errors.
-- The production household database is still intentionally empty. No family
-  member has been selected or imported on the user's behalf.
-- PR #4 (documentation and live-status UX) and PR #5 (duplicate ticker
-  regression) are merged into `main`. The existing two experimental HTML files
-  remain untracked and excluded from release.
+- The user has created the first Immich-linked member. Production verification
+  confirms one complete member, no events, SQLite integrity `ok`, seven retained
+  backups, a working portrait, the correct worker profile label, and no
+  fabricated countdown when no target date exists.
+- PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
+  regression), and PR #7 (first-member polish) are merged into `main`. The
+  existing two experimental HTML files remain untracked and excluded from
+  release.
 
 ## Active work
 
-- No code or infrastructure blocker remains for first household use.
-- The production household is awaiting the user's member selection; the agent
-  deliberately did not mutate the empty production database.
+- No code or infrastructure blocker remains for household use.
+- The production household is awaiting any additional family members and its
+  first real event; the agent did not create synthetic production records.
 
 ## Known issues
 
-- First household initialization requires a human decision: select the intended
-  people and supply any missing birth dates. This is the remaining step before
-  normal family use, not an infrastructure failure.
+- Additional household members require a human decision: select the intended
+  people and supply any missing birth dates.
 - Photo timeline, hover memories, and “On This Day” are not implemented. The
   current Immich scope is named-person onboarding and thumbnails only.
 - The frontend still loads Tailwind, daisyUI, GSAP, and Flatpickr from public
@@ -48,9 +50,9 @@
 
 ## Next steps
 
-1. Let the user complete the first household import in the home LAN, then
-   verify member switching, one event save/edit/delete round trip, and restart
-   persistence with real data.
+1. Let the user add any remaining household members in the home LAN, then verify
+   multi-member switching, one real event save/edit/delete round trip, and
+   restart persistence with real data.
 2. Plan a separate offline-asset release before adding any photo-memory APIs.
 3. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
