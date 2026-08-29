@@ -666,7 +666,7 @@
                     class="btn btn-accent btn-lg font-bold shadow-lg shadow-accent/30 transition-all duration-300 hover:scale-105">
                     🚀 一键开始
                 </button>
-                <p class="text-xs text-gray-400 mt-4">先创建家庭成员 · 照片服务稍后可选连接</p>
+                <p id="onboardingSourceHint" class="text-xs text-gray-400 mt-4">先创建家庭成员 · 也可稍后连接照片服务</p>
             </div>
 
             <!-- Step 2: Loading -->
@@ -749,7 +749,7 @@
     <!-- Top Navigation -->
     <nav class="navbar px-6 py-3 nav-glass sticky top-0 z-30 relative">
         <div class="flex-1">
-            <a href="/" class="flex items-center gap-2 no-underline">
+            <a href="./" class="flex items-center gap-2 no-underline">
                 <span class="text-2xl">🕰️</span>
                 <div>
                     <div class="text-lg font-black tracking-tight text-theme-text leading-tight">家庭人生时光机</div>
@@ -834,8 +834,8 @@
                     <h2 class="text-lg font-black text-theme-text mb-2">照片记忆</h2>
                     <div class="rounded-2xl bg-theme-muted/70 border-2 border-theme-border p-5 text-center">
                         <div class="text-3xl mb-2">📷</div>
-                        <p class="text-sm font-bold text-theme-text">Immich 暂未接入</p>
-                        <p class="text-xs text-theme-text/45 mt-1">家庭时间功能可以独立使用，照片服务准备好后再连接。</p>
+                        <p id="immichMemoryTitle" class="text-sm font-bold text-theme-text">照片服务未连接</p>
+                        <p id="immichMemoryDetail" class="text-xs text-theme-text/45 mt-1">家庭时间功能可以独立使用，照片服务准备好后再连接。</p>
                     </div>
                 </section>
             </div>
@@ -1777,8 +1777,9 @@
             const now = new Date();
             const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
             const track = document.getElementById('tickerTrack');
-            track.textContent =
-                `📸 那年今日 (${md})：正在加载往年回忆... Immich 集成将在 Phase 3 上线 🎉`;
+            track.textContent = immichConfigured
+                ? `📸 ${md}：人物档案已连接 · 照片回忆功能将在后续版本开放`
+                : `✨ ${md}：今天也值得被认真生活和记住`;
         }
 
         function startTickerLoop() {
@@ -1809,6 +1810,20 @@
         let activeUserId = null;
         let apiAvailable = false;
         let householdViewModel = null;
+        let immichConfigured = false;
+
+        function renderImmichStatus() {
+            document.getElementById('onboardingSourceHint').textContent = immichConfigured
+                ? '可从 Immich 选择已识别家人 · 也可手动添加'
+                : '先创建家庭成员 · 也可稍后连接照片服务';
+            document.getElementById('immichMemoryTitle').textContent = immichConfigured
+                ? '人物档案已连接'
+                : '照片服务未连接';
+            document.getElementById('immichMemoryDetail').textContent = immichConfigured
+                ? '首次建档可从 Immich 导入家人；照片回忆功能将在后续版本开放。'
+                : '家庭时间功能可以独立使用，照片服务准备好后再连接。';
+            updateTicker();
+        }
 
         function memberDtoToLegacy(member) {
             return {
@@ -2046,6 +2061,8 @@
 
             apiAvailable = true;
             remoteUsers = data.members.map(memberDtoToLegacy);
+            immichConfigured = data.integrations?.immich?.configured === true;
+            renderImmichStatus();
 
             if (data.state === 'empty') {
                 activeUserId = null;
