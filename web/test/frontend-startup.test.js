@@ -93,9 +93,18 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     for (const id of ['onbPersonList', 'onbReviewPeople', 'onbPreviewContent', 'onbImportButton']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
-    for (const functionName of ['showPersonSelection', 'reviewSelectedPeople', 'confirmOnboarding', 'createNewUser']) {
+    for (const functionName of ['startAddMemberFlow', 'showPersonSelection', 'reviewSelectedPeople', 'confirmOnboarding', 'createNewUser']) {
         assert.match(applicationScript, new RegExp(`function\\s+${functionName}\\s*\\(`));
     }
+    assert.equal((html.match(/onclick="startAddMemberFlow\(\)"/g) || []).length, 3);
+    const addMemberBody = applicationScript.slice(
+        applicationScript.indexOf('async function startAddMemberFlow'),
+        applicationScript.indexOf('function showPersonSelection')
+    );
+    assert.match(addMemberBody, /onboardingOverlay/);
+    assert.match(addMemberBody, /onboardingPersonIds = new Set\(\)/);
+    assert.match(addMemberBody, /await startOnboarding\(\)/);
+    assert.match(applicationScript, /p\.linked === true \|\| initializedIds\.has\(p\.id\)/);
     assert.match(applicationScript, /\/onboarding\/immich-import/);
     assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
     assert.match(html, /id="onboardingSourceHint"/);
