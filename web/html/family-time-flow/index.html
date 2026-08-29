@@ -1182,7 +1182,7 @@
                 immichPersonId: null
             },
             events: [],
-            targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            targetDate: null,
             immichSync: false
         };
 
@@ -1343,7 +1343,8 @@
             state.profile.expectedAge = parseInt(document.getElementById('cfgExpectedAge').value) || 80;
             state.profile.color = document.getElementById('cfgMemberColor').value || '#3B82F6';
             state.profile.identityTag = document.getElementById('cfgIdentity').value;
-            state.targetDate = document.getElementById('cfgTargetDate').value || state.targetDate;
+            const targetDateValue = document.getElementById('cfgTargetDate').value;
+            state.targetDate = targetDateValue ? new Date(targetDateValue).toISOString() : null;
             state.immichSync = document.getElementById('cfgImmichSync').checked;
             state.profile.schoolSystem = document.getElementById('cfgSchoolSystem').value;
             const saved = await pushToApi();
@@ -1376,7 +1377,7 @@
                 currentUser: 'student',
                 profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', color: '#3B82F6', immichPersonId: null },
                 events: [],
-                targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                targetDate: null,
                 immichSync: false
             };
             hydrateFormFromState();
@@ -1547,13 +1548,29 @@
 
         // ==================== COUNTDOWN ====================
         function updateCountdown() {
-            const target = state.targetDate ? new Date(state.targetDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+            const label = document.getElementById('countdownLabel');
+            const countdown = document.getElementById('countdown');
+            const progress = document.getElementById('countdownProgressBar');
+            if (!state.targetDate) {
+                label.textContent = '尚未设置目标';
+                countdown.textContent = '—';
+                progress.style.width = '0%';
+                return;
+            }
+            const target = new Date(state.targetDate);
+            if (Number.isNaN(target.getTime())) {
+                label.textContent = '目标日期无效';
+                countdown.textContent = '—';
+                progress.style.width = '0%';
+                return;
+            }
+            label.textContent = '剩余时间';
             const now = new Date();
             const diff = target - now;
 
             if (diff <= 0) {
-                document.getElementById('countdown').textContent = '000:00:00:00';
-                document.getElementById('countdownProgressBar').style.width = '0%';
+                countdown.textContent = '000:00:00:00';
+                progress.style.width = '0%';
                 return;
             }
 
@@ -1563,13 +1580,13 @@
             const m = Math.floor((totalSec % 3600) / 60);
             const s = totalSec % 60;
 
-            document.getElementById('countdown').textContent =
+            countdown.textContent =
                 `${String(d).padStart(3, '0')}:${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
             // Progress relative to 90-day default
             const elapsed = 90 * 86400000 - diff;
             const pct = Math.min(Math.max(elapsed / (90 * 86400000), 0), 1);
-            document.getElementById('countdownProgressBar').style.width = `${pct * 100}%`;
+            progress.style.width = `${pct * 100}%`;
         }
 
         function tickCountdown() {
@@ -1615,7 +1632,7 @@
             flatpickr("#targetDate", {
                 enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (s) => { state.targetDate = s[0].toISOString(); updateCountdown(); pushToApi(); }
+                onChange: (s) => { state.targetDate = s[0] ? s[0].toISOString() : null; updateCountdown(); pushToApi(); }
             });
 
             // Birth date
@@ -1632,7 +1649,7 @@
             flatpickr("#cfgTargetDate", {
                 enableTime: true, dateFormat: "Y-m-d H:i", locale: 'zh',
                 defaultDate: state.targetDate,
-                onChange: (s) => { state.targetDate = s[0].toISOString(); updateCountdown(); }
+                onChange: (s) => { state.targetDate = s[0] ? s[0].toISOString() : null; updateCountdown(); }
             });
         }
 
@@ -1858,6 +1875,26 @@
             container.appendChild(empty);
         }
 
+        function createHouseholdMemberAvatar(member) {
+            const fallback = () => {
+                const initial = document.createElement('div');
+                initial.className = 'w-12 h-12 rounded-full bg-theme-accent/15 flex items-center justify-center text-xl font-black text-theme-accent';
+                initial.style.backgroundColor = `${member.color || '#3B82F6'}22`;
+                initial.style.color = member.color || '#3B82F6';
+                initial.textContent = (member.name || '家').charAt(0);
+                return initial;
+            };
+            const personId = member.immich && member.immich.personId;
+            if (!personId) return fallback();
+
+            const image = document.createElement('img');
+            image.className = 'w-12 h-12 rounded-full object-cover border-2 border-theme-border';
+            image.src = `${API_BASE}/immich/person-thumb?id=${encodeURIComponent(personId)}`;
+            image.alt = `${member.name || '家庭成员'}头像`;
+            image.addEventListener('error', () => image.replaceWith(fallback()), { once: true });
+            return image;
+        }
+
         function renderHouseholdView(data) {
             householdViewModel = data;
             document.getElementById('householdTitle').textContent = data.household.name || '家庭时光';
@@ -1876,11 +1913,7 @@
 
                 const top = document.createElement('div');
                 top.className = 'flex items-center gap-3';
-                const avatar = document.createElement('div');
-                avatar.className = 'w-12 h-12 rounded-full bg-theme-accent/15 flex items-center justify-center text-xl font-black text-theme-accent';
-                avatar.style.backgroundColor = `${member.color || '#3B82F6'}22`;
-                avatar.style.color = member.color || '#3B82F6';
-                avatar.textContent = (member.name || '家').charAt(0);
+                const avatar = createHouseholdMemberAvatar(member);
                 const identity = document.createElement('div');
                 const name = document.createElement('div');
                 name.className = 'font-black text-theme-text';
@@ -2285,7 +2318,7 @@
             state.profile.expectedAge = user.expected_age || 80;
             state.profile.color = user.color || '#3B82F6';
             state.profile.identityTag = user.identity_tag || 'student';
-            state.targetDate = user.target_date || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+            state.targetDate = user.target_date || null;
             state.profile.schoolSystem = user.school_system || 'shanghai';
             state.profile.immichPersonId = user.immich_person_id || null;
             showPersonalView();

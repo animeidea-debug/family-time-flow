@@ -71,6 +71,16 @@ test('household home is available without Immich', () => {
         applicationScript.indexOf('async function bootstrapApplication')
     );
     assert.doesNotMatch(householdSource, /immichGet|checkImmichStatus/);
+    assert.match(householdSource, /function createHouseholdMemberAvatar/);
+    assert.match(householdSource, /member\.immich && member\.immich\.personId/);
+    assert.match(householdSource, /\/immich\/person-thumb\?id=/);
+});
+
+test('members without a target do not receive a fabricated countdown', () => {
+    assert.match(applicationScript, /targetDate:\s*null/);
+    assert.match(applicationScript, /if \(!state\.targetDate\)/);
+    assert.match(applicationScript, /label\.textContent = '尚未设置目标'/);
+    assert.doesNotMatch(applicationScript, /90 \* 24 \* 60 \* 60 \* 1000/);
 });
 
 test('member creation uses an in-page form instead of prompt', () => {
