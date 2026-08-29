@@ -49,7 +49,7 @@ test('frontend contains no embedded Immich credential or automatic configuration
 });
 
 test('experimental admin and canvas pages are excluded from deployment', () => {
-    const deploy = fs.readFileSync(path.join(__dirname, '..', '..', 'deploy', 'deploy.sh'), 'utf8');
+    const deploy = fs.readFileSync(path.join(__dirname, '..', '..', 'deploy', 'legacy-webdav-push.sh'), 'utf8');
     assert.match(deploy, /--exclude "admin\.html"/);
     assert.match(deploy, /--exclude "grid-canvas\.html"/);
 });
@@ -88,6 +88,16 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     }
     assert.match(applicationScript, /\/onboarding\/immich-import/);
     assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
+    assert.match(html, /id="onboardingSourceHint"/);
+    assert.match(html, /id="immichMemoryTitle"/);
+    assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
+    assert.match(applicationScript, /function renderImmichStatus/);
+    assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
+});
+
+test('brand navigation stays within the deployed application path', () => {
+    assert.match(html, /<a href="\.\/" class="flex items-center gap-2 no-underline">/);
+    assert.doesNotMatch(html, /<a href="\/" class="flex items-center gap-2 no-underline">/);
 });
 
 test('household events use in-page create, edit, and two-step delete controls', () => {

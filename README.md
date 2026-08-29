@@ -2,6 +2,9 @@
 
 > A self-hosted, multi-user dynamic time visualization dashboard — transforming abstract time management into a **"Family Digital Time Machine"**.
 
+> 新的维护会话应先阅读 [`AGENTS.md`](AGENTS.md) 的长期边界和安全规则，再阅读
+> [`docs/progress.md`](docs/progress.md) 的当前交接状态。
+
 > 当前接管后的产品与交付状态请先阅读 [`docs/PRODUCT_REDESIGN.md`](docs/PRODUCT_REDESIGN.md)、[`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md) 和 [`docs/RELEASE_CANDIDATE.md`](docs/RELEASE_CANDIDATE.md)。下方原始愿景保留为设计背景。
 
 ## Production deployment
@@ -17,8 +20,9 @@ nas-deploy family-time-flow --latest
 
 The command fetches the immutable commit on the NAS, runs all frontend and
 backend tests, creates a readable `ftf.db` backup, switches the frontend/backend
-release, and verifies `/api/health`. The historical `deploy/deploy.sh` WebDAV
-script remains an emergency migration fallback, not the normal production path.
+release, and verifies `/api/health`. The historical
+`deploy/legacy-webdav-push.sh` WebDAV script remains an emergency
+migration fallback, not the normal production path.
 
 ---
 
@@ -50,7 +54,7 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 | Layer | Component | Specifications |
 |-------|-----------|----------------|
 | **Deployment** | NAS-managed Docker Compose | This project deploys application files; `~/Desktop/NAS` owns the container definition |
-| **Backend** | Node.js (Express) or Python (FastAPI) | Lightweight API serving, directly exposed to frontend |
+| **Backend** | Node.js 22 + Express | Lightweight API behind the NAS-managed nginx proxy |
 | **Database** | SQLite | Single-file embedded database (no MySQL/Redis) |
 | **Frontend** | Vanilla JS + TailwindCSS + daisyUI | Zero-build environment (CDN preferred) |
 | **Animation** | GSAP (GreenSock) | Performance-optimized DOM/SVG manipulations |
@@ -129,9 +133,16 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 ### Advanced Immich API Photo Integration
 
 #### Smart Onboarding (AI Initialization)
-- Backend calls Immich's `/api/people` to retrieve facial groupings
-- Polls `/api/assets` to find earliest infant picture
-- Auto-extracts metadata timestamp as recommended date of birth
+- Backend calls Immich's paginated `/api/people` endpoint for named, visible
+  people
+- Shows face thumbnails and supports multi-select import
+- Lets the family correct names and fill missing birth dates before creation
+- Uses a transactional, idempotent import keyed by Immich person ID
+- Falls back to manual member creation when Immich is unavailable
+
+The current onboarding flow does not infer a birth date from the earliest photo.
+That is intentionally deferred until asset indexing and photo permissions are
+separately validated.
 
 #### Memory Hover Tooltips
 - Hovering over historical grid nodes queries Immich's `/api/assets` endpoint
@@ -169,17 +180,19 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 - [x] Zero font-shaking on ticking digits (`requestAnimationFrame`)
 
 ### Phase 2: Lightweight Containerized Backend (MVP 2.0)
-- [ ] Migrate from localStorage to SQLite single-file system
-- [ ] Construct Node.js/Python server routing
-- [ ] Implement API endpoints for user/event management
+- [x] Migrate from localStorage to SQLite single-file system
+- [x] Construct Node.js/Express server routing
+- [x] Implement API endpoints for user/event management
 - [x] Runtime container transferred to the NAS infrastructure repository
-- [ ] Launch on NAS server for multi-device scaling (iPad, TV, monitors)
+- [x] Launch and validate the Node 22 runtime on the NAS server
 
 ### Phase 3: Immich Token Integration (SaaS 3.0)
-- [ ] Inject Immich bearer authentication keys
-- [ ] Wire up dynamic asset pipelines for popover nodes
-- [ ] Activate face-matching birth date deduction wizard
-- [ ] Complete autonomous family time archive
+- [x] Add server-side read-only Immich 3.x people adapter
+- [x] Add multi-member face-avatar onboarding and idempotent import
+- [x] Inject the approved Immich read-only key through the NAS secret runtime
+- [x] Enable and deploy the onboarding flow in production
+- [ ] Add photo timeline, hover memories, and “On This Day” features after
+  asset health and face-vector indexing are validated
 
 ---
 
@@ -213,7 +226,7 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 
 ## 📊 Current Implementation Status
 
-### ✅ Completed (Phase 1 MVP)
+### ✅ Completed product baseline
 - **Theme System**: Student/Worker/Family modes with 700ms smooth transitions
 - **Life Grid**: 80×52 week visualization with GSAP animations
 - **Countdown Clock**: 6-decimal precision with `requestAnimationFrame`
@@ -222,13 +235,23 @@ The dashboard interface adapts its aesthetic persona on-the-fly when toggling us
 - **Flatpickr Integration**: Dark-mode date/time pickers
 - **Responsive Layout**: Mobile-friendly with TailwindCSS grid system
 
-### 🔄 Next Steps (Phase 2)
+### ✅ Completed backend baseline
 - [x] Backend API development with Express.js
 - [x] SQLite database schema and automatic migrations
 - [x] Stable multi-member initialization and switching
 - [x] Atomic database persistence and startup backups
-- Docker Compose deployment configuration
-- Immich API integration (Phase 3)
+- [x] Immich people onboarding implementation and Node 22 compatibility tests
+
+### 🔄 Next steps
+
+1. Complete the first household initialization from the home LAN by selecting
+   the intended family members; this human choice is deliberately not automated.
+2. Verify member switching, household settings, one event round trip, and
+   restart persistence with the real household data.
+3. Replace production CDN dependencies with reviewed local assets so the core
+   interface remains fully styled when the internet is unavailable.
+4. Keep photo search and memory features separate until Immich asset health and
+   the additional read-only asset permissions are reviewed.
 
 ---
 
