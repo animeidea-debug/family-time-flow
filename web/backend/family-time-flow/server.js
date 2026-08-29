@@ -379,7 +379,14 @@ app.get("/api/household/view", (req, res) => {
     `, [today]);
 
     const members = users.map(user => {
-        const education = getEducationInfo(user.birth_date, user.school_system);
+        const education = user.identity_tag === "student"
+            ? getEducationInfo(user.birth_date, user.school_system)
+            : null;
+        const nextLifeMilestone = getMilestones(user.birth_date, user.school_system)
+            .find(milestone => !milestone.isPast) || null;
+        const profileLabel = user.identity_tag === "worker"
+            ? "职场"
+            : user.identity_tag === "family" ? "家庭" : null;
         const birth = user.birth_date ? new Date(user.birth_date) : null;
         const age = birth && !Number.isNaN(birth.getTime())
             ? Math.max(0, Math.floor((Date.now() - birth.getTime()) / 31557600000))
@@ -387,8 +394,8 @@ app.get("/api/household/view", (req, res) => {
         return {
             ...toMemberDto(user),
             age,
-            stageLabel: education ? education.grade : null,
-            nextMilestone: education ? education.nextMilestone : null
+            stageLabel: education ? education.grade : profileLabel,
+            nextMilestone: education ? education.nextMilestone : nextLifeMilestone
         };
     });
 
@@ -477,11 +484,14 @@ app.put("/api/users/:id", (req, res) => {
     if (b.color !== undefined && !/^#[0-9A-Fa-f]{6}$/.test(b.color)) {
         return res.status(400).json({ error: "invalid color" });
     }
+    const targetDate = Object.prototype.hasOwnProperty.call(b, "target_date")
+        ? (b.target_date || null)
+        : existing.target_date;
     run(`UPDATE users SET name=COALESCE(?,name), birth_date=COALESCE(?,birth_date), expected_age=COALESCE(?,expected_age),
-         identity_tag=COALESCE(?,identity_tag), school_system=COALESCE(?,school_system), target_date=COALESCE(?,target_date),
+         identity_tag=COALESCE(?,identity_tag), school_system=COALESCE(?,school_system), target_date=?,
          immich_sync=COALESCE(?,immich_sync), immich_person_id=COALESCE(?,immich_person_id), color=COALESCE(?,color), updated_at=datetime('now') WHERE id=?`,
         [b.name ?? null, b.birth_date ?? null, b.expected_age ?? null, b.identity_tag ?? null,
-        b.school_system ?? null, b.target_date ?? null, b.immich_sync ?? null, b.immich_person_id ?? null,
+        b.school_system ?? null, targetDate, b.immich_sync ?? null, b.immich_person_id ?? null,
         b.color ?? null, req.params.id]);
     const user = queryOne("SELECT * FROM users WHERE id = ?", [req.params.id]);
     res.json({

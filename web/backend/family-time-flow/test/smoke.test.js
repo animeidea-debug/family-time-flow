@@ -148,6 +148,23 @@ test('member creation is idempotent and prevents duplicate Immich links', async 
 test('household view aggregates member summaries and upcoming events', async () => {
     const users = await fetch(`${baseUrl}/users`).then(response => response.json());
     const owner = users[0];
+    const worker = await fetch(`${baseUrl}/users`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            name: '职场测试成员',
+            birth_date: '1983-09-09',
+            identity_tag: 'worker',
+            immich_person_id: 'household-worker-person',
+            target_date: '2030-01-01T00:00:00.000Z'
+        })
+    }).then(response => response.json());
+    const clearedTarget = await fetch(`${baseUrl}/users/${worker.id}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ target_date: null })
+    }).then(response => response.json());
+    assert.equal(clearedTarget.target_date, null);
     const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
     const created = await fetch(`${baseUrl}/users/${owner.id}/events`, {
         method: 'POST',
@@ -161,6 +178,10 @@ test('household view aggregates member summaries and upcoming events', async () 
     const data = await response.json();
     assert.ok(data.members.length >= 1);
     assert.equal(typeof data.members[0].id, 'string');
+    const workerSummary = data.members.find(member => member.id === String(worker.id));
+    assert.equal(workerSummary.stageLabel, '职场');
+    assert.equal(workerSummary.targetDate, null);
+    assert.equal(workerSummary.immich.personId, 'household-worker-person');
     assert.equal(data.upcomingEvents.some(event => event.title === '家庭测试事件'), true);
     assert.equal(data.upcomingEvents.find(event => event.title === '家庭测试事件').memberName, owner.name);
 });
