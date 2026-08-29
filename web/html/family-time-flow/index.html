@@ -1773,15 +1773,6 @@
         }
 
         // ==================== TICKER ====================
-        function updateTicker() {
-            const now = new Date();
-            const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
-            const track = document.getElementById('tickerTrack');
-            track.textContent = immichConfigured
-                ? `📸 ${md}：人物档案已连接 · 照片回忆功能将在后续版本开放`
-                : `✨ ${md}：今天也值得被认真生活和记住`;
-        }
-
         function startTickerLoop() {
             updateTicker();
             setInterval(updateTicker, 30 * 60 * 1000);
@@ -2507,23 +2498,15 @@
                 `第 ${weekIndex + 1} 周 · ${dateStr || '回忆加载中...'}`;
         }
 
-        // Override the ticker to use real Immich data
-        async function updateTicker() {
+        // Person onboarding is live; photo-memory queries remain disabled until
+        // their separate permission and product review is complete.
+        function updateTicker() {
             const now = new Date();
             const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
             const track = document.getElementById('tickerTrack');
-
-            if (immichConnected && state.immichSync) {
-                const assets = await fetchOnThisDay();
-                if (assets.length > 0) {
-                    const years = [...new Set(assets.map(a => a.year))].join('、');
-                    track.textContent =
-                        `📸 那年今日 (${md})：${assets.length}张照片来自 ${years} 年 ✨ 每天都是值得纪念的一天 🎉`;
-                    return;
-                }
-            }
-            track.textContent =
-                `✨ ${md}：今天也值得被认真生活和记住`;
+            track.textContent = immichConfigured
+                ? `📸 ${md}：人物档案已连接 · 照片回忆功能将在后续版本开放`
+                : `✨ ${md}：今天也值得被认真生活和记住`;
         }
 
         // ==================== ONBOARDING FLOW ====================
