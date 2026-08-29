@@ -54,7 +54,7 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 | Layer | Component | Specifications |
 |-------|-----------|----------------|
 | **Deployment** | NAS-managed Docker Compose | This project deploys application files; `~/Desktop/NAS` owns the container definition |
-| **Backend** | Node.js (Express) or Python (FastAPI) | Lightweight API serving, directly exposed to frontend |
+| **Backend** | Node.js 22 + Express | Lightweight API behind the NAS-managed nginx proxy |
 | **Database** | SQLite | Single-file embedded database (no MySQL/Redis) |
 | **Frontend** | Vanilla JS + TailwindCSS + daisyUI | Zero-build environment (CDN preferred) |
 | **Animation** | GSAP (GreenSock) | Performance-optimized DOM/SVG manipulations |
@@ -189,8 +189,8 @@ separately validated.
 ### Phase 3: Immich Token Integration (SaaS 3.0)
 - [x] Add server-side read-only Immich 3.x people adapter
 - [x] Add multi-member face-avatar onboarding and idempotent import
-- [ ] Inject the approved Immich read-only key into the NAS runtime
-- [ ] Enable and deploy the onboarding flow in production
+- [x] Inject the approved Immich read-only key through the NAS secret runtime
+- [x] Enable and deploy the onboarding flow in production
 - [ ] Add photo timeline, hover memories, and “On This Day” features after
   asset health and face-vector indexing are validated
 
@@ -244,15 +244,14 @@ separately validated.
 
 ### 🔄 Next steps
 
-1. Publish the unified documentation commit separately from the merged feature.
-2. Inject `IMMICH_URL` and `IMMICH_API_KEY` through NAS runtime configuration;
-   never store them in this repository or SQLite.
-3. Deploy the reviewed full SHA with `nas-deploy family-time-flow --ref <sha>`
-   after explicit approval.
-4. Validate real-person preview, thumbnails, manual fallback, import,
-   restart persistence, and rollback in the home LAN.
-5. Keep photo search and memory features separate until Immich asset health is
-   confirmed.
+1. Complete the first household initialization from the home LAN by selecting
+   the intended family members; this human choice is deliberately not automated.
+2. Verify member switching, household settings, one event round trip, and
+   restart persistence with the real household data.
+3. Replace production CDN dependencies with reviewed local assets so the core
+   interface remains fully styled when the internet is unavailable.
+4. Keep photo search and memory features separate until Immich asset health and
+   the additional read-only asset permissions are reviewed.
 
 ---
 

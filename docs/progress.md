@@ -3,72 +3,77 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-08-02
+> Last verified: 2026-08-29 Asia/Shanghai
 
-## Repository state
+## Current state
 
-- Current documentation branch: `codex/unified-project-docs`
-- Branch base and `origin/main`:
-  `3857bfa504edac46117d69e088d4d3f9da114e2b`
-- Immich onboarding PR #3 is merged into `main`; its reviewed head was
-  `5fd820db0a149ba00a2456e76ed1961017ec8137`.
-- The unified documentation changes are intentionally separate from the
-  already merged feature PR.
-- Untracked experimental files are present:
-  `web/html/family-time-flow/admin.html` and
-  `web/html/family-time-flow/grid-canvas.html`.
-- They remain excluded from staging and production deployment.
-- The legacy WebDAV script was renamed to
-  `deploy/legacy-webdav-push.sh`; `AGENTS.md` names
-  `nas-deploy family-time-flow --ref <sha>` as the only production
-  deployment path.
-- GitHub SSH fetch and push are configured for this checkout.
+- Production runs commit `7acd33888c8a1da8e9f20fa6ae852681894b91bc`
+  through the NAS-owned `nas-deploy` release system on Node 22.
+- `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
+  running and healthy, `/api/health` reports storage ready with backups
+  enabled, and the persistent SQLite database opens successfully.
+- Immich onboarding is enabled through a NAS mode-0600 service secret. The
+  read-only FTF adapter returns 10 named people and 10 working thumbnails in
+  production. Credentials are not stored in this repository, SQLite, or the
+  browser.
+- Browser verification from the home LAN reaches the welcome screen and the
+  multi-select person picker. The picker shows known birth dates, flags missing
+  dates for completion, loads all person thumbnails, and reports no business
+  console errors.
+- The production household database is still intentionally empty. No family
+  member has been selected or imported on the user's behalf.
+- The current work branch is `codex/unified-project-docs`, four commits ahead
+  of `origin/main`. The existing two experimental HTML files remain untracked
+  and excluded from release.
 
-## Current implementation
+## Active work
 
-- Stable multi-member bootstrap, member switching, SQLite persistence, startup
-  backups, corruption handling, and a NAS full-SHA release contract are present.
-- Immich people onboarding is merged into `main`. It supports named-person
-  previews, thumbnails, multi-select import, missing birth-date completion,
-  transactional idempotent member creation, manual fallback, longer import
-  timeouts, and path-safe person thumbnail identifiers.
-- Immich remains optional, read-only, disabled by default, and dependent on
-  NAS-side secret injection.
-- Production is still on the pre-onboarding release. No Immich credential has
-  been injected into the FTF runtime, and the merged feature has not been
-  deployed.
-- Production Compose, nginx, persistent mounts, health checks, and rollback are
-  owned by the sibling NAS repository.
-- Codex and Cline now share `AGENTS.md` as the project instruction source;
-  `.clinerules` is a compatibility adapter and no longer auto-deploys edits.
-- README and release-candidate documentation now match the merged onboarding
-  implementation and explicitly separate future photo features.
+- Correct the onboarding and household copy so it reflects the server-reported
+  Immich configuration instead of claiming the integration is unavailable.
+- Keep the brand link inside the deployed `/family-time-flow/` application.
+- Add frontend contract coverage for both behaviors and refresh release docs.
+- Validate the candidate locally and in the NAS Node 22 release path before
+  deployment.
 
-## Verification boundary
+## Known issues
 
-- PR #3 was validated locally and in a disposable NAS `node:22-alpine`
-  container (Node 22.23.1 / npm 10.9.8).
-- The merged feature validation baseline is 13 frontend tests and 19 backend
-  tests.
-- The unified documentation change, README/release-candidate cleanup, and the
-  deploy-script rename passed
-  `npm test` (13 frontend + 19 backend tests),
-  `node --check web/backend/family-time-flow/server.js`, and
-  `git diff --check` on 2026-08-02.
-- No production deployment, NAS infrastructure change, secret injection, or
-  production data mutation is part of this documentation update.
+- First household initialization requires a human decision: select the intended
+  people and supply any missing birth dates. This is the remaining step before
+  normal family use, not an infrastructure failure.
+- Photo timeline, hover memories, and “On This Day” are not implemented. The
+  current Immich scope is named-person onboarding and thumbnails only.
+- The frontend still loads Tailwind, daisyUI, GSAP, and Flatpickr from public
+  CDNs. It works on the current home network, but full offline styling and
+  interaction require a separately reviewed asset-bundling change.
+- The family API has no login and must remain restricted to the trusted LAN or
+  an access-controlled private network.
 
 ## Next steps
 
-1. Publish this unified documentation cleanup separately from the merged
-   Immich feature.
-2. Keep the two experimental HTML files local and excluded unless a separate
-   decision explicitly promotes or archives them.
-3. Design NAS-side secret injection for `IMMICH_URL` and `IMMICH_API_KEY`
-   without committing either value.
-4. After explicit deployment approval, deploy the reviewed full SHA with
-   `nas-deploy family-time-flow --ref <sha>` and verify `/api/health`.
-5. Verify the real Immich status, named-person preview, thumbnail proxy, manual
-   fallback, member import, restart persistence, and rollback path.
-6. Keep authentication/public-exposure work separate from the read-only Immich
-   onboarding feature.
+1. Commit and push the reviewed UX/documentation candidate without adding the
+   experimental HTML files.
+2. Merge the documentation branch into `main` so the default branch matches
+   the production release lineage.
+3. Deploy the approved full commit SHA with
+   `nas-deploy family-time-flow --ref <sha>` and repeat health, person-list,
+   thumbnail, and browser checks.
+4. Let the user complete the first household import in the home LAN, then
+   verify member switching, one event save/edit/delete round trip, and restart
+   persistence with real data.
+5. Plan a separate offline-asset release before adding any photo-memory APIs.
+
+## Operation entry points
+
+```sh
+npm test
+node --check web/backend/family-time-flow/server.js
+git diff --check
+
+# On the NAS, after an approved full SHA is pushed:
+nas-deploy family-time-flow --ref <full-40-char-commit-sha>
+nas-deploy status
+nas-deploy doctor
+```
+
+Production Compose, nginx, secret files, persistent mounts, and rollback remain
+owned by the sibling NAS repository.
