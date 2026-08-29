@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `3af8283c9bfd782af018939ebdaf9acec06cbda2`
+- Production runs commit `9a9b954ed604ec9540ddd66cfd009ab370c02aae`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -25,10 +25,13 @@
   confirms one complete member, no events, SQLite integrity `ok`, seven retained
   backups, a working portrait, the correct worker profile label, and no
   fabricated countdown when no target date exists.
+- Every add-member entry point now reopens the Immich picker. Production browser
+  verification shows 10 loaded portraits, the existing linked member disabled,
+  nine selectable people, and the manual fallback still available.
 - PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
-  regression), and PR #7 (first-member polish) are merged into `main`. The
-  existing two experimental HTML files remain untracked and excluded from
-  release.
+  regression), PR #7 (first-member polish), and PR #9 (additional-member
+  picker) are merged into `main`. The existing two experimental HTML files
+  remain untracked and excluded from release.
 
 ## Active work
 
