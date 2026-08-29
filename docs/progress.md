@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `7acd33888c8a1da8e9f20fa6ae852681894b91bc`
+- Production runs commit `1c690f37bc1eb8f77dde3355c2d45a9e19fa3b0c`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -16,24 +16,22 @@
   read-only FTF adapter returns 10 named people and 10 working thumbnails in
   production. Credentials are not stored in this repository, SQLite, or the
   browser.
-- Browser verification from the home LAN reaches the welcome screen and the
+- Browser verification from the home LAN confirms the live Immich-aware welcome
+  hint, the deferred-photo-memory ticker, in-app brand navigation, and the
   multi-select person picker. The picker shows known birth dates, flags missing
-  dates for completion, loads all person thumbnails, and reports no business
+  dates for completion, loads all 10 person thumbnails, and reports no business
   console errors.
 - The production household database is still intentionally empty. No family
   member has been selected or imported on the user's behalf.
-- The current work branch is `codex/unified-project-docs`, four commits ahead
-  of `origin/main`. The existing two experimental HTML files remain untracked
-  and excluded from release.
+- PR #4 (documentation and live-status UX) and PR #5 (duplicate ticker
+  regression) are merged into `main`. The existing two experimental HTML files
+  remain untracked and excluded from release.
 
 ## Active work
 
-- Correct the onboarding and household copy so it reflects the server-reported
-  Immich configuration instead of claiming the integration is unavailable.
-- Keep the brand link inside the deployed `/family-time-flow/` application.
-- Add frontend contract coverage for both behaviors and refresh release docs.
-- Validate the candidate locally and in the NAS Node 22 release path before
-  deployment.
+- No code or infrastructure blocker remains for first household use.
+- The production household is awaiting the user's member selection; the agent
+  deliberately did not mutate the empty production database.
 
 ## Known issues
 
@@ -50,17 +48,12 @@
 
 ## Next steps
 
-1. Commit and push the reviewed UX/documentation candidate without adding the
-   experimental HTML files.
-2. Merge the documentation branch into `main` so the default branch matches
-   the production release lineage.
-3. Deploy the approved full commit SHA with
-   `nas-deploy family-time-flow --ref <sha>` and repeat health, person-list,
-   thumbnail, and browser checks.
-4. Let the user complete the first household import in the home LAN, then
+1. Let the user complete the first household import in the home LAN, then
    verify member switching, one event save/edit/delete round trip, and restart
    persistence with real data.
-5. Plan a separate offline-asset release before adding any photo-memory APIs.
+2. Plan a separate offline-asset release before adding any photo-memory APIs.
+3. Keep the unauthenticated API on the trusted LAN; review authentication before
+   any broader network exposure.
 
 ## Operation entry points
 
