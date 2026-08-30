@@ -3,11 +3,11 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-08-30 Asia/Shanghai
+> Last verified: 2026-08-31 Asia/Shanghai
 
 ## Current state
 
-- Production runs commit `1d656e3ea12b71c5b0def081daa255fb7bfff285`
+- Production runs commit `f552c13089e964f96e124acb2e70918761febdf3`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -21,6 +21,11 @@
   returned assets; 12 sampled images had person and date metadata, and all 12
   thumbnail responses were valid images. No originals were downloaded
   and no Immich data was changed.
+- The server-gated “On This Day” card is enabled in production. Post-deployment
+  verification returned six current-date memories, 3/3 sampled thumbnails and
+  2/2 sampled previews; the household UI loaded all six thumbnails, opened a
+  1440×1920 read-only preview, restored keyboard focus on close, and reported
+  no browser console warnings or errors.
 - Browser verification from the home LAN confirms four persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -54,10 +59,9 @@
 - The Immich 3.x adapter hardening is deployed. It sends the required
   `personIds` array, validates asset inputs, and reports permission or upstream
   failures instead of returning false empty results.
-- Branch `codex/immich-on-this-day` contains the verified release candidate for
-  the first photo-memory experience. It is server-gated, defaults off, searches
-  only the previous five years, and offers thumbnail/preview access without
-  original downloads. It is not deployed yet.
+- Branch `codex/immich-on-this-day` contains the deployed first photo-memory
+  experience. It is server-gated, searches only the previous five years, and
+  offers thumbnail/preview access without original downloads.
 - A read-only production compatibility audit on 2026-08-30 returned successful
   metadata responses for all five year windows; all six sampled thumbnails and
   all three sampled previews were readable. Only aggregate counts and HTTP
@@ -70,15 +74,15 @@
 
 - Additional household members remain a human decision: select the intended
   people and supply any missing birth dates.
-- Photo timeline and hover memories are not implemented. “On This Day” is under
-  local review and remains disabled in production.
+- Photo timeline and week-hover memories remain outside the reviewed production
+  scope; “On This Day” is the only enabled photo-memory experience.
 - The family API has no login and must remain restricted to the trusted LAN or
   an access-controlled private network.
 
 ## Next steps
 
-1. Enable and deploy the reviewed “On This Day” release candidate through the
-   NAS-owned exact-SHA workflow, then verify the household card in production.
+1. Observe “On This Day” during normal family use before proposing any broader
+   photo timeline or week-hover scope.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth

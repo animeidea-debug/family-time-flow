@@ -216,7 +216,7 @@ data explicitly.
 - [x] Validate read-only asset search, person metadata, dates, and thumbnails
   against Immich 3.0.2
 - [x] Implement the first “On This Day” experience behind a server feature flag
-- [ ] Review and enable “On This Day” in production before considering photo
+- [x] Review and enable “On This Day” in production before considering photo
   timeline or hover memories
 
 ---
@@ -269,12 +269,11 @@ data explicitly.
 
 ### 🔄 Next steps
 
-1. Review the first read-only “On This Day” experience and its server flag.
-2. Enable it in a controlled production release; the live read-only date query,
-   thumbnail, and preview checks passed on 2026-08-30.
-3. Add any remaining intended family members from the home LAN; these identity
+1. Observe the first read-only “On This Day” experience during normal household
+   use before considering photo timeline or week-hover expansion.
+2. Add any remaining intended family members from the home LAN; these identity
    choices remain deliberately manual.
-4. Keep the unauthenticated family API restricted to the trusted LAN.
+3. Keep the unauthenticated family API restricted to the trusted LAN.
 
 ---
 
