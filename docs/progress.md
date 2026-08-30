@@ -50,18 +50,19 @@
   comparison in `npm test`.
 - PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
   regression), PR #7 (first-member polish), PR #9 (additional-member picker),
-  PR #11 (readability and picker clarity), and PR #14 (offline frontend assets)
-  are merged into `main`. The existing two experimental HTML files remain
-  untracked and excluded from release.
+  PR #11 (readability and picker clarity), PR #14 (offline frontend assets),
+  and PR #16 (read-only “On This Day” memories) are merged into `main`. The
+  existing two experimental HTML files remain untracked and excluded from
+  release.
 
 ## Active work
 
 - The Immich 3.x adapter hardening is deployed. It sends the required
   `personIds` array, validates asset inputs, and reports permission or upstream
   failures instead of returning false empty results.
-- Branch `codex/immich-on-this-day` contains the deployed first photo-memory
-  experience. It is server-gated, searches only the previous five years, and
-  offers thumbnail/preview access without original downloads.
+- `main` contains the deployed first photo-memory experience. It is
+  server-gated, searches only the previous five years, and offers
+  thumbnail/preview access without original downloads.
 - A read-only production compatibility audit on 2026-08-30 returned successful
   metadata responses for all five year windows; all six sampled thumbnails and
   all three sampled previews were readable. Only aggregate counts and HTTP
