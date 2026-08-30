@@ -92,6 +92,7 @@ test('bootstrap restores only a valid requested member', async () => {
     assert.equal(valid.members[0].birthDate, '2014-01-17');
     assert.equal(valid.members[0].immich.linked, false);
     assert.equal(valid.integrations.immich.status, 'disabled');
+    assert.equal(valid.integrations.immich.memoriesEnabled, false);
     assert.equal('url' in valid.integrations.immich, false);
 
     const stale = await fetch(`${baseUrl}/bootstrap?activeMemberId=999`).then(response => response.json());

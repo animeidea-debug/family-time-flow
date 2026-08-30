@@ -228,17 +228,23 @@ User hovers on a historical grid node (date = YYYY-MM-DD)
 
 ### 3.3 "On This Day" Time Capsule
 
+该功能还要求服务端显式设置 `ENABLE_IMMICH_MEMORIES=1`。未设置时，前端不会
+发起照片回忆请求，后端 `/api/immich/on-this-day` 返回 `disabled`。
+
 **Flow**:
 
 ```
-Runs at midnight (or on page load):
-  → Backend calls POST /api/search/metadata for matching date ranges across years
-  → Alternative: GET /api/memories?type=on_this_day
-  → Returns photo assets taken on this day in ANY year
-  → Frontend bottom ticker cycles through them with fade transitions
+Runs on household page load and checks the date every 30 minutes:
+  → Backend concurrently calls POST /api/search/metadata for the same month/day
+    across the previous five years, excluding the current year
+  → Backend returns at most six minimal image records
+  → Frontend renders the card and updates the bottom ticker with result status
 ```
 
-**Cycle strategy**: If >5 photos, auto-cycle every 8 seconds with GSAP fade. If 0 photos, show a "no memories yet" placeholder.
+The first version shows at most six image thumbnails in a two-column card. It
+offers an Immich `preview` modal, but does not request videos or original files.
+If no matching photos exist, it shows a normal empty state rather than treating
+the result as an integration failure.
 
 ### 3.4 Timeline Photo Nodes
 
