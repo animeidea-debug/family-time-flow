@@ -28,6 +28,11 @@
 - Personal and household navigation now resets the page to the top. Members
   without a target still receive no fabricated countdown, and identity tags
   remain manually editable after Immich import.
+- The production household now contains one user-approved real upcoming event.
+  Its household-card display and edit-form values were verified, the backend
+  container was restarted, and the event remained present afterward. The first
+  immediate post-restart API probe hit the startup window; the repeated
+  `nas-deploy doctor` check passed all FTF API and database checks.
 - PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
   regression), PR #7 (first-member polish), PR #9 (additional-member picker),
   and PR #11 (readability and picker clarity) are merged into `main`. The
@@ -37,8 +42,8 @@
 ## Active work
 
 - No code or infrastructure blocker remains for household use.
-- The production household has three user-created members and is awaiting its
-  first real event; the agent did not create synthetic production records.
+- The production household has three user-created members and one real event;
+  the agent did not create synthetic production records.
 
 ## Known issues
 
@@ -54,11 +59,13 @@
 
 ## Next steps
 
-1. Let the user add any remaining household members in the home LAN, then verify
-   one real event save/edit/delete round trip and restart persistence with real
-   data.
-2. Plan a separate offline-asset release before adding any photo-memory APIs.
-3. Keep the unauthenticated API on the trusted LAN; review authentication before
+1. Plan and implement a separate offline-asset release before adding any
+   photo-memory APIs.
+2. Verify an event edit when a real change is needed; exercise deletion only
+   with explicit approval for a disposable or obsolete event.
+3. Let the user add any remaining household members and complete missing birth
+   dates in the home LAN.
+4. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
