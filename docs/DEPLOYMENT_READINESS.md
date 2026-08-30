@@ -24,7 +24,9 @@ FamilyTimeFlow 的成员、事件和家庭设置接口暂时没有登录鉴权�
 - nginx 与后端应保持同源访问；后端不再向任意网页提供 CORS 授权。
 - 实验诊断接口默认关闭。只有临时排障时才设置 `ENABLE_DIAGNOSTICS=1`，完成后立即关闭。
 - Immich 人物 onboarding 已在生产启用。`IMMICH_URL`、`IMMICH_API_KEY` 与
-  `ENABLE_IMMICH=1` 仅存在于 NAS 的 mode-0600 服务 secret 中；仍然只授予人物读取权限。
+  `ENABLE_IMMICH=1` 仅存在于 NAS 的 mode-0600 服务 secret 中；当前只授予
+  `person.read`、`asset.read` 和 `asset.view`，用于人物资料、照片元数据搜索与
+  缩略图显示，不授予原图下载或任何写权限。
 - 浏览器配置 Immich 凭据的旧接口已退役；凭据只能在服务启动前由 NAS 安全注入。
 
 ## 数据与卷

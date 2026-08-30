@@ -1,17 +1,20 @@
 # Immich Integration Design — FamilyTimeFlow
 
-> **当前状态（2026-07-20）**：Immich 3.0.2 已完成只读联调验证。新版 Key 仅用于服务端读取人物；旧 Key 曾进入 Git 历史，必须保持撤销，禁止复用。
+> **当前状态（2026-08-30）**：Immich 3.0.2 已完成只读人物、照片元数据与
+> 缩略图联调验证。旧 Key 曾进入 Git 历史，必须保持撤销，禁止复用。
 
 ## 0. 新 API Key 安全基线
 
 正式恢复联调前创建专用 Key，名称建议为 `FamilyTimeFlow Read Only`。
 
-### 人物初始化所需权限
+### 当前最小权限
 
 - `person.read`：人物列表、人物资料和人物缩略图。
-- `person.statistics`：可选；读取人物照片统计，本阶段验证可用但不作为导入依赖。
+- `asset.read`：按人物和日期搜索照片元数据。
+- `asset.view`：读取 `thumbnail` 或 `preview` 缩略图。
 
-照片时间线阶段才需要另行增加 `asset.read` 和缩略图读取权限；人物初始化不需要这些权限。
+人物初始化本身只依赖 `person.read`。照片回忆功能需要后两项权限，但不需要
+`asset.download`；Family Time Flow 不读取原图。
 
 仅当后续决定直接读取 Immich 原生 Memories 时，再单独增加 `memory.read`。
 
@@ -31,8 +34,9 @@
 - FamilyTimeFlow 后端不得通过诊断、同步或 bootstrap API 返回 Key。
 - 接入前必须按升级后的 Immich 实际版本重新验证权限与 API 路径。
 
-> **Live validation (2026-07-20): Immich 3.0.2**
-> 当前 Key 可见 10 位已命名人物：10 位有头像，7 位有出生日期；人物详情、头像和统计接口均返回 200。
+> **Live validation (2026-08-30): Immich 3.0.2**
+> 当前 Key 可见 10 位已命名人物：10 位有头像，7 位有出生日期。三个已关联
+> 成员均返回照片；九张抽样图片均有人物和日期元数据，九个缩略图均读取成功。
 
 ---
 
@@ -47,10 +51,11 @@ Settings → API Keys → Create New
 Header: x-api-key: <your-api-key>
 ```
 
-**FamilyTimeFlow key status**: 已创建并验证人物只读权限；不使用管理员权限。
+**FamilyTimeFlow key status**: 已验证人物、照片元数据与缩略图只读权限；不使用
+管理员、原图下载或写权限。
 
 ```sh
-curl -H "x-api-key: <key>" http://192.168.6.108:22283/api/server/version
+curl -H "x-api-key: <key>" "$IMMICH_URL/api/server/version"
 # → {"major":3,"minor":0,"patch":2}
 ```
 
@@ -75,7 +80,7 @@ Base URL: `GET /api/people`
   "people": [
     {
       "id": "a34eb045-...",
-      "name": "陈婧文",
+      "name": "家庭成员",
       "birthDate": null,          // ← Can be set manually via UI/API
       "thumbnailPath": "/upload/thumbs/...",
       "isHidden": false,
@@ -104,19 +109,18 @@ FamilyTimeFlow 对浏览器返回稳定 DTO，不暴露 `thumbnailPath`：
 
 ### 2.2 Assets (Photos & Videos)
 
-Base URL: `GET /api/assets`
+Base URL: `POST /api/search/metadata`
 
-Key query parameters for our use cases:
+Key JSON fields for our use cases:
 
 | Parameter | Type | Purpose |
 |-----------|------|---------|
-| `userId` | UUID | Filter by user (optional, admin can query all) |
-| `personId` | UUID | Filter by recognized person |
-| `takenDate` | string (ISO) | Exact date match for "On This Day" |
-| `takenDateAfter` | string | Date range start |
-| `takenDateBefore` | string | Date range end |
+| `personIds` | UUID[] | Filter by recognized people; must be an array |
+| `takenAfter` | string | Date range start |
+| `takenBefore` | string | Date range end |
 | `type` | enum | `IMAGE` or `VIDEO` |
 | `withPeople` | boolean | Include face metadata |
+| `withExif` | boolean | Include capture date metadata |
 
 **Response fields relevant to FamilyTimeFlow**:
 
@@ -182,30 +186,27 @@ The `memory` table schema (confirmed via live DB):
 ### 2.5 Server Info
 
 ```
-GET  /api/server/version          → {"major":2,"minor":7,"patch":5}
-GET  /api/server/ping             → {"status":"ok","serverVersion":"2.7.5"}
+GET /api/server/version → {"major":3,"minor":0,"patch":2}
 ```
 
 ---
 
 ## 3. Integration Flows (Per PRD Feature)
 
-### 3.1 Smart Onboarding — Birth Date Deduction
+### 3.1 Smart Onboarding
 
 **Flow**:
 
 ```
 User creates profile → selects person from Immich faces
-  → Backend queries: GET /api/people/{id}
-    → If birthDate already set → use it
-    → If birthDate is null → Smart Deduction:
-      1. GET /api/assets?personId={id}&sort=fileCreatedAt&order=asc&limit=1
-      2. Extract fileCreatedAt from oldest asset
-      3. Subtract ~1 year (infant buffer) → suggest as birth date
-      4. Present to user for confirmation
+  → Backend queries the paginated GET /api/people endpoint
+    → If birthDate already exists, prefill it
+    → If birthDate is null, require the family to enter and confirm it
+    → Create the member idempotently by Immich person ID
 ```
 
-**DB shortcut** (if API key has DB access): Query `person.birthDate` directly. If null, find the earliest `asset.file_created_at` associated with this person via `asset_face` join.
+Family Time Flow does not access the Immich database and does not infer a birth
+date from the oldest photo.
 
 ### 3.2 Memory Hover Tooltips
 
@@ -213,12 +214,14 @@ User creates profile → selects person from Immich faces
 
 ```
 User hovers on a historical grid node (date = YYYY-MM-DD)
-  → Backend queries: GET /api/assets?takenDateAfter=YYYY-MM-DDT00:00:00&takenDateBefore=YYYY-MM-DDT23:59:59&limit=3
+  → Backend sends POST /api/search/metadata with:
+    personIds=[linked person], takenAfter, takenBefore, size=3
   → Returns top 3 assets with thumbnails
   → Frontend renders glassmorphism popover with:
     - Thumbnail URLs: /api/assets/{id}/thumbnail?size=thumbnail
     - Photo titles/dates
-    - Click → PhotoSwipe lightbox with full image
+    - A later reviewed design may open a larger preview; original download is
+      outside the current permission scope
 ```
 
 **Optimization**: Cache thumbnails on date nodes that the user has already hovered over. Immich thumbnail URLs are stable (keyed by asset ID).
@@ -229,8 +232,7 @@ User hovers on a historical grid node (date = YYYY-MM-DD)
 
 ```
 Runs at midnight (or on page load):
-  → Backend calls: GET /api/assets?takenDate={month}-{day}&limit=5
-    (Note: Immich API may use date range across years)
+  → Backend calls POST /api/search/metadata for matching date ranges across years
   → Alternative: GET /api/memories?type=on_this_day
   → Returns photo assets taken on this day in ANY year
   → Frontend bottom ticker cycles through them with fade transitions
@@ -244,7 +246,7 @@ Runs at midnight (or on page load):
 
 ```
 User clicks on a specific event on the timeline:
-  → Backend: GET /api/assets?takenDate={event_date}&limit=20
+  → Backend: POST /api/search/metadata with the event date range and size=20
   → If event has immich_sync_photos=true → merge with event metadata
   → Display in PhotoSwipe lightbox gallery
 ```
@@ -278,7 +280,7 @@ Check connectivity at startup:
 ```js
 async function checkImmichStatus() {
   try {
-    const res = await fetch(`${IMMICH_URL}/api/server/ping`, {
+    const res = await fetch(`${IMMICH_URL}/api/server/version`, {
       headers: { 'x-api-key': IMMICH_KEY }
     });
     return res.ok;
@@ -294,7 +296,7 @@ async function checkImmichStatus() {
 
 ```bash
 # .env (gitignored)
-IMMICH_URL=http://192.168.6.108:22283
+IMMICH_URL=http://immich-server:2283
 IMMICH_API_KEY=<injected-secret>
 ```
 
@@ -304,13 +306,15 @@ IMMICH_API_KEY=<injected-secret>
 
 ```sh
 # Quick health check
-curl -s -H "x-api-key: $IMMICH_API_KEY" http://192.168.6.108:22283/api/server/version
+curl -s -H "x-api-key: $IMMICH_API_KEY" "$IMMICH_URL/api/server/version"
 
 # List people
-curl -s -H "x-api-key: $IMMICH_API_KEY" http://192.168.6.108:22283/api/people | jq '.people[] | {name, birthDate, assetsCount}'
+curl -s -H "x-api-key: $IMMICH_API_KEY" "$IMMICH_URL/api/people?page=1&size=100&withHidden=false" | jq '.people | length'
 
-# Assets by person (replace PERSON_ID)
-curl -s -H "x-api-key: $IMMICH_API_KEY" "http://192.168.6.108:22283/api/assets?personId=PERSON_ID&limit=3" | jq '.assets[] | {originalFileName, fileCreatedAt}'
+# Assets by person (replace PERSON_ID; output only a count during operations)
+curl -s -X POST -H "x-api-key: $IMMICH_API_KEY" -H "content-type: application/json" \
+  -d '{"personIds":["PERSON_ID"],"size":3}' "$IMMICH_URL/api/search/metadata" | jq '.assets.items | length'
 
-# "On This Day" — assets from July 8 in any year
-curl -s -H "x-api-key: $IMMICH_API_KEY" "http://192.168.6.108:22283/api/assets?takenDate=2024-07-08&limit=5" | jq '.assets[] | {originalFileName, fileCreatedAt}'
+# Thumbnail permission probe (replace ASSET_ID; discard image bytes)
+curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $IMMICH_API_KEY" \
+  "$IMMICH_URL/api/assets/ASSET_ID/thumbnail?size=thumbnail"

@@ -16,6 +16,8 @@
 - 默认关闭诊断和 Immich；Immich 浏览器配置接口已退役，取消任意来源 CORS。
 - Immich 3.x 只读人物 onboarding 已在 PR #3 合并，通过 Node 22 容器验证，
   并由 NAS mode-0600 secret 在生产启用。
+- Immich 3.0.2 的照片元数据与缩略图读取已在生产做只读抽样验证；当前 Key
+  仅有 `person.read`、`asset.read` 和 `asset.view`，不具备下载原图或写权限。
 - 首次页面会根据实际集成状态说明可从 Immich 选择家人，品牌链接保持在
   Family Time Flow 路径内，不再显示已过期的“尚未接入”文案。
 - Tailwind CSS、daisyUI、GSAP 与 Flatpickr 已改为版本锁定的本地静态资源；

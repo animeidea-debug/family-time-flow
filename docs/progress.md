@@ -13,9 +13,14 @@
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
 - Immich onboarding is enabled through a NAS mode-0600 service secret. The
-  read-only FTF adapter returns 10 named people and 10 working thumbnails in
-  production. Credentials are not stored in this repository, SQLite, or the
+  read-only FTF adapter returns 10 named people and 10 working face thumbnails
+  in production. The approved key now has only `person.read`, `asset.read`, and
+  `asset.view`; credentials are not stored in this repository, SQLite, or the
   browser.
+- A read-only production asset audit covered all three linked members. All
+  three returned assets; nine sampled images had person and date metadata, and
+  all nine thumbnail responses were valid images. No originals were downloaded
+  and no Immich data was changed.
 - Browser verification from the home LAN confirms three persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -46,7 +51,11 @@
 
 ## Active work
 
-- No code or infrastructure blocker remains for household use.
+- A committed, not-yet-deployed Immich adapter hardening change corrects the Immich 3.x
+  person filter from `personId` to `personIds`, validates asset inputs, and
+  reports permission or upstream failures instead of returning false empty
+  results. This change is not deployed.
+- No code or infrastructure blocker remains for current household use.
 - The production household has three user-created members and one real event;
   the agent did not create synthetic production records.
 
@@ -61,8 +70,8 @@
 
 ## Next steps
 
-1. Audit Immich asset-read health, thumbnail behavior, and indexing coverage,
-   then plan the first read-only photo-memory feature behind a feature flag.
+1. Review and release the Immich adapter hardening, then design the first
+   read-only photo-memory feature behind a feature flag.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth

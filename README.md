@@ -158,15 +158,17 @@ interactive controls retain a visible keyboard-focus outline.
 - Uses a transactional, idempotent import keyed by Immich person ID
 - Falls back to manual member creation when Immich is unavailable
 
-The current onboarding flow does not infer a birth date from the earliest photo.
-That is intentionally deferred until asset indexing and photo permissions are
-separately validated.
+The current onboarding flow does not infer a birth date from the earliest
+photo. Even with asset indexing validated, the family confirms this identity
+data explicitly.
 
 #### Memory Hover Tooltips
-- Hovering over historical grid nodes queries Immich's `/api/assets` endpoint
+- Hovering over historical grid nodes calls the Family Time Flow
+  `/api/immich/assets` adapter, which uses Immich's metadata search endpoint
 - Pulls Top 3 compressed thumbnails (`/api/assets/{id}/thumbnail?size=thumbnail`)
 - Presents them in glassmorphic popover card
-- Clicking fires PhotoSwipe for immersive full-screen browsing
+- A future reviewed interaction may open a larger preview; original-file
+  download remains outside the current permission scope
 
 #### "On This Day" Time Capsule
 - Persistent bottom ticker component
@@ -210,8 +212,10 @@ separately validated.
 - [x] Add multi-member face-avatar onboarding and idempotent import
 - [x] Inject the approved Immich read-only key through the NAS secret runtime
 - [x] Enable and deploy the onboarding flow in production
-- [ ] Add photo timeline, hover memories, and “On This Day” features after
-  asset health and face-vector indexing are validated
+- [x] Validate read-only asset search, person metadata, dates, and thumbnails
+  against Immich 3.0.2
+- [ ] Add photo timeline, hover memories, and “On This Day” features behind a
+  reviewed feature flag
 
 ---
 
@@ -263,14 +267,11 @@ separately validated.
 
 ### 🔄 Next steps
 
-1. Add the remaining intended family members from the home LAN; these human
-   identity choices are deliberately not automated.
-2. Verify multi-member switching, household settings, one event round trip, and
-   restart persistence with the real household data.
-3. Replace production CDN dependencies with reviewed local assets so the core
-   interface remains fully styled when the internet is unavailable.
-4. Keep photo search and memory features separate until Immich asset health and
-   the additional read-only asset permissions are reviewed.
+1. Review and release the hardened Immich 3.x asset adapter.
+2. Design the first read-only photo-memory experience behind a feature flag.
+3. Add any remaining intended family members from the home LAN; these identity
+   choices remain deliberately manual.
+4. Keep the unauthenticated family API restricted to the trusted LAN.
 
 ---
 
