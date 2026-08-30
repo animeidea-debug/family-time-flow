@@ -44,6 +44,9 @@
 - No code or infrastructure blocker remains for household use.
 - The production household has three user-created members and one real event;
   the agent did not create synthetic production records.
+- The offline frontend asset release is implemented locally and awaits review,
+  merge, and NAS deployment. Production still runs the previous CDN-dependent
+  commit until that release is approved.
 
 ## Known issues
 
@@ -51,16 +54,16 @@
   people and supply any missing birth dates.
 - Photo timeline, hover memories, and “On This Day” are not implemented. The
   current Immich scope is named-person onboarding and thumbnails only.
-- The frontend still loads Tailwind, daisyUI, GSAP, and Flatpickr from public
-  CDNs. It works on the current home network, but full offline styling and
-  interaction require a separately reviewed asset-bundling change.
+- Production still loads Tailwind, daisyUI, GSAP, and Flatpickr from public
+  CDNs. The pending offline release removes that dependency with a committed,
+  reproducibly checked static bundle.
 - The family API has no login and must remain restricted to the trusted LAN or
   an access-controlled private network.
 
 ## Next steps
 
-1. Plan and implement a separate offline-asset release before adding any
-   photo-memory APIs.
+1. Review, merge, and deploy the offline-asset release, then verify that the
+   production page makes no CDN requests.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth

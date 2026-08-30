@@ -6,59 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
     <title>家庭人生时光机 - FamilyTimeFlow</title>
 
-    <!-- TailwindCSS Play CDN (JIT mode) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Version-locked local assets. Regenerate with npm run build:frontend. -->
+    <link rel="stylesheet" href="./assets/app.min.css">
+    <link rel="stylesheet" href="./assets/flatpickr.min.css">
+    <script src="./assets/gsap.min.js"></script>
+    <script src="./assets/flatpickr.min.js"></script>
+    <script src="./assets/flatpickr-zh.js"></script>
 
-    <!-- daisyUI CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" />
-
-    <!-- GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-
-    <!-- Flatpickr + Chinese locale -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
-
-    <!-- Tailwind Config + Custom Styles -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'theme-student': {
-                            bg: '#F0F9FF',
-                            accent: '#1D4ED8',
-                            surface: '#FFFFFF',
-                            muted: '#DBEAFE',
-                            border: '#93C5FD',
-                            text: '#0F3D56'
-                        },
-                        'theme-worker': {
-                            bg: '#FFFBEB',
-                            accent: '#B45309',
-                            surface: '#FFFFFF',
-                            muted: '#FEF3C7',
-                            border: '#FCD34D',
-                            text: '#5C2C0B'
-                        },
-                        'theme-family': {
-                            bg: '#FFF7ED',
-                            accent: '#C2410C',
-                            surface: '#FFFFFF',
-                            muted: '#FFEDD5',
-                            border: '#FDBA74',
-                            text: '#64220C'
-                        }
-                    },
-                    fontFamily: {
-                        mono: ['"SF Mono"', 'Monaco', 'Inconsolata', '"Fira Code"', 'monospace'],
-                        sans: ['"PingFang SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Custom Styles -->
 
     <style>
         :root {

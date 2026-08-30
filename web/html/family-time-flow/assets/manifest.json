@@ -1,0 +1,16 @@
+{
+  "generatedBy": "scripts/build-frontend-assets.mjs",
+  "versions": {
+    "daisyui": "4.12.14",
+    "flatpickr": "4.6.13",
+    "gsap": "3.12.5",
+    "tailwindcss": "3.4.17"
+  },
+  "assets": {
+    "app.min.css": "ebd4efc949b5995be1a2fe13e8c583bd652e06fd967d4f393e5da73e15186a94",
+    "gsap.min.js": "28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087",
+    "flatpickr.min.css": "1b34a42552c96f10e4dfaaa4a367276b03868aacff63c1ac42ffe331352bc754",
+    "flatpickr.min.js": "1eeab1cb779471a0b0aaa93dd91c2eb1aa537d696f01ab05ea9dabc55e8525a1",
+    "flatpickr-zh.js": "8629568c4e6c9536864189e9434195416ab5b2d63c9793a3779f12a5b34d9955"
+  }
+}
