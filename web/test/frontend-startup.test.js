@@ -11,6 +11,30 @@ const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script
     .filter(source => source.trim());
 const applicationScript = inlineScripts.at(-1);
 
+test('frontend uses version-locked local assets without CDN dependencies', () => {
+    assert.doesNotMatch(html, /<(?:script|link)[^>]+https?:\/\//i);
+    for (const asset of [
+        'app.min.css',
+        'flatpickr.min.css',
+        'gsap.min.js',
+        'flatpickr.min.js',
+        'flatpickr-zh.js'
+    ]) {
+        assert.match(html, new RegExp(`(?:href|src)=["']\\./assets/${asset.replaceAll('.', '\\.')}`));
+        assert.ok(fs.statSync(path.join(__dirname, '..', 'html', 'family-time-flow', 'assets', asset)).size > 0);
+    }
+    const manifest = JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'html', 'family-time-flow', 'assets', 'manifest.json'),
+        'utf8'
+    ));
+    assert.deepEqual(manifest.versions, {
+        daisyui: '4.12.14',
+        flatpickr: '4.6.13',
+        gsap: '3.12.5',
+        tailwindcss: '3.4.17'
+    });
+});
+
 test('all inline scripts parse', () => {
     inlineScripts.forEach((source, index) => {
         assert.doesNotThrow(() => new vm.Script(source), `inline script ${index + 1} should parse`);
