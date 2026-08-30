@@ -51,7 +51,10 @@ ENABLE_IMMICH=1
 
 ## 发布内容
 
-- 正式前端只有 `index.html`。
+- 正式前端由 `index.html` 和其 `assets/` 目录组成。CSS、GSAP 与
+  Flatpickr 均为版本锁定的本地静态资源；`manifest.json` 记录版本与 SHA-256。
+- 修改 Tailwind 类名或前端依赖后须执行 `npm run build:frontend`；`npm test`
+  会通过 `npm run check:frontend-assets` 拒绝缺失或过期的生成资源。
 - `admin.html` 与 `grid-canvas.html` 是早期实验文件，部署脚本已明确排除。
 - 部署前运行根目录 `npm test`，所有测试通过后再同步文件。
 - 部署后依次验证家庭首页、成员切换、设置保存、事件创建与服务重启恢复。

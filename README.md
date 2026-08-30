@@ -24,6 +24,20 @@ release, and verifies `/api/health`. The historical
 `deploy/legacy-webdav-push.sh` WebDAV script remains an emergency
 migration fallback, not the normal production path.
 
+## Frontend assets
+
+The browser receives only repository-owned, version-locked static assets. There
+is no runtime CDN or frontend build requirement. When changing Tailwind classes
+or upgrading a frontend dependency, regenerate and verify the committed bundle:
+
+```sh
+npm ci
+npm run build:frontend
+npm run check:frontend-assets
+```
+
+`npm test` also runs the asset check and fails if the committed bundle is stale.
+
 ---
 
 ## 📋 Table of Contents
@@ -56,11 +70,11 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 | **Deployment** | NAS-managed Docker Compose | This project deploys application files; `~/Desktop/NAS` owns the container definition |
 | **Backend** | Node.js 22 + Express | Lightweight API behind the NAS-managed nginx proxy |
 | **Database** | SQLite | Single-file embedded database (no MySQL/Redis) |
-| **Frontend** | Vanilla JS + TailwindCSS + daisyUI | Zero-build environment (CDN preferred) |
-| **Animation** | GSAP (GreenSock) | Performance-optimized DOM/SVG manipulations |
+| **Frontend** | Vanilla JS + precompiled TailwindCSS + daisyUI | Version-locked static bundle committed with each release |
+| **Animation** | GSAP (GreenSock) | Version-locked local runtime for DOM/SVG motion |
 | **Polling/Clock** | `requestAnimationFrame` | Smooth 60Hz+ countdowns, CPU-efficient |
 | **Photo Interactivity** | Floating UI & PhotoSwipe | Glassmorphic tooltips and immersive photo lightbox |
-| **Forms/Inputs** | Flatpickr (Dark Mode) | Ultra-lightweight date-time selection |
+| **Forms/Inputs** | Flatpickr | Version-locked local date-time selection with Chinese locale |
 
 ---
 
@@ -175,7 +189,8 @@ separately validated.
 ## 🚀 Development Roadmap
 
 ### Phase 1: Interactive Frontend Prototype (MVP 1.0) ✅ COMPLETE
-- [x] Single self-contained `index.html` with Tailwind CSS, daisyUI, GSAP via CDN
+- [x] Single-page `index.html` with a committed offline Tailwind, daisyUI, GSAP,
+  and Flatpickr asset bundle
 - [x] Full page layout:
   - 80×52 life grid
   - 6-decimal precision countdown clock
@@ -208,11 +223,11 @@ separately validated.
 - ACID compliant with full SQL support
 - Zero configuration required
 
-### Why Vanilla JS + CDN?
-- Eliminates build step complexity
-- Direct browser refresh workflow for rapid prototyping
-- Minimal memory footprint on NAS
-- Easy maintenance for non-React/Vue developers
+### Why Vanilla JS + committed static assets?
+- Keeps the NAS runtime build-free and lightweight
+- Preserves direct browser refresh and simple non-framework maintenance
+- Makes the family UI independent of public CDN availability
+- Uses a reproducible build check so generated assets cannot silently drift
 
 ### Why `requestAnimationFrame` Over `setInterval`?
 - Synchronizes with browser's native refresh rate (typically 60Hz)
@@ -236,7 +251,7 @@ separately validated.
 - **Countdown Clock**: 6-decimal precision with `requestAnimationFrame`
 - **Time Budget Ring**: SVG-based daily progress visualization
 - **Configuration Drawer**: Profile management with localStorage persistence
-- **Flatpickr Integration**: Dark-mode date/time pickers
+- **Flatpickr Integration**: Local date/time pickers with Chinese locale
 - **Responsive Layout**: Mobile-friendly with TailwindCSS grid system
 
 ### ✅ Completed backend baseline
