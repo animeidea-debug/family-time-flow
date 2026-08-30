@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `e60b19fbdec779d6bc1e152fe7cceff537572a7b`
+- Production runs commit `907d81a867c64c254e0232d7294467c89b8fa826`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -33,20 +33,22 @@
   container was restarted, and the event remained present afterward. The first
   immediate post-restart API probe hit the startup window; the repeated
   `nas-deploy doctor` check passed all FTF API and database checks.
+- Tailwind CSS, daisyUI, GSAP, and Flatpickr are now served from a
+  version-locked local bundle. Production clean-load verification found five
+  NAS-hosted assets, no external script or stylesheet elements, and no browser
+  warnings or errors. The committed bundle is protected by a rebuild-and-hash
+  comparison in `npm test`.
 - PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
   regression), PR #7 (first-member polish), PR #9 (additional-member picker),
-  and PR #11 (readability and picker clarity) are merged into `main`. The
-  existing two experimental HTML files remain untracked and excluded from
-  release.
+  PR #11 (readability and picker clarity), and PR #14 (offline frontend assets)
+  are merged into `main`. The existing two experimental HTML files remain
+  untracked and excluded from release.
 
 ## Active work
 
 - No code or infrastructure blocker remains for household use.
 - The production household has three user-created members and one real event;
   the agent did not create synthetic production records.
-- The offline frontend asset release is implemented locally and awaits review,
-  merge, and NAS deployment. Production still runs the previous CDN-dependent
-  commit until that release is approved.
 
 ## Known issues
 
@@ -54,16 +56,13 @@
   people and supply any missing birth dates.
 - Photo timeline, hover memories, and “On This Day” are not implemented. The
   current Immich scope is named-person onboarding and thumbnails only.
-- Production still loads Tailwind, daisyUI, GSAP, and Flatpickr from public
-  CDNs. The pending offline release removes that dependency with a committed,
-  reproducibly checked static bundle.
 - The family API has no login and must remain restricted to the trusted LAN or
   an access-controlled private network.
 
 ## Next steps
 
-1. Review, merge, and deploy the offline-asset release, then verify that the
-   production page makes no CDN requests.
+1. Audit Immich asset-read health, thumbnail behavior, and indexing coverage,
+   then plan the first read-only photo-memory feature behind a feature flag.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth
