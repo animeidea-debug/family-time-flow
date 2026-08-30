@@ -101,11 +101,15 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 
 The dashboard interface adapts its aesthetic persona on-the-fly when toggling users via the top-bar navigation. Style changes animate seamlessly via Tailwind transitions over **700ms**:
 
-| Mode | Background | Accent Color | Vibe |
-|------|------------|--------------|------|
-| **Student** | `#060B18` (Slate/Deep Blue) | `#10B981` (Neon Mint Green) | Morning twilight, academic vigor |
-| **Worker** | `#090D16` (Obsidian/Dark Onyx) | `#F59E0B` (Amber Gold) | Maturity, precision clockwork |
-| **Family** | `#0F0A15` (Muted Dark Amethyst) | Purple + Orange gradients | Combined timelines as multi-colored ribbons |
+| Mode | Background | Accessible accent | Vibe |
+|------|------------|-------------------|------|
+| **Student** | Light sky blue | `#1D4ED8` (deep blue) | Clear, focused, energetic |
+| **Worker** | Warm ivory | `#B45309` (deep amber) | Calm, precise, mature |
+| **Family** | Soft orange-white | `#C2410C` (deep orange) | Warm, shared, welcoming |
+
+All three themes use explicit primary, secondary, and muted text tokens instead
+of low-opacity text. Primary actions use a white-on-accent treatment, and
+interactive controls retain a visible keyboard-focus outline.
 
 ---
 
