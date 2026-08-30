@@ -889,13 +889,22 @@
                     </div>
                     <div id="householdUpcoming" class="space-y-2"></div>
                 </section>
-                <section class="emma-card p-5">
-                    <h2 class="text-lg font-black text-theme-text mb-2">照片记忆</h2>
-                    <div class="rounded-2xl bg-theme-muted/70 border-2 border-theme-border p-5 text-center">
+                <section class="emma-card p-5" aria-labelledby="immichMemoryHeading">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 id="immichMemoryHeading" class="text-lg font-black text-theme-text">照片记忆</h2>
+                        <button id="immichMemoryRefresh" onclick="loadOnThisDayMemories({ force: true })"
+                            class="btn btn-ghost btn-xs font-bold hidden">刷新</button>
+                    </div>
+                    <div id="immichMemoryStatus"
+                        class="rounded-2xl bg-theme-muted/70 border-2 border-theme-border p-5 text-center">
                         <div class="text-3xl mb-2">📷</div>
                         <p id="immichMemoryTitle" class="text-sm font-bold text-theme-text">照片服务未连接</p>
                         <p id="immichMemoryDetail" class="text-xs text-theme-text/45 mt-1">家庭时间功能可以独立使用，照片服务准备好后再连接。</p>
+                        <button id="immichMemoryRetry" onclick="loadOnThisDayMemories({ force: true })"
+                            class="btn btn-ghost btn-xs font-bold mt-3 hidden">重新加载</button>
                     </div>
+                    <div id="immichMemoryGallery" class="hidden grid grid-cols-2 gap-2" aria-live="polite"></div>
+                    <p id="immichMemoryPartial" class="hidden text-[10px] text-theme-text/45 mt-2">部分年份暂时无法读取，已显示可用回忆。</p>
                 </section>
             </div>
         </section>
@@ -1055,6 +1064,24 @@
                     class="btn btn-accent flex-1 font-bold">保存事件</button>
                 <button onclick="requestDeleteEvent()" id="eventDeleteButton"
                     class="btn btn-ghost text-red-500 font-bold hidden">删除</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="memoryPreviewOverlay"
+        class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4 py-8">
+        <section class="w-full max-w-3xl rounded-3xl bg-white p-3 sm:p-4 shadow-2xl" role="dialog"
+            aria-modal="true" aria-labelledby="memoryPreviewTitle">
+            <div class="flex items-center justify-between px-1 pb-3">
+                <div>
+                    <h2 id="memoryPreviewTitle" class="text-lg font-black text-slate-800">家庭回忆</h2>
+                    <p id="memoryPreviewCaption" class="text-xs text-slate-500"></p>
+                </div>
+                <button onclick="closeMemoryPreview()" class="btn btn-ghost btn-sm btn-circle"
+                    aria-label="关闭照片预览">✕</button>
+            </div>
+            <div class="rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-48">
+                <img id="memoryPreviewImage" class="max-h-[70vh] w-full object-contain" alt="家庭回忆预览">
             </div>
         </section>
     </div>
@@ -1857,13 +1884,21 @@
         // ==================== TICKER ====================
         function startTickerLoop() {
             updateTicker();
-            setInterval(updateTicker, 30 * 60 * 1000);
+            setInterval(() => {
+                updateTicker();
+                loadOnThisDayMemories();
+            }, 30 * 60 * 1000);
         }
 
         // ==================== KEYBOARD ====================
         function initKeyboard() {
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
+                    const memoryPreview = document.getElementById('memoryPreviewOverlay');
+                    if (!memoryPreview.classList.contains('hidden')) {
+                        closeMemoryPreview();
+                        return;
+                    }
                     const drawer = document.getElementById('configDrawer');
                     if (drawer.classList.contains('open')) toggleDrawer();
                 }
@@ -1871,6 +1906,9 @@
                     e.preventDefault();
                     showToast('⌨️ ESC 关闭 · +/- 缩放');
                 }
+            });
+            document.getElementById('memoryPreviewOverlay').addEventListener('click', event => {
+                if (event.target.id === 'memoryPreviewOverlay') closeMemoryPreview();
             });
         }
 
@@ -1884,18 +1922,157 @@
         let apiAvailable = false;
         let householdViewModel = null;
         let immichConfigured = false;
+        let immichMemoriesEnabled = false;
+        let onThisDayState = 'idle';
+        let onThisDayAssets = [];
+        let onThisDayPartial = false;
+        let onThisDayDateKey = null;
+        let memoryPreviewTrigger = null;
 
         function renderImmichStatus() {
             document.getElementById('onboardingSourceHint').textContent = immichConfigured
                 ? '可从 Immich 选择已识别家人 · 也可手动添加'
                 : '先创建家庭成员 · 也可稍后连接照片服务';
-            document.getElementById('immichMemoryTitle').textContent = immichConfigured
-                ? '人物档案已连接'
-                : '照片服务未连接';
-            document.getElementById('immichMemoryDetail').textContent = immichConfigured
-                ? '首次建档可从 Immich 导入家人；照片回忆功能将在后续版本开放。'
-                : '家庭时间功能可以独立使用，照片服务准备好后再连接。';
+            renderOnThisDayMemories();
             updateTicker();
+        }
+
+        function setMemoryPanelStatus(title, detail, retry = false) {
+            document.getElementById('immichMemoryTitle').textContent = title;
+            document.getElementById('immichMemoryDetail').textContent = detail;
+            document.getElementById('immichMemoryRetry').classList.toggle('hidden', !retry);
+        }
+
+        function renderOnThisDayMemories() {
+            const status = document.getElementById('immichMemoryStatus');
+            const gallery = document.getElementById('immichMemoryGallery');
+            const refresh = document.getElementById('immichMemoryRefresh');
+            const partial = document.getElementById('immichMemoryPartial');
+            gallery.innerHTML = '';
+            gallery.classList.add('hidden');
+            status.classList.remove('hidden');
+            partial.classList.add('hidden');
+            refresh.classList.toggle('hidden', !immichConfigured || !immichMemoriesEnabled || onThisDayState === 'loading');
+
+            if (!immichConfigured) {
+                setMemoryPanelStatus('照片服务未连接', '家庭时间功能可以独立使用，照片服务准备好后再连接。');
+                return;
+            }
+            if (!immichMemoriesEnabled) {
+                setMemoryPanelStatus('人物档案已连接', '照片回忆由独立开关控制，当前尚未启用。');
+                return;
+            }
+            if (onThisDayState === 'loading') {
+                setMemoryPanelStatus('正在寻找今天的回忆', '只读取过去五年的压缩缩略图，请稍候。');
+                return;
+            }
+            if (onThisDayState === 'error') {
+                setMemoryPanelStatus('照片回忆暂时无法读取', '人物和家庭数据不受影响，可以稍后重试。', true);
+                return;
+            }
+            if (onThisDayState !== 'loaded') {
+                setMemoryPanelStatus('那年今日', '进入家庭首页后，会寻找过去五年的同日照片。');
+                return;
+            }
+            if (!onThisDayAssets.length) {
+                setMemoryPanelStatus('今天没有找到往年照片', '这不是错误，其他日期仍可能有许多家庭回忆。');
+                return;
+            }
+
+            status.classList.add('hidden');
+            gallery.classList.remove('hidden');
+            partial.classList.toggle('hidden', !onThisDayPartial);
+            onThisDayAssets.forEach(asset => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'relative h-28 overflow-hidden rounded-xl border-2 border-theme-border bg-theme-muted focus:outline-none';
+                button.setAttribute('aria-label', `查看 ${asset.year} 年的家庭回忆`);
+                button.addEventListener('click', () => openMemoryPreview(asset.id));
+
+                const image = document.createElement('img');
+                image.className = 'h-28 w-full object-cover';
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                image.alt = `${asset.year} 年的家庭回忆`;
+                image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(asset.id)}`;
+                image.addEventListener('error', () => {
+                    button.disabled = true;
+                    button.classList.add('opacity-50');
+                    image.alt = '缩略图暂时不可用';
+                }, { once: true });
+
+                const year = document.createElement('span');
+                year.className = 'absolute bottom-1.5 left-1.5 rounded-full bg-slate-950/75 px-2 py-0.5 text-[10px] font-black text-white';
+                year.textContent = `${asset.year} 年`;
+                button.append(image, year);
+                gallery.appendChild(button);
+            });
+        }
+
+        async function loadOnThisDayMemories({ force = false } = {}) {
+            if (!immichConfigured || !immichMemoriesEnabled || onThisDayState === 'loading') return;
+            const now = new Date();
+            const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+            if (dateKey !== onThisDayDateKey) force = true;
+            if (!force && onThisDayState === 'loaded') return;
+
+            onThisDayState = 'loading';
+            renderOnThisDayMemories();
+            updateTicker();
+            const path = `/on-this-day?month=${now.getMonth() + 1}&day=${now.getDate()}&limit=6`;
+            const data = await immichGet(path, { timeoutMs: 10000 });
+            if (!data || !Array.isArray(data.assets)) {
+                onThisDayState = 'error';
+                onThisDayAssets = [];
+                onThisDayPartial = false;
+            } else {
+                onThisDayAssets = data.assets.filter(asset =>
+                    asset && typeof asset.id === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(asset.id) &&
+                    Number.isInteger(asset.year)
+                );
+                onThisDayPartial = data.partial === true;
+                onThisDayDateKey = dateKey;
+                onThisDayState = 'loaded';
+            }
+            renderOnThisDayMemories();
+            updateTicker();
+        }
+
+        function openMemoryPreview(assetId) {
+            const asset = onThisDayAssets.find(item => item.id === assetId);
+            if (!asset) return;
+            const overlay = document.getElementById('memoryPreviewOverlay');
+            const image = document.getElementById('memoryPreviewImage');
+            const caption = document.getElementById('memoryPreviewCaption');
+            memoryPreviewTrigger = document.activeElement;
+            caption.textContent = `${asset.year} 年 · 只读预览`;
+            image.classList.remove('hidden');
+            image.onload = () => image.classList.remove('hidden');
+            image.onerror = () => {
+                image.classList.add('hidden');
+                caption.textContent = `${asset.year} 年 · 预览暂时无法读取`;
+            };
+            image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(asset.id)}&size=preview`;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            overlay.querySelector('button').focus();
+        }
+
+        function closeMemoryPreview() {
+            const overlay = document.getElementById('memoryPreviewOverlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            const image = document.getElementById('memoryPreviewImage');
+            image.onload = null;
+            image.onerror = null;
+            image.removeAttribute('src');
+            image.classList.remove('hidden');
+            document.body.style.overflow = '';
+            if (memoryPreviewTrigger && typeof memoryPreviewTrigger.focus === 'function') {
+                memoryPreviewTrigger.focus();
+            }
+            memoryPreviewTrigger = null;
         }
 
         function memberDtoToLegacy(member) {
@@ -1933,6 +2110,7 @@
             const avatar = document.getElementById('userAvatar');
             avatar.outerHTML = '<span id="userAvatar" class="w-6 h-6 rounded-full bg-theme-accent/20 flex items-center justify-center text-xs font-black">⚙️</span>';
             await loadHouseholdView();
+            loadOnThisDayMemories();
         }
 
         function addHouseholdEmptyState(container, message) {
@@ -2153,6 +2331,7 @@
             apiAvailable = true;
             remoteUsers = data.members.map(memberDtoToLegacy);
             immichConfigured = data.integrations?.immich?.configured === true;
+            immichMemoriesEnabled = data.integrations?.immich?.memoriesEnabled === true;
             renderImmichStatus();
 
             if (data.state === 'empty') {
@@ -2174,9 +2353,11 @@
             // connectivity check until the user approves the integration stage.
         }
 
-        async function apiGet(path) {
+        async function apiGet(path, options = {}) {
             try {
-                const r = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(3000) });
+                const r = await fetch(`${API_BASE}${path}`, {
+                    signal: AbortSignal.timeout(options.timeoutMs || 3000)
+                });
                 if (!r.ok) throw new Error('API error');
                 return await r.json();
             } catch { return null; }
@@ -2473,8 +2654,8 @@
         let immichConnected = false;
         let immichPeople = [];
 
-        async function immichGet(path) {
-            return await apiGet(`/immich${path}`);
+        async function immichGet(path, options = {}) {
+            return await apiGet(`/immich${path}`, options);
         }
 
         async function checkImmichStatus() {
@@ -2538,12 +2719,6 @@
             return data && data.assets ? data.assets : [];
         }
 
-        // Fetch "On This Day" photos (for ticker)
-        async function fetchOnThisDay() {
-            const data = await immichGet('/on-this-day');
-            return data && data.assets ? data.assets : [];
-        }
-
         // Update tooltip when hovering a week cell (replaces placeholder)
         function showWeekTooltip(event, weekIndex) {
             const tooltip = document.getElementById('photoTooltip');
@@ -2569,7 +2744,7 @@
                 dateStr = `${f(ws)} ~ ${f(we)}`;
 
                 // If Immich connected, fetch real photos
-                if (immichConnected && state.immichSync) {
+                if (immichMemoriesEnabled && immichConnected && state.immichSync) {
                     const midDate = f(new Date(ws.getTime() + 3 * 24 * 60 * 60 * 1000));
                     fetchPhotosForDate(midDate, state.profile.immichPersonId).then(assets => {
                         const imgs = [1, 2, 3];
@@ -2598,15 +2773,23 @@
                 `第 ${weekIndex + 1} 周 · ${dateStr || '回忆加载中...'}`;
         }
 
-        // Person onboarding is live; photo-memory queries remain disabled until
-        // their separate permission and product review is complete.
         function updateTicker() {
             const now = new Date();
             const md = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
             const track = document.getElementById('tickerTrack');
-            track.textContent = immichConfigured
-                ? `📸 ${md}：人物档案已连接 · 照片回忆功能将在后续版本开放`
-                : `✨ ${md}：今天也值得被认真生活和记住`;
+            if (!immichConfigured) {
+                track.textContent = `✨ ${md}：今天也值得被认真生活和记住`;
+            } else if (!immichMemoriesEnabled) {
+                track.textContent = `📸 ${md}：人物档案已连接 · 照片回忆尚未启用`;
+            } else if (onThisDayState === 'loading' || onThisDayState === 'idle') {
+                track.textContent = `📸 ${md}：正在寻找往年今日的家庭回忆…`;
+            } else if (onThisDayState === 'error') {
+                track.textContent = `📸 ${md}：照片回忆暂时无法读取 · 家庭数据不受影响`;
+            } else if (onThisDayAssets.length) {
+                track.textContent = `📸 ${md}：找到 ${onThisDayAssets.length} 段往年今日的家庭回忆`;
+            } else {
+                track.textContent = `📸 ${md}：今天没有找到往年照片 · 改天再回来看看`;
+            }
         }
 
         // ==================== ONBOARDING FLOW ====================

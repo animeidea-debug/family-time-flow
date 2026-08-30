@@ -54,6 +54,14 @@
 - The Immich 3.x adapter hardening is deployed. It sends the required
   `personIds` array, validates asset inputs, and reports permission or upstream
   failures instead of returning false empty results.
+- Branch `codex/immich-on-this-day` contains the verified release candidate for
+  the first photo-memory experience. It is server-gated, defaults off, searches
+  only the previous five years, and offers thumbnail/preview access without
+  original downloads. It is not deployed yet.
+- A read-only production compatibility audit on 2026-08-30 returned successful
+  metadata responses for all five year windows; all six sampled thumbnails and
+  all three sampled previews were readable. Only aggregate counts and HTTP
+  status were retained in the audit output.
 - No code or infrastructure blocker remains for current household use.
 - The production household has four user-created members and one real event;
   the agent did not create synthetic production records.
@@ -62,15 +70,15 @@
 
 - Additional household members remain a human decision: select the intended
   people and supply any missing birth dates.
-- Photo timeline, hover memories, and “On This Day” are not implemented. The
-  current Immich scope is named-person onboarding and thumbnails only.
+- Photo timeline and hover memories are not implemented. “On This Day” is under
+  local review and remains disabled in production.
 - The family API has no login and must remain restricted to the trusted LAN or
   an access-controlled private network.
 
 ## Next steps
 
-1. Design the first read-only photo-memory feature behind a feature flag, using
-   the now-verified per-person search and thumbnail adapter.
+1. Enable and deploy the reviewed “On This Day” release candidate through the
+   NAS-owned exact-SHA workflow, then verify the household card in production.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth

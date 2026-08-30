@@ -73,7 +73,7 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
 | **Frontend** | Vanilla JS + precompiled TailwindCSS + daisyUI | Version-locked static bundle committed with each release |
 | **Animation** | GSAP (GreenSock) | Version-locked local runtime for DOM/SVG motion |
 | **Polling/Clock** | `requestAnimationFrame` | Smooth 60Hz+ countdowns, CPU-efficient |
-| **Photo Interactivity** | Floating UI & PhotoSwipe | Glassmorphic tooltips and immersive photo lightbox |
+| **Photo Interactivity** | Native DOM preview | Feature-flagged thumbnails and read-only larger previews |
 | **Forms/Inputs** | Flatpickr | Version-locked local date-time selection with Chinese locale |
 
 ---
@@ -171,9 +171,10 @@ data explicitly.
   download remains outside the current permission scope
 
 #### "On This Day" Time Capsule
-- Persistent bottom ticker component
-- Polls Immich's time-bucket engine at midnight
-- Cycles through nostalgic photos taken on matching calendar days from previous years
+- Feature-flagged household card and persistent bottom ticker
+- Searches matching calendar days across the previous five years
+- Shows compressed thumbnails and a larger read-only preview without original download
+- Keeps explicit disabled, loading, empty, partial, and unavailable states
 
 ---
 
@@ -214,8 +215,9 @@ data explicitly.
 - [x] Enable and deploy the onboarding flow in production
 - [x] Validate read-only asset search, person metadata, dates, and thumbnails
   against Immich 3.0.2
-- [ ] Add photo timeline, hover memories, and “On This Day” features behind a
-  reviewed feature flag
+- [x] Implement the first “On This Day” experience behind a server feature flag
+- [ ] Review and enable “On This Day” in production before considering photo
+  timeline or hover memories
 
 ---
 
@@ -267,8 +269,9 @@ data explicitly.
 
 ### 🔄 Next steps
 
-1. Review and release the hardened Immich 3.x asset adapter.
-2. Design the first read-only photo-memory experience behind a feature flag.
+1. Review the first read-only “On This Day” experience and its server flag.
+2. Enable it in a controlled production release; the live read-only date query,
+   thumbnail, and preview checks passed on 2026-08-30.
 3. Add any remaining intended family members from the home LAN; these identity
    choices remain deliberately manual.
 4. Keep the unauthenticated family API restricted to the trusted LAN.

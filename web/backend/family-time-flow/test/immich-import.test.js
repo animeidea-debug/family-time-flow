@@ -97,6 +97,7 @@ before(async () => {
             PORT: String(backendPort),
             DB_PATH: path.join(tempDir, 'fixture.db'),
             ENABLE_IMMICH: '1',
+            ENABLE_IMMICH_MEMORIES: '1',
             IMMICH_URL: `http://127.0.0.1:${immichPort}`,
             IMMICH_API_KEY: apiKey
         },
@@ -112,6 +113,9 @@ after(async () => {
 });
 
 test('returns a sanitized, visible and named Immich people preview', async () => {
+    const bootstrap = await fetch(`${baseUrl}/bootstrap`).then(response => response.json());
+    assert.equal(bootstrap.integrations.immich.memoriesEnabled, true);
+
     const status = await fetch(`${baseUrl}/immich/status`).then(response => response.json());
     assert.equal(status.status, 'available');
     assert.equal(status.connected, true);
@@ -180,16 +184,57 @@ test('surfaces Immich permission errors instead of reporting empty assets', asyn
 test('returns bounded on-this-day results and surfaces upstream failure', async () => {
     const invalid = await fetch(`${baseUrl}/immich/on-this-day?month=13&day=1`);
     assert.equal(invalid.status, 400);
+    const impossible = await fetch(`${baseUrl}/immich/on-this-day?month=2&day=30`);
+    assert.equal(impossible.status, 400);
 
     const response = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2`);
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.assets.length, 2);
+    assert.equal(body.month, 1);
+    assert.equal(body.day, 2);
     assert.equal(body.partial, undefined);
+    assert.equal(lastSearchBody.type, 'IMAGE');
 
     const denied = await fetch(`${baseUrl}/immich/on-this-day?month=12&day=31`);
     assert.equal(denied.status, 502);
     assert.deepEqual(await denied.json(), { error: 'Immich memories unavailable', status: 'unauthorized' });
+});
+
+test('keeps photo memories disabled unless the dedicated flag is enabled', async () => {
+    const disabledPort = backendPort + 2;
+    const disabledBaseUrl = `http://127.0.0.1:${disabledPort}/api`;
+    const disabledBackend = spawn(process.execPath, ['server.js'], {
+        cwd: path.join(__dirname, '..'),
+        env: {
+            ...process.env,
+            PORT: String(disabledPort),
+            DB_PATH: path.join(tempDir, 'disabled-fixture.db'),
+            ENABLE_IMMICH: '1',
+            IMMICH_URL: `http://127.0.0.1:${immichPort}`,
+            IMMICH_API_KEY: apiKey
+        },
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+    try {
+        const deadline = Date.now() + 10_000;
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch(`${disabledBaseUrl}/health`);
+                if (response.ok) break;
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        const bootstrap = await fetch(`${disabledBaseUrl}/bootstrap`).then(response => response.json());
+        assert.equal(bootstrap.integrations.immich.configured, true);
+        assert.equal(bootstrap.integrations.immich.memoriesEnabled, false);
+        const memories = await fetch(`${disabledBaseUrl}/immich/on-this-day`);
+        assert.equal(memories.status, 503);
+        assert.deepEqual(await memories.json(), { error: 'Immich memories are disabled', status: 'disabled' });
+    } finally {
+        disabledBackend.kill('SIGTERM');
+        await new Promise(resolve => disabledBackend.once('exit', resolve));
+    }
 });
 
 test('imports selected people transactionally and is idempotent by Immich person', async () => {

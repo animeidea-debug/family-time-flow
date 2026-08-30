@@ -32,6 +32,7 @@ const BACKUP_DIR = process.env.BACKUP_DIR || path.join(dbDir, "backups");
 const BACKUP_LIMIT = Math.max(1, Number.parseInt(process.env.BACKUP_LIMIT || "7", 10) || 7);
 const DIAGNOSTICS_ENABLED = process.env.ENABLE_DIAGNOSTICS === "1";
 const IMMICH_ENABLED = process.env.ENABLE_IMMICH === "1";
+const IMMICH_MEMORIES_ENABLED = IMMICH_ENABLED && process.env.ENABLE_IMMICH_MEMORIES === "1";
 const IMMICH_URL = (process.env.IMMICH_URL || "").replace(/\/+$/, "").replace(/\/api$/, "");
 const IMMICH_API_KEY = process.env.IMMICH_API_KEY || "";
 
@@ -358,6 +359,7 @@ app.get("/api/bootstrap", (req, res) => {
         integrations: {
             immich: {
                 configured: Boolean(IMMICH_URL && IMMICH_API_KEY),
+                memoriesEnabled: IMMICH_MEMORIES_ENABLED && Boolean(IMMICH_URL && IMMICH_API_KEY),
                 status: IMMICH_ENABLED
                     ? (IMMICH_URL && IMMICH_API_KEY ? "unchecked" : "not_configured")
                     : "disabled"
@@ -849,6 +851,9 @@ app.get("/api/immich/person-thumb", async (req, res) => {
 
 // GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
 app.get("/api/immich/on-this-day", async (req, res) => {
+    if (!IMMICH_MEMORIES_ENABLED) {
+        return res.status(503).json({ error: "Immich memories are disabled", status: "disabled" });
+    }
     const { month, day, limit } = req.query;
     const now = new Date();
     const m = month === undefined ? now.getMonth() + 1 : Number.parseInt(month, 10);
@@ -858,14 +863,18 @@ app.get("/api/immich/on-this-day", async (req, res) => {
     if (!Number.isInteger(m) || m < 1 || m > 12 || !Number.isInteger(d) || d < 1 || d > 31) {
         return res.status(400).json({ error: "invalid month or day" });
     }
+    const referenceDate = new Date(Date.UTC(2000, m - 1, d));
+    if (referenceDate.getUTCMonth() !== m - 1 || referenceDate.getUTCDate() !== d) {
+        return res.status(400).json({ error: "invalid month or day" });
+    }
 
-    const allAssets = [];
     const pad = n => n.toString().padStart(2, '0');
     const year = now.getFullYear();
-    let successfulQueries = 0;
-    let firstFailure = null;
-
-    for (let y = year - 5; y <= year; y++) {
+    const years = Array.from({ length: 5 }, (_, index) => year - index - 1).filter(y => {
+        const candidate = new Date(Date.UTC(y, m - 1, d));
+        return candidate.getUTCMonth() === m - 1 && candidate.getUTCDate() === d;
+    });
+    const results = await Promise.all(years.map(async y => {
         const dateStr = `${y}-${pad(m)}-${pad(d)}`;
         const result = await immichFetch("/api/search/metadata", {
             method: "POST",
@@ -873,33 +882,29 @@ app.get("/api/immich/on-this-day", async (req, res) => {
                 page: 1, size: lim,
                 takenAfter: `${dateStr}T00:00:00.000Z`,
                 takenBefore: `${dateStr}T23:59:59.999Z`,
-                withPeople: true
+                type: "IMAGE"
             }
         });
-        if (result.ok) {
-            successfulQueries++;
-            const items = (result.data.assets && result.data.assets.items) || [];
-            items.slice(0, lim).forEach(a => {
-                allAssets.push({
-                    id: a.id,
-                    originalFileName: a.originalFileName,
-                    fileCreatedAt: a.fileCreatedAt,
-                    year: y,
-                    type: a.type,
-                    people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
-                });
-            });
-        } else {
-            firstFailure ||= result;
-            if (result.kind === "not_configured" || result.kind === "unauthorized") {
-                break;
-            }
-        }
-        if (allAssets.length >= lim) break;
-    }
+        return { year: y, result };
+    }));
+    const successfulQueries = results.filter(entry => entry.result.ok).length;
+    const firstFailure = results.find(entry => !entry.result.ok)?.result || null;
     if (successfulQueries === 0 && firstFailure) return sendImmichFailure(res, firstFailure, "memories");
+    const allAssets = results.flatMap(({ year: assetYear, result }) => {
+        if (!result.ok) return [];
+        const items = (result.data.assets && result.data.assets.items) || [];
+        return items.map(asset => ({
+            id: asset.id,
+            fileCreatedAt: asset.fileCreatedAt,
+            year: assetYear,
+            type: asset.type
+        }));
+    }).sort((a, b) => String(b.fileCreatedAt).localeCompare(String(a.fileCreatedAt)));
+    res.set('Cache-Control', 'private, max-age=300');
     res.json({
         assets: allAssets.slice(0, lim),
+        month: m,
+        day: d,
         ...(firstFailure ? { partial: true, status: firstFailure.kind } : {})
     });
 });

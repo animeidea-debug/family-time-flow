@@ -136,10 +136,32 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(html, /id="onboardingSourceHint"/);
     assert.match(html, /id="immichMemoryTitle"/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
+    assert.match(applicationScript, /data\.integrations\?\.immich\?\.memoriesEnabled === true/);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
     assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
-    assert.match(applicationScript, /人物档案已连接 · 照片回忆功能将在后续版本开放/);
+    assert.match(applicationScript, /人物档案已连接 · 照片回忆尚未启用/);
+});
+
+test('on-this-day memories are feature flagged, retryable, and preview-only', () => {
+    for (const id of [
+        'immichMemoryStatus', 'immichMemoryGallery', 'immichMemoryRetry',
+        'immichMemoryRefresh', 'memoryPreviewOverlay', 'memoryPreviewImage'
+    ]) {
+        assert.match(html, new RegExp(`id="${id}"`));
+    }
+    assert.match(applicationScript, /async function loadOnThisDayMemories/);
+    assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
+    assert.match(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
+    assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
+    assert.match(applicationScript, /immichGet\(path, \{ timeoutMs: 10000 \}\)/);
+    assert.match(applicationScript, /function openMemoryPreview/);
+    assert.match(applicationScript, /&size=preview/);
+    assert.match(applicationScript, /function closeMemoryPreview/);
+    assert.match(applicationScript, /image\.removeAttribute\('src'\)/);
+    assert.match(applicationScript, /memoryPreviewTrigger\.focus\(\)/);
+    assert.doesNotMatch(applicationScript, /asset-thumb[^\n]+size=original/);
+    assert.doesNotMatch(applicationScript, /asset\.download/);
 });
 
 test('theme controls preserve readable semantic colors and visible focus', () => {

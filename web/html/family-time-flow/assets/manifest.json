@@ -7,7 +7,7 @@
     "tailwindcss": "3.4.17"
   },
   "assets": {
-    "app.min.css": "ebd4efc949b5995be1a2fe13e8c583bd652e06fd967d4f393e5da73e15186a94",
+    "app.min.css": "e7f327fab2e6b322e554b8a2cb8cbca16a53c53ff6d384905c1c9c631cd56443",
     "gsap.min.js": "28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087",
     "flatpickr.min.css": "1b34a42552c96f10e4dfaaa4a367276b03868aacff63c1ac42ffe331352bc754",
     "flatpickr.min.js": "1eeab1cb779471a0b0aaa93dd91c2eb1aa537d696f01ab05ea9dabc55e8525a1",
