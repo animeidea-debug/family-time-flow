@@ -90,7 +90,7 @@ test('member creation uses an in-page form instead of prompt', () => {
 });
 
 test('Immich onboarding supports multi-select preview with manual fallback', () => {
-    for (const id of ['onbPersonList', 'onbReviewPeople', 'onbPreviewContent', 'onbImportButton']) {
+    for (const id of ['onbPersonList', 'onbPersonSummary', 'onbReviewPeople', 'onbPreviewContent', 'onbImportButton']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
     for (const functionName of ['startAddMemberFlow', 'showPersonSelection', 'reviewSelectedPeople', 'confirmOnboarding', 'createNewUser']) {
@@ -104,7 +104,9 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(addMemberBody, /onboardingOverlay/);
     assert.match(addMemberBody, /onboardingPersonIds = new Set\(\)/);
     assert.match(addMemberBody, /await startOnboarding\(\)/);
-    assert.match(applicationScript, /p\.linked === true \|\| initializedIds\.has\(p\.id\)/);
+    assert.match(applicationScript, /person\.linked === true \|\| initializedIds\.has\(person\.id\)/);
+    assert.match(applicationScript, /可选 \$\{selectableCount\} 位 · 已创建 \$\{initializedCount\} 位/);
+    assert.match(applicationScript, /Number\(a\.isInitialized\) - Number\(b\.isInitialized\)/);
     assert.match(applicationScript, /\/onboarding\/immich-import/);
     assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
     assert.match(html, /id="onboardingSourceHint"/);
@@ -114,6 +116,15 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
     assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
     assert.match(applicationScript, /人物档案已连接 · 照片回忆功能将在后续版本开放/);
+});
+
+test('theme controls preserve readable semantic colors and visible focus', () => {
+    assert.match(html, /--secondary-text-color:/);
+    assert.match(html, /--muted-text-color:/);
+    assert.match(html, /\.btn\.btn-accent\s*\{/);
+    assert.match(html, /button:focus-visible/);
+    assert.match(applicationScript, /button\.classList\.toggle\('theme-switch-active', isActive\)/);
+    assert.match(applicationScript, /button\.setAttribute\('aria-pressed', String\(isActive\)\)/);
 });
 
 test('brand navigation stays within the deployed application path', () => {
