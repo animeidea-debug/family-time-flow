@@ -18,6 +18,7 @@ const people = [
 ];
 let backend;
 let immich;
+let lastSearchBody = null;
 
 async function waitForBackend() {
     const deadline = Date.now() + 10_000;
@@ -32,7 +33,7 @@ async function waitForBackend() {
 }
 
 before(async () => {
-    immich = http.createServer((req, res) => {
+    immich = http.createServer(async (req, res) => {
         if (req.headers['x-api-key'] !== apiKey) {
             res.writeHead(401, { 'content-type': 'application/json' });
             return res.end(JSON.stringify({ error: 'unauthorized' }));
@@ -46,6 +47,41 @@ before(async () => {
             return res.end(JSON.stringify({ people }));
         }
         if (/^\/api\/people\/[^/]+\/thumbnail$/.test(req.url)) {
+            res.writeHead(200, { 'content-type': 'image/jpeg' });
+            return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+        }
+        if (req.method === 'POST' && req.url === '/api/search/metadata') {
+            const chunks = [];
+            for await (const chunk of req) chunks.push(chunk);
+            lastSearchBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            if (lastSearchBody.personIds?.includes('denied-person') || lastSearchBody.takenAfter?.includes('-12-31T')) {
+                res.writeHead(403, { 'content-type': 'application/json' });
+                return res.end(JSON.stringify({ message: 'Missing required permission: asset.read' }));
+            }
+            const personId = lastSearchBody.personIds?.[0] || 'timeline';
+            res.writeHead(200, { 'content-type': 'application/json' });
+            return res.end(JSON.stringify({
+                assets: {
+                    items: [{
+                        id: `asset-${personId}`,
+                        originalFileName: 'fixture.jpg',
+                        fileCreatedAt: '2024-01-01T12:00:00.000Z',
+                        type: 'IMAGE',
+                        people: personId === 'timeline' ? [] : [{ id: personId, name: '测试人物' }],
+                        exifInfo: { dateTimeOriginal: '2024-01-01T12:00:00.000Z' }
+                    }]
+                }
+            }));
+        }
+        if (/^\/api\/assets\/denied-asset\/thumbnail\?/.test(req.url)) {
+            res.writeHead(403, { 'content-type': 'application/json' });
+            return res.end(JSON.stringify({ message: 'Missing required permission: asset.view' }));
+        }
+        if (/^\/api\/assets\/missing-asset\/thumbnail\?/.test(req.url)) {
+            res.writeHead(404, { 'content-type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'not found' }));
+        }
+        if (/^\/api\/assets\/[^/]+\/thumbnail\?/.test(req.url)) {
             res.writeHead(200, { 'content-type': 'image/jpeg' });
             return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
         }
@@ -105,6 +141,55 @@ test('never accepts Immich credentials from the browser', async () => {
 test('rejects path-like person thumbnail identifiers', async () => {
     const response = await fetch(`${baseUrl}/immich/person-thumb?id=..%2Fserver%2Fversion`);
     assert.equal(response.status, 400);
+});
+
+test('queries Immich assets with a personIds array and proxies thumbnails', async () => {
+    const response = await fetch(`${baseUrl}/immich/assets?personId=person-1&date=2024-01-01&limit=3`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.assets.length, 1);
+    assert.equal(body.assets[0].id, 'asset-person-1');
+    assert.deepEqual(lastSearchBody.personIds, ['person-1']);
+    assert.equal('personId' in lastSearchBody, false);
+    assert.equal(lastSearchBody.withExif, true);
+    assert.equal(lastSearchBody.withPeople, true);
+    assert.equal(lastSearchBody.takenBefore, '2024-01-01T23:59:59.999Z');
+
+    const thumbnail = await fetch(`${baseUrl}/immich/asset-thumb?id=asset-person-1`);
+    assert.equal(thumbnail.status, 200);
+    assert.equal(thumbnail.headers.get('content-type'), 'image/jpeg');
+    assert.deepEqual(Buffer.from(await thumbnail.arrayBuffer()), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+
+    const invalid = await fetch(`${baseUrl}/immich/asset-thumb?id=..%2Fserver%2Fversion`);
+    assert.equal(invalid.status, 400);
+});
+
+test('surfaces Immich permission errors instead of reporting empty assets', async () => {
+    const assets = await fetch(`${baseUrl}/immich/assets?personId=denied-person`);
+    assert.equal(assets.status, 502);
+    assert.deepEqual(await assets.json(), { error: 'Immich assets unavailable', status: 'unauthorized' });
+
+    const thumbnail = await fetch(`${baseUrl}/immich/asset-thumb?id=denied-asset`);
+    assert.equal(thumbnail.status, 502);
+    assert.deepEqual(await thumbnail.json(), { error: 'Immich thumbnail unavailable', status: 'unauthorized' });
+
+    const missing = await fetch(`${baseUrl}/immich/asset-thumb?id=missing-asset`);
+    assert.equal(missing.status, 404);
+});
+
+test('returns bounded on-this-day results and surfaces upstream failure', async () => {
+    const invalid = await fetch(`${baseUrl}/immich/on-this-day?month=13&day=1`);
+    assert.equal(invalid.status, 400);
+
+    const response = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.assets.length, 2);
+    assert.equal(body.partial, undefined);
+
+    const denied = await fetch(`${baseUrl}/immich/on-this-day?month=12&day=31`);
+    assert.equal(denied.status, 502);
+    assert.deepEqual(await denied.json(), { error: 'Immich memories unavailable', status: 'unauthorized' });
 });
 
 test('imports selected people transactionally and is idempotent by Immich person', async () => {

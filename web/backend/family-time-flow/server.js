@@ -618,19 +618,35 @@ function getImmichKey() {
 }
 
 // Helper: proxy request to Immich API
-async function immichFetch(path) {
+function immichFailureKind(status) {
+    if (status === 401 || status === 403) return "unauthorized";
+    return "upstream_error";
+}
+
+function sendImmichFailure(res, result, resource) {
+    const statusCode = result.kind === "unreachable" || result.kind === "not_configured" ? 503 : 502;
+    return res.status(statusCode).json({ error: `Immich ${resource} unavailable`, status: result.kind });
+}
+
+async function immichFetch(path, options = {}) {
     const apiKey = getImmichKey();
     const url = getImmichUrl();
     if (!apiKey || !url) return { ok: false, kind: "not_configured", status: null, data: null };
     try {
         const resp = await fetch(`${url}${path}`, {
-            headers: { 'x-api-key': apiKey, 'Accept': 'application/json' },
+            method: options.method || "GET",
+            headers: {
+                'x-api-key': apiKey,
+                'Accept': 'application/json',
+                ...(options.body ? { 'Content-Type': 'application/json' } : {})
+            },
+            body: options.body ? JSON.stringify(options.body) : undefined,
             signal: AbortSignal.timeout(5000)
         });
         if (!resp.ok) {
             return {
                 ok: false,
-                kind: resp.status === 401 || resp.status === 403 ? "unauthorized" : "upstream_error",
+                kind: immichFailureKind(resp.status),
                 status: resp.status,
                 data: null
             };
@@ -666,8 +682,7 @@ app.get("/api/immich/status", async (req, res) => {
 app.get("/api/immich/people", async (req, res) => {
     const result = await immichFetch("/api/people?page=1&size=100&withHidden=false");
     if (!result.ok) {
-        const statusCode = result.kind === "unauthorized" ? 502 : 503;
-        return res.status(statusCode).json({ error: "Immich people unavailable", status: result.kind });
+        return sendImmichFailure(res, result, "people");
     }
     const data = result.data;
     // Extract people array from response
@@ -747,61 +762,62 @@ app.post("/api/onboarding/immich-import", async (req, res) => {
 });
 
 // GET /api/immich/assets?personId=&date=&limit=3 — Query assets
-// Uses POST /api/search/metadata (Immich v2.7)
+// Uses POST /api/search/metadata (Immich 3.x)
 app.get("/api/immich/assets", async (req, res) => {
     const { personId, date, limit } = req.query;
-    const apiKey = getImmichKey();
-    if (!apiKey) return res.json({ assets: [] });
-    const url = getImmichUrl();
-    try {
-        const body = { page: 1, size: parseInt(limit) || 5 };
-        if (personId) body.personId = personId;
-        if (date) {
-            body.takenAfter = `${date}T00:00:00.000Z`;
-            body.takenBefore = `${date}T23:59:59.000Z`;
-        }
-        const resp = await fetch(`${url}/api/search/metadata`, {
-            method: 'POST',
-            headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(5000)
-        });
-        if (!resp.ok) return res.json({ assets: [] });
-        const data = await resp.json();
-        const items = (data.assets && data.assets.items) ? data.assets.items : [];
-        res.json({
-            assets: items.map(a => ({
-                id: a.id,
-                originalFileName: a.originalFileName,
-                fileCreatedAt: a.fileCreatedAt,
-                type: a.type,
-                people: (a.people || []).map(p => ({ id: p.id, name: p.name })),
-                exifInfo: a.exifInfo ? { dateTimeOriginal: a.exifInfo.dateTimeOriginal } : null
-            }))
-        });
-    } catch {
-        res.json({ assets: [] });
+    if (personId && !/^[A-Za-z0-9-]{1,100}$/.test(personId)) {
+        return res.status(400).json({ error: "invalid person id" });
     }
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: "invalid date" });
+    }
+    const parsedLimit = Number.parseInt(limit, 10);
+    const size = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 20) : 5;
+    const body = { page: 1, size, withExif: true, withPeople: true };
+    if (personId) body.personIds = [personId];
+    if (date) {
+        body.takenAfter = `${date}T00:00:00.000Z`;
+        body.takenBefore = `${date}T23:59:59.999Z`;
+    }
+    const result = await immichFetch("/api/search/metadata", { method: "POST", body });
+    if (!result.ok) return sendImmichFailure(res, result, "assets");
+    const items = (result.data.assets && result.data.assets.items) ? result.data.assets.items : [];
+    res.json({
+        assets: items.map(a => ({
+            id: a.id,
+            originalFileName: a.originalFileName,
+            fileCreatedAt: a.fileCreatedAt,
+            type: a.type,
+            people: (a.people || []).map(p => ({ id: p.id, name: p.name })),
+            exifInfo: a.exifInfo ? { dateTimeOriginal: a.exifInfo.dateTimeOriginal } : null
+        }))
+    });
 });
 
 // GET /api/immich/asset-thumb?id= — Proxy thumbnail from Immich (returns image)
 app.get("/api/immich/asset-thumb", async (req, res) => {
     const { id, size } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
+    if (!/^[A-Za-z0-9-]{1,100}$/.test(id)) return res.status(400).json({ error: "invalid asset id" });
+    if (size && !["thumbnail", "preview"].includes(size)) return res.status(400).json({ error: "invalid thumbnail size" });
     const apiKey = getImmichKey();
-    if (!apiKey) return res.status(401).json({ error: "no api key" });
+    if (!apiKey) return res.status(503).json({ error: "Immich thumbnail unavailable", status: "not_configured" });
     try {
         const thumbResp = await fetch(`${getImmichUrl()}/api/assets/${id}/thumbnail?size=${size || 'thumbnail'}`, {
             headers: { 'x-api-key': apiKey },
             signal: AbortSignal.timeout(5000)
         });
-        if (!thumbResp.ok) return res.status(404).json({ error: "thumbnail not found" });
+        if (!thumbResp.ok) {
+            await thumbResp.arrayBuffer();
+            if (thumbResp.status === 404) return res.status(404).json({ error: "thumbnail not found" });
+            return sendImmichFailure(res, { kind: immichFailureKind(thumbResp.status) }, "thumbnail");
+        }
         const buffer = await thumbResp.arrayBuffer();
         res.set('Content-Type', thumbResp.headers.get('content-type') || 'image/jpeg');
         res.set('Cache-Control', 'public, max-age=86400');
         res.send(Buffer.from(buffer));
     } catch {
-        res.status(500).json({ error: "failed to fetch thumbnail" });
+        res.status(503).json({ error: "Immich thumbnail unavailable", status: "unreachable" });
     }
 });
 
@@ -811,67 +827,81 @@ app.get("/api/immich/person-thumb", async (req, res) => {
     if (!id) return res.status(400).json({ error: "id required" });
     if (!/^[A-Za-z0-9-]{1,100}$/.test(id)) return res.status(400).json({ error: "invalid person id" });
     const apiKey = getImmichKey();
-    if (!apiKey) return res.status(401).json({ error: "no api key" });
+    if (!apiKey) return res.status(503).json({ error: "Immich person thumbnail unavailable", status: "not_configured" });
     try {
         const thumbResp = await fetch(`${getImmichUrl()}/api/people/${id}/thumbnail`, {
             headers: { 'x-api-key': apiKey },
             signal: AbortSignal.timeout(5000)
         });
-        if (!thumbResp.ok) return res.status(404).json({ error: "thumbnail not found" });
+        if (!thumbResp.ok) {
+            await thumbResp.arrayBuffer();
+            if (thumbResp.status === 404) return res.status(404).json({ error: "thumbnail not found" });
+            return sendImmichFailure(res, { kind: immichFailureKind(thumbResp.status) }, "person thumbnail");
+        }
         const buffer = await thumbResp.arrayBuffer();
         res.set('Content-Type', thumbResp.headers.get('content-type') || 'image/jpeg');
         res.set('Cache-Control', 'public, max-age=86400');
         res.send(Buffer.from(buffer));
     } catch {
-        res.status(500).json({ error: "failed to fetch thumbnail" });
+        res.status(503).json({ error: "Immich person thumbnail unavailable", status: "unreachable" });
     }
 });
 
 // GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     const { month, day, limit } = req.query;
-    const m = parseInt(month) || (new Date().getMonth() + 1);
-    const d = parseInt(day) || new Date().getDate();
-    const lim = parseInt(limit) || 5;
-    const apiKey = getImmichKey();
-    if (!apiKey) return res.json({ assets: [] });
-    const url = getImmichUrl();
+    const now = new Date();
+    const m = month === undefined ? now.getMonth() + 1 : Number.parseInt(month, 10);
+    const d = day === undefined ? now.getDate() : Number.parseInt(day, 10);
+    const parsedLimit = Number.parseInt(limit, 10);
+    const lim = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 20) : 5;
+    if (!Number.isInteger(m) || m < 1 || m > 12 || !Number.isInteger(d) || d < 1 || d > 31) {
+        return res.status(400).json({ error: "invalid month or day" });
+    }
 
     const allAssets = [];
     const pad = n => n.toString().padStart(2, '0');
-    const year = new Date().getFullYear();
+    const year = now.getFullYear();
+    let successfulQueries = 0;
+    let firstFailure = null;
 
     for (let y = year - 5; y <= year; y++) {
         const dateStr = `${y}-${pad(m)}-${pad(d)}`;
-        try {
-            const resp = await fetch(`${url}/api/search/metadata`, {
-                method: 'POST',
-                headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    page: 1, size: lim,
-                    takenAfter: `${dateStr}T00:00:00.000Z`,
-                    takenBefore: `${dateStr}T23:59:59.000Z`
-                }),
-                signal: AbortSignal.timeout(5000)
-            });
-            if (resp.ok) {
-                const data = await resp.json();
-                const items = (data.assets && data.assets.items) || [];
-                items.slice(0, lim).forEach(a => {
-                    allAssets.push({
-                        id: a.id,
-                        originalFileName: a.originalFileName,
-                        fileCreatedAt: a.fileCreatedAt,
-                        year: y,
-                        type: a.type,
-                        people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
-                    });
-                });
+        const result = await immichFetch("/api/search/metadata", {
+            method: "POST",
+            body: {
+                page: 1, size: lim,
+                takenAfter: `${dateStr}T00:00:00.000Z`,
+                takenBefore: `${dateStr}T23:59:59.999Z`,
+                withPeople: true
             }
-        } catch { }
+        });
+        if (result.ok) {
+            successfulQueries++;
+            const items = (result.data.assets && result.data.assets.items) || [];
+            items.slice(0, lim).forEach(a => {
+                allAssets.push({
+                    id: a.id,
+                    originalFileName: a.originalFileName,
+                    fileCreatedAt: a.fileCreatedAt,
+                    year: y,
+                    type: a.type,
+                    people: (a.people || []).map(p => ({ id: p.id, name: p.name }))
+                });
+            });
+        } else {
+            firstFailure ||= result;
+            if (result.kind === "not_configured" || result.kind === "unauthorized") {
+                break;
+            }
+        }
         if (allAssets.length >= lim) break;
     }
-    res.json({ assets: allAssets.slice(0, lim) });
+    if (successfulQueries === 0 && firstFailure) return sendImmichFailure(res, firstFailure, "memories");
+    res.json({
+        assets: allAssets.slice(0, lim),
+        ...(firstFailure ? { partial: true, status: firstFailure.kind } : {})
+    });
 });
 
 // ==================== START ====================
