@@ -33,6 +33,7 @@ const BACKUP_LIMIT = Math.max(1, Number.parseInt(process.env.BACKUP_LIMIT || "7"
 const DIAGNOSTICS_ENABLED = process.env.ENABLE_DIAGNOSTICS === "1";
 const IMMICH_ENABLED = process.env.ENABLE_IMMICH === "1";
 const IMMICH_MEMORIES_ENABLED = IMMICH_ENABLED && process.env.ENABLE_IMMICH_MEMORIES === "1";
+const IMMICH_WEEK_HOVER_ENABLED = IMMICH_ENABLED && process.env.ENABLE_IMMICH_WEEK_HOVER === "1";
 const IMMICH_URL = (process.env.IMMICH_URL || "").replace(/\/+$/, "").replace(/\/api$/, "");
 const IMMICH_API_KEY = process.env.IMMICH_API_KEY || "";
 
@@ -360,6 +361,7 @@ app.get("/api/bootstrap", (req, res) => {
             immich: {
                 configured: Boolean(IMMICH_URL && IMMICH_API_KEY),
                 memoriesEnabled: IMMICH_MEMORIES_ENABLED && Boolean(IMMICH_URL && IMMICH_API_KEY),
+                weekHoverEnabled: IMMICH_WEEK_HOVER_ENABLED && Boolean(IMMICH_URL && IMMICH_API_KEY),
                 status: IMMICH_ENABLED
                     ? (IMMICH_URL && IMMICH_API_KEY ? "unchecked" : "not_configured")
                     : "disabled"

@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `f552c13089e964f96e124acb2e70918761febdf3`
+- Production runs commit `8800c6ea92fceb676c48ba1b397219465e5b94d1`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -26,6 +26,10 @@
   2/2 sampled previews; the household UI loaded all six thumbnails, opened a
   1440×1920 read-only preview, restored keyboard focus on close, and reported
   no browser console warnings or errors.
+- “On This Day” and week-grid photo lookup now have independent server
+  capabilities. Production reports `memoriesEnabled: true` and
+  `weekHoverEnabled: false`, so the reviewed household card remains available
+  without enabling per-week photo searches.
 - Browser verification from the home LAN confirms four persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -63,6 +67,9 @@
 - `main` contains the deployed first photo-memory experience. It is
   server-gated, searches only the previous five years, and offers
   thumbnail/preview access without original downloads.
+- Branch `codex/immich-memory-hardening` contains the deployed stability fix
+  that separates the default-off week-hover capability from “On This Day” and
+  adds empty-result, Immich-offline, and cross-date refresh contracts.
 - A read-only production compatibility audit on 2026-08-30 returned successful
   metadata responses for all five year windows; all six sampled thumbnails and
   all three sampled previews were readable. Only aggregate counts and HTTP

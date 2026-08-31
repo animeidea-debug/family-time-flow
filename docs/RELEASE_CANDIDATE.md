@@ -30,7 +30,7 @@
 ## 验证基线
 
 - 前端静态契约：18 项。
-- 后端隔离集成测试：23 项。
+- 后端隔离集成测试：24 项。
 - Node.js 与部署 shell 脚本语法检查通过。
 - `git diff --check` 通过。
 
@@ -59,7 +59,8 @@ npm test
 - 生产人物 onboarding 已启用，首位 Immich 关联成员已经由用户创建；其余
   家庭成员仍由用户在局域网页面中逐一确认。
 - 照片时间线和按周悬停回忆仍不在本版本范围。“往年今日”需要生产显式设置
-  `ENABLE_IMMICH_MEMORIES=1`，且仍不支持视频或原图下载。
+  `ENABLE_IMMICH_MEMORIES=1`；按周悬停另由默认关闭的
+  `ENABLE_IMMICH_WEEK_HOVER` 控制，且仍不支持视频或原图下载。
 - 前端资源已经随 release 提供；修改 Tailwind 类名或升级依赖时必须重新运行
   `npm run build:frontend`，否则静态资源一致性测试会失败。
 - 当前前端仍是单文件 Vanilla JS；可维护性重构应作为后续独立阶段，不应阻塞本次稳定基线。
