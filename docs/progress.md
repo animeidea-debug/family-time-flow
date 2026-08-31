@@ -63,6 +63,10 @@
 - `main` contains the deployed first photo-memory experience. It is
   server-gated, searches only the previous five years, and offers
   thumbnail/preview access without original downloads.
+- Branch `codex/immich-memory-hardening` contains the verified release candidate
+  that separates the default-off week-hover capability from “On This Day” and
+  adds empty-result, Immich-offline, and cross-date refresh contracts. It is not
+  deployed yet.
 - A read-only production compatibility audit on 2026-08-30 returned successful
   metadata responses for all five year windows; all six sampled thumbnails and
   all three sampled previews were readable. Only aggregate counts and HTTP

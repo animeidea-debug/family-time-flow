@@ -163,6 +163,8 @@ photo. Even with asset indexing validated, the family confirms this identity
 data explicitly.
 
 #### Memory Hover Tooltips
+- Remains disabled unless the independent server capability
+  `ENABLE_IMMICH_WEEK_HOVER=1` is explicitly reviewed and enabled
 - Hovering over historical grid nodes calls the Family Time Flow
   `/api/immich/assets` adapter, which uses Immich's metadata search endpoint
 - Pulls Top 3 compressed thumbnails (`/api/assets/{id}/thumbnail?size=thumbnail`)

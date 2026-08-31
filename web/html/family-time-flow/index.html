@@ -1923,6 +1923,7 @@
         let householdViewModel = null;
         let immichConfigured = false;
         let immichMemoriesEnabled = false;
+        let immichWeekHoverEnabled = false;
         let onThisDayState = 'idle';
         let onThisDayAssets = [];
         let onThisDayPartial = false;
@@ -2332,6 +2333,7 @@
             remoteUsers = data.members.map(memberDtoToLegacy);
             immichConfigured = data.integrations?.immich?.configured === true;
             immichMemoriesEnabled = data.integrations?.immich?.memoriesEnabled === true;
+            immichWeekHoverEnabled = data.integrations?.immich?.weekHoverEnabled === true;
             renderImmichStatus();
 
             if (data.state === 'empty') {
@@ -2743,8 +2745,8 @@
                 const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 dateStr = `${f(ws)} ~ ${f(we)}`;
 
-                // If Immich connected, fetch real photos
-                if (immichMemoriesEnabled && immichConnected && state.immichSync) {
+                // Week-hover photos are a separate, default-off capability.
+                if (immichWeekHoverEnabled && immichConnected && state.immichSync) {
                     const midDate = f(new Date(ws.getTime() + 3 * 24 * 60 * 60 * 1000));
                     fetchPhotosForDate(midDate, state.profile.immichPersonId).then(assets => {
                         const imgs = [1, 2, 3];

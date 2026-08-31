@@ -58,6 +58,10 @@ before(async () => {
                 res.writeHead(403, { 'content-type': 'application/json' });
                 return res.end(JSON.stringify({ message: 'Missing required permission: asset.read' }));
             }
+            if (lastSearchBody.takenAfter?.includes('-02-29T')) {
+                res.writeHead(200, { 'content-type': 'application/json' });
+                return res.end(JSON.stringify({ assets: { items: [] } }));
+            }
             const personId = lastSearchBody.personIds?.[0] || 'timeline';
             res.writeHead(200, { 'content-type': 'application/json' });
             return res.end(JSON.stringify({
@@ -115,6 +119,7 @@ after(async () => {
 test('returns a sanitized, visible and named Immich people preview', async () => {
     const bootstrap = await fetch(`${baseUrl}/bootstrap`).then(response => response.json());
     assert.equal(bootstrap.integrations.immich.memoriesEnabled, true);
+    assert.equal(bootstrap.integrations.immich.weekHoverEnabled, false);
 
     const status = await fetch(`${baseUrl}/immich/status`).then(response => response.json());
     assert.equal(status.status, 'available');
@@ -196,6 +201,10 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
     assert.equal(body.partial, undefined);
     assert.equal(lastSearchBody.type, 'IMAGE');
 
+    const empty = await fetch(`${baseUrl}/immich/on-this-day?month=2&day=29&limit=6`);
+    assert.equal(empty.status, 200);
+    assert.deepEqual(await empty.json(), { assets: [], month: 2, day: 29 });
+
     const denied = await fetch(`${baseUrl}/immich/on-this-day?month=12&day=31`);
     assert.equal(denied.status, 502);
     assert.deepEqual(await denied.json(), { error: 'Immich memories unavailable', status: 'unauthorized' });
@@ -211,6 +220,7 @@ test('keeps photo memories disabled unless the dedicated flag is enabled', async
             PORT: String(disabledPort),
             DB_PATH: path.join(tempDir, 'disabled-fixture.db'),
             ENABLE_IMMICH: '1',
+            ENABLE_IMMICH_WEEK_HOVER: '1',
             IMMICH_URL: `http://127.0.0.1:${immichPort}`,
             IMMICH_API_KEY: apiKey
         },
@@ -228,12 +238,61 @@ test('keeps photo memories disabled unless the dedicated flag is enabled', async
         const bootstrap = await fetch(`${disabledBaseUrl}/bootstrap`).then(response => response.json());
         assert.equal(bootstrap.integrations.immich.configured, true);
         assert.equal(bootstrap.integrations.immich.memoriesEnabled, false);
+        assert.equal(bootstrap.integrations.immich.weekHoverEnabled, true);
         const memories = await fetch(`${disabledBaseUrl}/immich/on-this-day`);
         assert.equal(memories.status, 503);
         assert.deepEqual(await memories.json(), { error: 'Immich memories are disabled', status: 'disabled' });
     } finally {
         disabledBackend.kill('SIGTERM');
         await new Promise(resolve => disabledBackend.once('exit', resolve));
+    }
+});
+
+test('keeps household bootstrap available when Immich memories are unreachable', async () => {
+    const offlinePort = backendPort + 3;
+    const offlineBaseUrl = `http://127.0.0.1:${offlinePort}/api`;
+    const offlineBackend = spawn(process.execPath, ['server.js'], {
+        cwd: path.join(__dirname, '..'),
+        env: {
+            ...process.env,
+            PORT: String(offlinePort),
+            DB_PATH: path.join(tempDir, 'offline-fixture.db'),
+            ENABLE_IMMICH: '1',
+            ENABLE_IMMICH_MEMORIES: '1',
+            IMMICH_URL: `http://127.0.0.1:${immichPort + 10}`,
+            IMMICH_API_KEY: apiKey
+        },
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+    try {
+        const deadline = Date.now() + 10_000;
+        let ready = false;
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch(`${offlineBaseUrl}/health`);
+                if (response.ok) {
+                    ready = true;
+                    break;
+                }
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        assert.equal(ready, true);
+        const bootstrap = await fetch(`${offlineBaseUrl}/bootstrap`).then(response => response.json());
+        assert.equal(bootstrap.state, 'empty');
+        assert.equal(bootstrap.integrations.immich.configured, true);
+        assert.equal(bootstrap.integrations.immich.memoriesEnabled, true);
+        assert.equal(bootstrap.integrations.immich.weekHoverEnabled, false);
+
+        const memories = await fetch(`${offlineBaseUrl}/immich/on-this-day?month=1&day=2`);
+        assert.equal(memories.status, 503);
+        assert.deepEqual(await memories.json(), { error: 'Immich memories unavailable', status: 'unreachable' });
+
+        const bootstrapAfterFailure = await fetch(`${offlineBaseUrl}/bootstrap`).then(response => response.json());
+        assert.equal(bootstrapAfterFailure.state, 'empty');
+    } finally {
+        offlineBackend.kill('SIGTERM');
+        await new Promise(resolve => offlineBackend.once('exit', resolve));
     }
 });
 

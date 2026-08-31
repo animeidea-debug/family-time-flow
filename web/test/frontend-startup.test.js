@@ -137,6 +137,7 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(html, /id="immichMemoryTitle"/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.memoriesEnabled === true/);
+    assert.match(applicationScript, /data\.integrations\?\.immich\?\.weekHoverEnabled === true/);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
     assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
@@ -152,7 +153,8 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     }
     assert.match(applicationScript, /async function loadOnThisDayMemories/);
     assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
-    assert.match(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
+    assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConnected && state\.immichSync\)/);
+    assert.doesNotMatch(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
     assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
     assert.match(applicationScript, /immichGet\(path, \{ timeoutMs: 10000 \}\)/);
     assert.match(applicationScript, /function openMemoryPreview/);
@@ -160,6 +162,8 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /function closeMemoryPreview/);
     assert.match(applicationScript, /image\.removeAttribute\('src'\)/);
     assert.match(applicationScript, /memoryPreviewTrigger\.focus\(\)/);
+    assert.match(applicationScript, /if \(dateKey !== onThisDayDateKey\) force = true/);
+    assert.match(applicationScript, /if \(!force && onThisDayState === 'loaded'\) return/);
     assert.doesNotMatch(applicationScript, /asset-thumb[^\n]+size=original/);
     assert.doesNotMatch(applicationScript, /asset\.download/);
 });

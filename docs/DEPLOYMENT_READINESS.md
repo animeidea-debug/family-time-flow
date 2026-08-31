@@ -47,11 +47,15 @@ BACKUP_LIMIT=7
 ENABLE_DIAGNOSTICS=0
 ENABLE_IMMICH=1
 ENABLE_IMMICH_MEMORIES=0
+ENABLE_IMMICH_WEEK_HOVER=0
 ```
 
 `ENABLE_IMMICH_MEMORIES` 默认保持 `0`。只有在 Immich 人物、资产搜索和
 缩略图权限均通过只读验证后才设置为 `1`；关闭它不会影响人物 onboarding 或
 家庭核心功能。
+
+`ENABLE_IMMICH_WEEK_HOVER` 是独立的实验能力，默认和当前生产均保持 `0`。
+启用“往年今日”不会隐式开启人生周格的逐格照片查询。
 
 - 健康检查使用 `GET /api/health`，必须返回 `storage.ready: true`。
 - 容器停止超时至少 5 秒，让后端能处理 `SIGTERM` 并干净关闭。

@@ -19,6 +19,9 @@ thumbnails. It cannot download originals or change Immich data.
 - Ship the first experience as a household-level “On This Day” card.
 - Keep it disabled unless both `ENABLE_IMMICH=1` and
   `ENABLE_IMMICH_MEMORIES=1` are set on the server.
+- Keep week-grid photo lookup behind a separate
+  `ENABLE_IMMICH_WEEK_HOVER=1` capability; enabling this decision's feature
+  must not expand into per-week searches.
 - Expose only the resulting capability boolean through `/api/bootstrap`; never
   expose credentials or runtime URLs.
 - Search the same month and day across the previous five years, excluding the

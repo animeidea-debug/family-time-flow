@@ -224,12 +224,16 @@ User hovers on a historical grid node (date = YYYY-MM-DD)
       outside the current permission scope
 ```
 
+该交互要求独立设置 `ENABLE_IMMICH_WEEK_HOVER=1`。它不继承
+`ENABLE_IMMICH_MEMORIES`，当前生产范围保持关闭。
+
 **Optimization**: Cache thumbnails on date nodes that the user has already hovered over. Immich thumbnail URLs are stable (keyed by asset ID).
 
 ### 3.3 "On This Day" Time Capsule
 
 该功能还要求服务端显式设置 `ENABLE_IMMICH_MEMORIES=1`。未设置时，前端不会
 发起照片回忆请求，后端 `/api/immich/on-this-day` 返回 `disabled`。
+这个开关只控制“往年今日”，不控制人生周格悬停照片。
 
 **Flow**:
 
