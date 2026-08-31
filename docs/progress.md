@@ -61,6 +61,27 @@
 
 ## Active work
 
+- Branch `codex/week-detail-ux` contains an undeployed household-usage candidate.
+  Week cells are now real accessible controls with roving keyboard focus,
+  arrow/Home/End navigation, explicit Enter/Space activation, and a responsive
+  week-detail dialog. The dialog shows date range, age, stage, milestones, and
+  that member's local family events, supports adjacent-week navigation, closes
+  with Escape or backdrop click, and restores focus to the originating cell.
+- The same candidate removes obsolete “Immich paused / new key required” system
+  copy. Settings now render the bootstrap capabilities and clearly distinguish
+  read-only configuration, “On This Day”, and the independently disabled
+  week-grid photo capability without making an automatic Immich health request.
+- The week grid now uses one consistent visual grammar across student, worker,
+  and family themes: color intensity expresses elapsed/current/future time, and
+  a single white diamond shape expresses milestones. The previous incomplete
+  and mismatched stage-color legend was removed. Milestone cells are calculated
+  from their actual dates rather than approximate `age × 52` positions.
+- The candidate passed 21 frontend contracts and 24 backend integration tests,
+  backend syntax and `git diff --check`. Isolated desktop and 390×844 browser
+  verification covered pointer and keyboard opening, event display,
+  previous/next boundaries, Escape focus restoration, mobile layout, all three
+  theme palettes, milestone contrast, capability status, and a clean browser
+  console. No production data or Immich request was used during this validation.
 - The Immich 3.x adapter hardening is deployed. It sends the required
   `personIds` array, validates asset inputs, and reports permission or upstream
   failures instead of returning false empty results.
@@ -89,13 +110,16 @@
 
 ## Next steps
 
-1. Observe “On This Day” during normal family use before proposing any broader
+1. Let the user batch-validate the week-detail interaction on real household
+   members and events. If accepted, commit and push this branch for review, then
+   deploy only the approved full SHA through `nas-deploy`.
+2. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
-2. Verify an event edit when a real change is needed; exercise deletion only
+3. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-3. Let the user add any remaining household members and complete missing birth
+4. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-4. Keep the unauthenticated API on the trusted LAN; review authentication before
+5. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points

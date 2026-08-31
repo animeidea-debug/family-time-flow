@@ -236,6 +236,9 @@
         .week-cell {
             aspect-ratio: 1 / 1;
             border-radius: 3px;
+            border: 0;
+            padding: 0;
+            appearance: none;
             background-color: var(--muted-color);
             cursor: pointer;
             transition:
@@ -251,13 +254,20 @@
             border-radius: 6px;
         }
 
+        .week-cell:focus-visible {
+            outline: 3px solid var(--accent-color);
+            outline-offset: 2px;
+            transform: scale(1.55);
+            z-index: 21;
+            box-shadow: 0 0 16px var(--accent-color);
+        }
+
         .week-cell.spent {
-            background-color: var(--accent-color);
-            opacity: 0.65;
+            background-color: color-mix(in srgb, var(--accent-color) 48%, var(--surface-color));
         }
 
         .week-cell.spent:hover {
-            opacity: 1;
+            background-color: color-mix(in srgb, var(--accent-color) 68%, var(--surface-color));
         }
 
         .week-cell.current {
@@ -282,133 +292,51 @@
             }
         }
 
-        /* ===== Stage color dots ===== */
-        .stage-dot {
+        /* ===== Life grid legend ===== */
+        .week-legend-swatch {
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 3px;
-            vertical-align: middle;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            position: relative;
+            flex: none;
         }
 
-        .stage-dot.s0 {
-            background: #93C5FD;
+        .week-legend-spent {
+            background: color-mix(in srgb, var(--accent-color) 48%, var(--surface-color));
         }
 
-        .stage-dot.s1 {
-            background: #6EE7B7;
+        .week-legend-current {
+            background: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--surface-color), 0 0 0 3px var(--accent-color);
         }
 
-        .stage-dot.s2 {
-            background: #FCD34D;
+        .week-legend-future,
+        .week-legend-milestone {
+            background: var(--muted-color);
+            border: 1px solid var(--border-color);
         }
 
-        .stage-dot.s3 {
-            background: #FB923C;
-        }
-
-        .stage-dot.s4 {
-            background: #E879F9;
-        }
-
-        /* ===== Milestone stage colors on grid (distinct, applied to spent cells) ===== */
-        body.theme-student .week-cell.stage-0 {
-            background-color: #93C5FD;
-            opacity: 0.5;
-        }
-
-        /* 学龄前 - 浅蓝 */
-        body.theme-student .week-cell.stage-1 {
-            background-color: #6EE7B7;
-            opacity: 0.5;
-        }
-
-        /* 小学 - 浅绿 */
-        body.theme-student .week-cell.stage-2 {
-            background-color: #FCD34D;
-            opacity: 0.5;
-        }
-
-        /* 预初 - 浅黄 */
-        body.theme-student .week-cell.stage-3 {
-            background-color: #A78BFA;
-            opacity: 0.5;
-        }
-
-        /* 初中 - 浅紫 */
-        body.theme-student .week-cell.stage-4 {
-            background-color: #FB923C;
-            opacity: 0.5;
-        }
-
-        /* 高中 - 浅橙 */
-        body.theme-student .week-cell.stage-5 {
-            background-color: #E879F9;
-            opacity: 0.4;
-        }
-
-        /* 大学 - 浅粉紫 */
-
-        body.theme-worker .week-cell.stage-0,
-        body.theme-worker .week-cell.stage-1,
-        body.theme-worker .week-cell.stage-2,
-        body.theme-worker .week-cell.stage-3,
-        body.theme-worker .week-cell.stage-4,
-        body.theme-worker .week-cell.stage-5 {
-            background-color: var(--accent-color);
-            opacity: 0.4;
-        }
-
-        body.theme-family .week-cell.stage-0,
-        body.theme-family .week-cell.stage-1,
-        body.theme-family .week-cell.stage-2,
-        body.theme-family .week-cell.stage-3,
-        body.theme-family .week-cell.stage-4,
-        body.theme-family .week-cell.stage-5 {
-            background-color: var(--accent-color);
-            opacity: 0.4;
-        }
-
-        /* Milestone: colored circle dot inside the cell */
-        .week-cell.milestone-dot::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 7px;
-            pointer-events: none;
-        }
-
+        /* Milestones use shape, not another competing color scale. */
         .week-cell.milestone-dot {
             position: relative;
         }
 
-        .week-cell.milestone-dot::before {
+        .week-cell.milestone-dot::after,
+        .week-legend-milestone::after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #EF4444;
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: #FFFFFF;
+            border: 1px solid #1E293B;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.28);
             pointer-events: none;
             z-index: 5;
-        }
-
-        .week-cell.milestone-dot.中考::before {
-            background: #F59E0B;
-            box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
-        }
-
-        .week-cell.milestone-dot.高考::before {
-            background: #8B5CF6;
-            box-shadow: 0 0 4px rgba(139, 92, 246, 0.5);
         }
 
         /* ===== Countdown ===== */
@@ -932,20 +860,10 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="flex flex-wrap gap-1.5 text-[10px] sm:text-xs font-bold">
-                            <span class="flex items-center gap-1"><span
-                                    class="w-2.5 h-2.5 rounded-sm bg-theme-accent inline-block"></span> 已度过</span>
-                            <span class="flex items-center gap-1"><span
-                                    class="w-2.5 h-2.5 rounded-sm bg-theme-accent shadow-md inline-block"></span>
-                                现在</span>
-                            <span class="flex items-center gap-1"><span
-                                    class="w-2.5 h-2.5 rounded-sm bg-theme-muted border-2 border-theme-border inline-block"></span>
-                                未来</span>
-                            <span id="stageLegend"
-                                class="hidden flex items-center gap-1.5 ml-1 pl-1.5 border-l-2 border-theme-border/40">
-                                <span class="flex items-center gap-0.5"><span class="stage-dot s2"></span>预初</span>
-                                <span class="flex items-center gap-0.5"><span class="stage-dot s3"></span>初中</span>
-                                <span class="flex items-center gap-0.5"><span class="stage-dot s4"></span>高中</span>
-                            </span>
+                            <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-spent"></span>已度过</span>
+                            <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-current"></span>现在</span>
+                            <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-future"></span>未来</span>
+                            <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-milestone"></span>里程碑</span>
                         </div>
                         <div class="zoom-controls">
                             <button onclick="gridZoomOut()" class="zoom-btn" title="缩小">−</button>
@@ -959,7 +877,7 @@
                         <div id="lifeGrid" class="life-grid"></div>
                     </div>
                 </div>
-                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 悬停格子上查看该周回忆</p>
+                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 点击格子查看周详情，也可用 Tab 选择后按 Enter</p>
             </section>
 
             <!-- Meso + Micro Column -->
@@ -1086,6 +1004,45 @@
         </section>
     </div>
 
+    <div id="weekDetailOverlay"
+        class="fixed inset-0 z-[115] hidden items-center justify-center bg-slate-900/45 backdrop-blur-sm px-4 py-6">
+        <section class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-6 shadow-2xl"
+            role="dialog" aria-modal="true" aria-labelledby="weekDetailTitle">
+            <div class="flex items-start justify-between gap-3 mb-4">
+                <div>
+                    <p id="weekDetailEyebrow" class="text-xs font-bold text-blue-600 mb-1"></p>
+                    <h2 id="weekDetailTitle" class="text-xl sm:text-2xl font-black text-slate-800">这一周</h2>
+                    <p id="weekDetailRange" class="text-xs sm:text-sm text-slate-500 mt-1"></p>
+                </div>
+                <button id="weekDetailClose" onclick="closeWeekDetail()" class="btn btn-ghost btn-sm btn-circle shrink-0"
+                    aria-label="关闭周详情">✕</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                    <p class="text-[10px] font-bold text-slate-400">年龄</p>
+                    <p id="weekDetailAge" class="text-sm font-black text-slate-700 mt-1"></p>
+                </div>
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                    <p class="text-[10px] font-bold text-slate-400">人生阶段</p>
+                    <p id="weekDetailStage" class="text-sm font-black text-slate-700 mt-1"></p>
+                </div>
+            </div>
+            <section class="rounded-2xl border border-slate-200 p-4 mb-3" aria-labelledby="weekDetailMilestoneHeading">
+                <h3 id="weekDetailMilestoneHeading" class="text-sm font-black text-slate-700 mb-2">里程碑</h3>
+                <div id="weekDetailMilestones" class="space-y-2 text-sm text-slate-600"></div>
+            </section>
+            <section class="rounded-2xl border border-slate-200 p-4" aria-labelledby="weekDetailEventHeading">
+                <h3 id="weekDetailEventHeading" class="text-sm font-black text-slate-700 mb-2">家庭事件</h3>
+                <div id="weekDetailEvents" class="space-y-2 text-sm text-slate-600"></div>
+            </section>
+            <div class="flex gap-2 mt-4">
+                <button id="weekDetailPrevious" onclick="moveWeekDetail(-1)" class="btn btn-ghost btn-sm flex-1 font-bold">← 上一周</button>
+                <button id="weekDetailNext" onclick="moveWeekDetail(1)" class="btn btn-ghost btn-sm flex-1 font-bold">下一周 →</button>
+            </div>
+            <p class="text-[10px] text-slate-400 text-center mt-3">照片回忆仍由独立功能控制，本页只读取家庭时间数据。</p>
+        </section>
+    </div>
+
     <!-- On This Day Ticker -->
     <div class="ticker-bar py-2.5 relative z-10">
         <div id="tickerTrack" class="ticker-track text-xs sm:text-sm text-theme-text/70 font-semibold">
@@ -1207,13 +1164,13 @@
             </div>
             <div class="rounded-xl bg-theme-muted/60 border-2 border-theme-border p-4">
                 <div class="text-xs text-theme-text/45">照片服务</div>
-                <div class="font-bold text-theme-text mt-1">Immich 暂停接入</div>
-                <p class="text-xs text-theme-text/45 mt-1">需要新的只读 Key，并在接入前取得确认。</p>
+                <div id="systemImmichTitle" class="font-bold text-theme-text mt-1">正在读取...</div>
+                <p id="systemImmichDetail" class="text-xs text-theme-text/45 mt-1">正在读取只读集成能力。</p>
             </div>
             <div class="form-control">
                 <div id="immichStatus" class="flex items-center gap-2 text-xs mb-2">
                     <span class="loading loading-dots loading-xs hidden" id="immichLoading"></span>
-                    <span id="immichStatusText" class="text-theme-text/50">暂未启用 · 接入前需确认</span>
+                    <span id="immichStatusText" class="text-theme-text/50">正在读取...</span>
                 </div>
             </div>
 
@@ -1427,6 +1384,7 @@
                 ? `运行正常 · v${health.version}` : '暂时不可用';
             status.className = health && health.status === 'ok'
                 ? 'font-bold text-green-600 mt-1' : 'font-bold text-red-500 mt-1';
+            renderImmichStatus();
         }
 
         async function saveConfig() {
@@ -1523,6 +1481,41 @@
         // ==================== LIFE GRID (DOM optimized) ====================
         // Event delegation: one listener for all grid cells
         let gridCache = null; // { rows: string[], weekOffset: number, birthDate: Date, expectedAge: number }
+        let selectedWeekIndex = null;
+        let weekDetailTrigger = null;
+
+        function formatDateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function parseDateKey(value) {
+            if (!value) return null;
+            const match = String(value).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return null;
+            const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function getWeekDateRange(weekIndex) {
+            const birth = parseDateKey(state.profile.birthDate);
+            if (!birth) return null;
+            const start = new Date(birth);
+            start.setDate(start.getDate() + weekIndex * 7);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            return { start, end, startKey: formatDateKey(start), endKey: formatDateKey(end) };
+        }
+
+        function getWeekAccessibleLabel(weekIndex, milestoneLabels = []) {
+            const range = getWeekDateRange(weekIndex);
+            const ageYears = Math.floor(weekIndex / 52);
+            const weekOfAge = (weekIndex % 52) + 1;
+            const age = ageYears === 0 ? `出生后第 ${weekOfAge} 周` : `${ageYears} 岁第 ${weekOfAge} 周`;
+            const label = range
+                ? `人生第 ${weekIndex + 1} 周，${age}，${range.startKey} 至 ${range.endKey}`
+                : `人生第 ${weekIndex + 1} 周`;
+            return milestoneLabels.length ? `${label}，里程碑：${milestoneLabels.join('、')}` : label;
+        }
 
         function initLifeGrid(overrideCols) {
             const birthDate = state.profile.birthDate ? new Date(state.profile.birthDate) : null;
@@ -1540,17 +1533,21 @@
             const monthStarts = [0, 4, 8, 13, 17, 22, 26, 30, 35, 39, 44, 48];
             monthStarts.forEach((ws, i) => { weekMonthLabel[ws] = monthNames[i]; });
 
-            const stages = [
-                { start: 0, end: 6, cls: 'stage-0' }, { start: 6, end: 11, cls: 'stage-1' },
-                { start: 11, end: 12, cls: 'stage-2' }, { start: 12, end: 15, cls: 'stage-3' },
-                { start: 15, end: 18, cls: 'stage-4' }, { start: 18, end: 22, cls: 'stage-5' }
-            ];
-            const milestoneYears = [6, 11, 12, 15, 18, 22];
             const now = new Date();
             const birthMs = birthDate ? birthDate.getTime() : null;
             const nowMs = now.getTime();
-            const isStudent = state.profile.identityTag === 'student';
             const currentWeek = birthMs ? Math.floor((nowMs - birthMs) / (7 * 86400000)) : -1;
+            const keyboardWeek = Math.min(Math.max(currentWeek, 0), totalWeeks - 1);
+            const milestoneWeeks = new Map();
+            if (birthMs) {
+                getMilestones(state.profile.birthDate).forEach(milestone => {
+                    const week = Math.floor((milestone.eventDate.getTime() - birthMs) / (7 * 86400000));
+                    if (week < 0 || week >= totalWeeks) return;
+                    const labels = milestoneWeeks.get(week) || [];
+                    labels.push(milestone.label);
+                    milestoneWeeks.set(week, labels);
+                });
+            }
 
             let html = '';
 
@@ -1578,7 +1575,6 @@
 
                 // Cell styling
                 const yearNum = Math.floor(g / 52);
-                const weekInYear = g % 52;
                 let cls = 'week-cell';
                 let styles = '';
 
@@ -1590,21 +1586,11 @@
                     const cellDateMs = birthMs + g * 7 * 86400000;
                     if (cellDateMs < nowMs) cls += ' spent';
                     if (g === currentWeek) cls += ' current';
-
-                    if (isStudent && cellDateMs < nowMs) {
-                        const cellAgeYears = (cellDateMs - birthMs) / 31557600000;
-                        for (const s of stages) {
-                            if (cellAgeYears >= s.start && cellAgeYears < s.end) { cls += ' ' + s.cls; break; }
-                        }
-                    }
-                    if (isStudent && milestoneYears.includes(yearNum) && weekInYear === 0) {
-                        cls += ' milestone-dot';
-                        if (yearNum === 15) cls += ' 中考';
-                        if (yearNum === 18) cls += ' 高考';
-                    }
                 }
+                const milestoneLabels = milestoneWeeks.get(g) || [];
+                if (milestoneLabels.length) cls += ' milestone-dot';
 
-                html += `<div class="${cls}" data-week="${g}" style="grid-column:${colInGrid};grid-row:${rowInGrid};${styles}"></div>`;
+                html += `<button type="button" class="${cls}" data-week="${g}" tabindex="${g === keyboardWeek ? '0' : '-1'}" aria-label="${getWeekAccessibleLabel(g, milestoneLabels)}" style="grid-column:${colInGrid};grid-row:${rowInGrid};${styles}"></button>`;
             }
 
             const grid = document.getElementById('lifeGrid');
@@ -1613,6 +1599,9 @@
             grid.style.gridTemplateRows = '20px repeat(' + totalRows + ', 1fr)';
             grid.style.width = '100%';
             grid.style.minWidth = 'unset';
+            grid.dataset.cols = String(cols);
+            grid.setAttribute('role', 'group');
+            grid.setAttribute('aria-label', `${state.profile.name || '家庭成员'}的人生周格`);
 
             gsap.fromTo(grid, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power1.out', clearProps: 'opacity' });
         }
@@ -1631,11 +1620,137 @@
                 if (!e.target.closest('.week-cell')) return;
                 hideTooltip();
             });
+            wrapper.addEventListener('click', (e) => {
+                const cell = e.target.closest('.week-cell');
+                if (!cell) return;
+                openWeekDetail(Number(cell.dataset.week), cell);
+            });
+            wrapper.addEventListener('keydown', (e) => {
+                const cell = e.target.closest('.week-cell');
+                if (!cell) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openWeekDetail(Number(cell.dataset.week), cell);
+                    return;
+                }
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+                e.preventDefault();
+                const cols = Number(grid.dataset.cols) || 52;
+                const current = Number(cell.dataset.week);
+                const total = state.profile.expectedAge * 52;
+                const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1
+                    : e.key === 'ArrowUp' ? -cols : e.key === 'ArrowDown' ? cols : 0;
+                const targetWeek = e.key === 'Home' ? 0 : e.key === 'End' ? total - 1
+                    : Math.min(Math.max(current + delta, 0), total - 1);
+                const target = grid.querySelector(`[data-week="${targetWeek}"]`);
+                if (!target) return;
+                cell.tabIndex = -1;
+                target.tabIndex = 0;
+                target.focus();
+            });
             // Remove old per-cell listeners by replacing the grid content (done in initLifeGrid)
         }
 
         function hideTooltip() {
             document.getElementById('photoTooltip').classList.remove('visible');
+        }
+
+        function getWeekStageLabel(weekIndex) {
+            const ageYears = weekIndex / 52;
+            if (state.profile.identityTag === 'student') {
+                return getGradeFromAge(ageYears, state.profile.schoolSystem || 'shanghai').grade;
+            }
+            if (state.profile.identityTag === 'worker') return '职场阶段';
+            return '家庭阶段';
+        }
+
+        function addWeekDetailEmptyState(container, message) {
+            const empty = document.createElement('p');
+            empty.className = 'text-xs text-slate-400';
+            empty.textContent = message;
+            container.appendChild(empty);
+        }
+
+        function renderWeekDetail(weekIndex) {
+            const range = getWeekDateRange(weekIndex);
+            if (!range) return false;
+            selectedWeekIndex = weekIndex;
+            const ageYears = Math.floor(weekIndex / 52);
+            const weekOfAge = (weekIndex % 52) + 1;
+            document.getElementById('weekDetailEyebrow').textContent = `${state.profile.name || '家庭成员'} · 人生第 ${weekIndex + 1} 周`;
+            document.getElementById('weekDetailTitle').textContent = ageYears === 0 ? `出生后第 ${weekOfAge} 周` : `${ageYears} 岁 · 第 ${weekOfAge} 周`;
+            document.getElementById('weekDetailRange').textContent = `${range.startKey} — ${range.endKey}`;
+            document.getElementById('weekDetailAge').textContent = ageYears === 0 ? '未满 1 岁' : `${ageYears} 岁`;
+            document.getElementById('weekDetailStage').textContent = getWeekStageLabel(weekIndex);
+
+            const milestoneContainer = document.getElementById('weekDetailMilestones');
+            milestoneContainer.innerHTML = '';
+            const milestones = getMilestones(state.profile.birthDate).filter(milestone => {
+                const key = formatDateKey(milestone.eventDate);
+                return key >= range.startKey && key <= range.endKey;
+            });
+            if (!milestones.length) addWeekDetailEmptyState(milestoneContainer, '这一周没有预设里程碑。');
+            milestones.forEach(milestone => {
+                const row = document.createElement('div');
+                row.className = 'rounded-xl bg-amber-50 px-3 py-2 text-amber-800 font-bold';
+                row.textContent = milestone.label;
+                milestoneContainer.appendChild(row);
+            });
+
+            const eventContainer = document.getElementById('weekDetailEvents');
+            eventContainer.innerHTML = '';
+            const events = state.events.filter(event => {
+                const key = String(event.date || '').slice(0, 10);
+                return key >= range.startKey && key <= range.endKey;
+            });
+            if (!events.length) addWeekDetailEmptyState(eventContainer, '这一周还没有记录家庭事件。');
+            events.forEach(event => {
+                const row = document.createElement('div');
+                row.className = 'rounded-xl bg-slate-50 px-3 py-2';
+                const title = document.createElement('p');
+                title.className = 'font-bold text-slate-700';
+                title.textContent = event.title;
+                const meta = document.createElement('p');
+                meta.className = 'text-xs text-slate-400 mt-0.5';
+                meta.textContent = [String(event.date).slice(0, 10), event.notes].filter(Boolean).join(' · ');
+                row.append(title, meta);
+                eventContainer.appendChild(row);
+            });
+
+            const totalWeeks = state.profile.expectedAge * 52;
+            document.getElementById('weekDetailPrevious').disabled = weekIndex <= 0;
+            document.getElementById('weekDetailNext').disabled = weekIndex >= totalWeeks - 1;
+            return true;
+        }
+
+        function openWeekDetail(weekIndex, trigger) {
+            if (!renderWeekDetail(weekIndex)) {
+                showToast('请先完善出生日期');
+                return;
+            }
+            hideTooltip();
+            weekDetailTrigger = trigger || document.activeElement;
+            const overlay = document.getElementById('weekDetailOverlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('weekDetailClose').focus();
+        }
+
+        function moveWeekDetail(direction) {
+            if (selectedWeekIndex == null) return;
+            const totalWeeks = state.profile.expectedAge * 52;
+            renderWeekDetail(Math.min(Math.max(selectedWeekIndex + direction, 0), totalWeeks - 1));
+        }
+
+        function closeWeekDetail() {
+            const overlay = document.getElementById('weekDetailOverlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            document.body.style.overflow = '';
+            selectedWeekIndex = null;
+            if (weekDetailTrigger && typeof weekDetailTrigger.focus === 'function') weekDetailTrigger.focus();
+            weekDetailTrigger = null;
         }
 
         // ==================== COUNTDOWN ====================
@@ -1828,9 +1943,6 @@
             badge.textContent = `📖 ${grade.grade}`;
             badge.classList.remove('hidden');
 
-            // Show stage color legend
-            document.getElementById('stageLegend').classList.remove('hidden');
-
             // Milestones
             const milestones = getMilestones(state.profile.birthDate);
             const futureMilestones = milestones.filter(m => !m.isPast);
@@ -1894,6 +2006,11 @@
         function initKeyboard() {
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
+                    const weekDetail = document.getElementById('weekDetailOverlay');
+                    if (!weekDetail.classList.contains('hidden')) {
+                        closeWeekDetail();
+                        return;
+                    }
                     const memoryPreview = document.getElementById('memoryPreviewOverlay');
                     if (!memoryPreview.classList.contains('hidden')) {
                         closeMemoryPreview();
@@ -1909,6 +2026,9 @@
             });
             document.getElementById('memoryPreviewOverlay').addEventListener('click', event => {
                 if (event.target.id === 'memoryPreviewOverlay') closeMemoryPreview();
+            });
+            document.getElementById('weekDetailOverlay').addEventListener('click', event => {
+                if (event.target.id === 'weekDetailOverlay') closeWeekDetail();
             });
         }
 
@@ -1934,6 +2054,20 @@
             document.getElementById('onboardingSourceHint').textContent = immichConfigured
                 ? '可从 Immich 选择已识别家人 · 也可手动添加'
                 : '先创建家庭成员 · 也可稍后连接照片服务';
+            const title = document.getElementById('systemImmichTitle');
+            const detail = document.getElementById('systemImmichDetail');
+            const status = document.getElementById('immichStatusText');
+            if (immichConfigured) {
+                title.textContent = 'Immich 已配置（只读）';
+                detail.textContent = `人物导入可用 · 往年今日${immichMemoriesEnabled ? '已启用' : '未启用'} · 周格照片${immichWeekHoverEnabled ? '已启用' : '未启用'}`;
+                status.textContent = '只读连接由 NAS 管理，不会修改照片库';
+                status.className = 'text-green-600';
+            } else {
+                title.textContent = 'Immich 未配置';
+                detail.textContent = '家庭时间功能可以独立使用；配置后可导入人物和查看照片回忆。';
+                status.textContent = '照片服务未连接';
+                status.className = 'text-theme-text/50';
+            }
             renderOnThisDayMemories();
             updateTicker();
         }
@@ -2351,8 +2485,7 @@
                 await showHouseholdView();
             }
 
-            // Immich remains explicitly paused. Do not perform any automatic
-            // connectivity check until the user approves the integration stage.
+            // Bootstrap exposes capabilities only; connectivity checks stay user-triggered.
         }
 
         async function apiGet(path, options = {}) {
@@ -2571,6 +2704,8 @@
             state.targetDate = user.target_date || null;
             state.profile.schoolSystem = user.school_system || 'shanghai';
             state.profile.immichPersonId = user.immich_person_id || null;
+            state.immichSync = Boolean(user.immich_sync);
+            state.events = [];
             showPersonalView();
             document.getElementById('personalViewName').textContent = state.profile.name || '个人时间';
             const age = state.profile.birthDate
@@ -2588,9 +2723,16 @@
             renderUserButtons();
             updateUserMenu();
             showToast(`👤 切换到 ${state.profile.name || '用户'}`, 1200);
-            // Background fetch full user data
-            const full = await apiGet(`/users/${normalizedId}`);
+            // Background fetch full user data and date-bound events.
+            const [full, events] = await Promise.all([
+                apiGet(`/users/${normalizedId}`),
+                apiGet(`/users/${normalizedId}/events`)
+            ]);
             if (full && full.education) state._apiEducation = full.education;
+            if (Array.isArray(events)) {
+                state.events = events;
+                if (selectedWeekIndex != null) renderWeekDetail(selectedWeekIndex);
+            }
         }
 
         function updateUserMenu() {
@@ -3116,6 +3258,7 @@
             initFlatpickrs();
             startTickerLoop();
             initKeyboard();
+            initGridEvents();
             initWheelZoom();
             requestAnimationFrame(tickCountdown);
             requestAnimationFrame(tickTimeBudget);

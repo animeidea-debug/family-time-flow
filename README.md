@@ -134,7 +134,13 @@ interactive controls retain a visible keyboard-focus outline.
 - Spent weeks desaturate (bg-slate-800/40)
 - Active week pulses with theme color
 - Upcoming weeks remain empty
-- Hovering on week blocks fetches contextual historical events
+- Click or press Enter on a week to open its date range, age, life stage,
+  milestones, and locally stored family events
+- Keyboard users enter the grid once, then use arrow keys or Home/End to move;
+  touch devices use the same detail view
+- Color has one meaning across all profiles: muted member color is elapsed time,
+  the full accent ring is the current week, neutral cells are future time, and
+  a white diamond marks a milestone. Life stages remain textual context.
 
 #### ⏱️ Meso Scale: Strategic Countdown
 - Term/Academic progress meters (e.g., "Grade 10 Autumn Term: 68% Completed")
@@ -258,7 +264,7 @@ data explicitly.
 - **Life Grid**: 80×52 week visualization with GSAP animations
 - **Countdown Clock**: 6-decimal precision with `requestAnimationFrame`
 - **Time Budget Ring**: SVG-based daily progress visualization
-- **Configuration Drawer**: Profile management with localStorage persistence
+- **Configuration Drawer**: Profile management persisted through the family backend
 - **Flatpickr Integration**: Local date/time pickers with Chinese locale
 - **Responsive Layout**: Mobile-friendly with TailwindCSS grid system
 
@@ -271,11 +277,13 @@ data explicitly.
 
 ### 🔄 Next steps
 
-1. Observe the first read-only “On This Day” experience during normal household
-   use before considering photo timeline or week-hover expansion.
-2. Add any remaining intended family members from the home LAN; these identity
+1. Batch-validate the click/touch/keyboard week-detail experience and the
+   corrected read-only Immich capability status before release.
+2. Observe “On This Day” during normal household use before considering photo
+   timeline or week-hover expansion.
+3. Add any remaining intended family members from the home LAN; these identity
    choices remain deliberately manual.
-3. Keep the unauthenticated family API restricted to the trusted LAN.
+4. Keep the unauthenticated family API restricted to the trusted LAN.
 
 ---
 
