@@ -277,9 +277,9 @@ data explicitly.
 
 ### 🔄 Next steps
 
-1. Batch-validate the deployed click/touch/keyboard week-detail experience,
-   four-part legend, and corrected read-only Immich capability status before
-   merging the release branch into `main`.
+1. Observe the deployed click/touch/keyboard week-detail experience, four-part
+   legend, and corrected read-only Immich capability status during normal
+   household use.
 2. Observe “On This Day” during normal household use before considering photo
    timeline or week-hover expansion.
 3. Add any remaining intended family members from the home LAN; these identity

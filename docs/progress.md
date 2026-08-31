@@ -62,12 +62,16 @@
   regression), PR #7 (first-member polish), PR #9 (additional-member picker),
   PR #11 (readability and picker clarity), PR #14 (offline frontend assets),
   PR #16 (read-only “On This Day” memories), and PR #17 (independent memory
-  capability hardening) are merged into `main`. The existing two experimental
-  HTML files remain untracked and excluded from release.
+  capability hardening), and PR #18 (accessible week detail and unified grid
+  semantics) are merged into `main`. The existing two experimental HTML files
+  remain untracked and excluded from release.
 
 ## Active work
 
-- Branch `codex/week-detail-ux` contains the deployed household-usage release.
+- `main` contains the deployed household-usage release. Production intentionally
+  remains on the already tested application commit
+  `734326025b7750c0935e128c775e27c0e209684c`; the PR #18 merge commit adds no
+  unverified runtime behavior beyond that release.
   Week cells are now real accessible controls with roving keyboard focus,
   arrow/Home/End navigation, explicit Enter/Space activation, and a responsive
   week-detail dialog. The dialog shows date range, age, stage, milestones, and
@@ -118,9 +122,9 @@
 
 ## Next steps
 
-1. Let the user batch-validate the deployed week-detail interaction, legend,
-   themes, and real household events. If accepted, merge the reviewed branch
-   into `main` and keep the deployed full SHA in the release record.
+1. Observe the deployed week-detail interaction, legend, themes, and real
+   household events during normal use; collect concrete feedback before the
+   next UI batch.
 2. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
 3. Verify an event edit when a real change is needed; exercise deletion only
