@@ -168,6 +168,56 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.doesNotMatch(applicationScript, /asset\.download/);
 });
 
+test('life grid opens an accessible local-data week detail on pointer and keyboard input', () => {
+    for (const id of [
+        'weekDetailOverlay', 'weekDetailTitle', 'weekDetailRange', 'weekDetailAge',
+        'weekDetailStage', 'weekDetailMilestones', 'weekDetailEvents',
+        'weekDetailPrevious', 'weekDetailNext'
+    ]) {
+        assert.match(html, new RegExp(`id="${id}"`));
+    }
+    assert.match(applicationScript, /<button type="button" class="\$\{cls\}" data-week="\$\{g\}" tabindex=/);
+    assert.match(applicationScript, /aria-label="\$\{getWeekAccessibleLabel\(g, milestoneLabels\)\}"/);
+    assert.match(applicationScript, /wrapper\.addEventListener\('click'/);
+    assert.match(applicationScript, /e\.key === 'Enter' \|\| e\.key === ' '/);
+    assert.match(applicationScript, /\['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'\]/);
+    assert.match(applicationScript, /function openWeekDetail/);
+    assert.match(applicationScript, /function closeWeekDetail/);
+    assert.match(applicationScript, /weekDetailTrigger\.focus\(\)/);
+    assert.match(applicationScript, /apiGet\(`\/users\/\$\{normalizedId\}\/events`\)/);
+    const weekDetailSource = applicationScript.slice(
+        applicationScript.indexOf('function getWeekStageLabel'),
+        applicationScript.indexOf('// ==================== COUNTDOWN')
+    );
+    assert.match(weekDetailSource, /title\.textContent = event\.title/);
+    assert.doesNotMatch(weekDetailSource, /immichGet|fetchPhotosForDate|innerHTML\s*=\s*event/);
+});
+
+test('life grid legend separates time state from milestone shape', () => {
+    for (const className of [
+        'week-legend-spent', 'week-legend-current',
+        'week-legend-future', 'week-legend-milestone'
+    ]) {
+        assert.match(html, new RegExp(className));
+    }
+    assert.match(html, /week-legend-milestone[^>]*><\/span>里程碑/);
+    assert.match(html, /\.week-cell\.spent\s*\{[\s\S]*background-color:\s*color-mix\(in srgb, var\(--accent-color\) 48%, var\(--surface-color\)\)/);
+    assert.match(html, /\.week-cell\.milestone-dot::after,[\s\S]*transform:\s*translate\(-50%, -50%\) rotate\(45deg\)/);
+    assert.doesNotMatch(html, /stage-dot|\.week-cell\.stage-[0-5]|milestone-dot\.(?:中考|高考)/);
+    assert.match(applicationScript, /const milestoneWeeks = new Map\(\)/);
+    assert.match(applicationScript, /milestone\.eventDate\.getTime\(\) - birthMs/);
+    assert.match(applicationScript, /里程碑：\$\{milestoneLabels\.join\('、'\)\}/);
+});
+
+test('system settings report current Immich capabilities without stale setup instructions', () => {
+    assert.match(html, /id="systemImmichTitle"/);
+    assert.match(html, /id="systemImmichDetail"/);
+    assert.match(applicationScript, /Immich 已配置（只读）/);
+    assert.match(applicationScript, /往年今日\$\{immichMemoriesEnabled/);
+    assert.match(applicationScript, /周格照片\$\{immichWeekHoverEnabled/);
+    assert.doesNotMatch(html, /Immich 暂停接入|需要新的只读 Key|接入前需确认/);
+});
+
 test('theme controls preserve readable semantic colors and visible focus', () => {
     assert.match(html, /--secondary-text-color:/);
     assert.match(html, /--muted-text-color:/);
