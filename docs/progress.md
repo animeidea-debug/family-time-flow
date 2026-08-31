@@ -68,6 +68,18 @@
 
 ## Active work
 
+- Branch `codex/current-week-event-markers` contains a locally verified
+  follow-up candidate. It fixes every row at 52 weeks while zooming
+  only the physical grid size, adds an explicit “locate current week” control,
+  and marks weeks containing local family events with a dark underline rather
+  than another competing color. Async event loading rebuilds the markers and
+  preserves an open week-detail dialog's focus target.
+- The candidate passed 23 frontend contracts and 24 backend integration tests,
+  backend syntax, frontend asset rebuild/hash verification, and
+  `git diff --check`. Isolated browser checks at desktop and 390×844 covered
+  75%/100%/150% physical zoom with unchanged 52-week rows, the event marker and
+  event detail, current-week focus/recentering, mobile horizontal navigation,
+  and an empty warning/error console. No production or Immich data was used.
 - `main` contains the deployed household-usage release. Production intentionally
   remains on the already tested application commit
   `734326025b7750c0935e128c775e27c0e209684c`; the PR #18 merge commit adds no
@@ -86,7 +98,7 @@
   a single white diamond shape expresses milestones. The previous incomplete
   and mismatched stage-color legend was removed. Milestone cells are calculated
   from their actual dates rather than approximate `age × 52` positions.
-- The release passed 21 frontend contracts and 24 backend integration tests
+- The deployed release passed 21 frontend contracts and 24 backend integration tests
   both locally and in the NAS release gate,
   backend syntax and `git diff --check`. Isolated desktop and 390×844 browser
   verification covered pointer and keyboard opening, event display,
@@ -122,16 +134,18 @@
 
 ## Next steps
 
-1. Observe the deployed week-detail interaction, legend, themes, and real
-   household events during normal use; collect concrete feedback before the
-   next UI batch.
-2. Observe “On This Day” during normal family use before proposing any broader
+1. Review the local fixed-row zoom, current-week locator, and family-event
+   marker candidate; only after approval, create a clean commit, push, and
+   deploy its full SHA through `nas-deploy`.
+2. After deployment, batch-verify all members at 75%/100%/150%, current-week
+   location, event-marked week details, keyboard focus, and 390px mobile use.
+3. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
-3. Verify an event edit when a real change is needed; exercise deletion only
+4. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-4. Let the user add any remaining household members and complete missing birth
+5. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-5. Keep the unauthenticated API on the trusted LAN; review authentication before
+6. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points

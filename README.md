@@ -138,9 +138,13 @@ interactive controls retain a visible keyboard-focus outline.
   milestones, and locally stored family events
 - Keyboard users enter the grid once, then use arrow keys or Home/End to move;
   touch devices use the same detail view
+- Every visual row always represents 52 weeks. Zoom changes only the physical
+  cell size, and “Locate current week” recenters the active cell without
+  changing that time meaning.
 - Color has one meaning across all profiles: muted member color is elapsed time,
   the full accent ring is the current week, neutral cells are future time, and
-  a white diamond marks a milestone. Life stages remain textual context.
+  a white diamond marks a milestone. A dark underline marks a locally stored
+  family event; life stages remain textual context.
 
 #### ⏱️ Meso Scale: Strategic Countdown
 - Term/Academic progress meters (e.g., "Grade 10 Autumn Term: 68% Completed")

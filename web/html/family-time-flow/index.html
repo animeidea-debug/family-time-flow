@@ -235,6 +235,8 @@
 
         .week-cell {
             aspect-ratio: 1 / 1;
+            min-width: 0;
+            min-height: 0;
             border-radius: 3px;
             border: 0;
             padding: 0;
@@ -312,7 +314,8 @@
         }
 
         .week-legend-future,
-        .week-legend-milestone {
+        .week-legend-milestone,
+        .week-legend-event {
             background: var(--muted-color);
             border: 1px solid var(--border-color);
         }
@@ -337,6 +340,21 @@
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.28);
             pointer-events: none;
             z-index: 5;
+        }
+
+        /* Family events use a dark underline, leaving color for time state. */
+        .week-cell.event-marker::before,
+        .week-legend-event::before {
+            content: '';
+            position: absolute;
+            left: 20%;
+            bottom: 1px;
+            width: 60%;
+            height: 2px;
+            border-radius: 999px;
+            background: #0F172A;
+            pointer-events: none;
+            z-index: 6;
         }
 
         /* ===== Countdown ===== */
@@ -864,8 +882,11 @@
                             <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-current"></span>现在</span>
                             <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-future"></span>未来</span>
                             <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-milestone"></span>里程碑</span>
+                            <span class="flex items-center gap-1"><span class="week-legend-swatch week-legend-event"></span>家庭事件</span>
                         </div>
                         <div class="zoom-controls">
+                            <button id="locateCurrentWeekButton" onclick="locateCurrentWeek()" class="btn btn-ghost btn-xs font-bold whitespace-nowrap"
+                                title="定位到当前周">⌖ 现在</button>
                             <button onclick="gridZoomOut()" class="zoom-btn" title="缩小">−</button>
                             <span id="zoomLevel" class="zoom-level">100%</span>
                             <button onclick="gridZoomIn()" class="zoom-btn" title="放大">+</button>
@@ -877,7 +898,7 @@
                         <div id="lifeGrid" class="life-grid"></div>
                     </div>
                 </div>
-                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 点击格子查看周详情，也可用 Tab 选择后按 Enter</p>
+                <p class="text-[10px] sm:text-xs text-theme-text/50 mt-2 font-medium">💡 白色菱形是里程碑，底部短线是家庭事件；点击或按 Enter 查看详情</p>
             </section>
 
             <!-- Meso + Micro Column -->
@@ -1230,8 +1251,6 @@
         };
 
         let gridZoom = 1.0;
-        const ZOOM_MIN = 0.4;
-        const ZOOM_MAX = 2.0;
 
         // ==================== TOAST ====================
         function showToast(msg, durationMs = 2200) {
@@ -1437,45 +1456,31 @@
             showToast('🔄 已重置为默认设置');
         }
 
-        // ==================== GRID ZOOM (reflow) ====================
-        // Zoom changes the number of columns so all cells stay visible — no clipping, no scrollbars.
-        const ZOOM_PRESETS = [
-            { level: 0.25, cols: 4, label: '4列' },
-            { level: 0.35, cols: 6, label: '6列' },
-            { level: 0.45, cols: 8, label: '8列' },
-            { level: 0.55, cols: 10, label: '10列' },
-            { level: 0.65, cols: 13, label: '13列' },
-            { level: 0.8, cols: 17, label: '17列' },
-            { level: 1.0, cols: 26, label: '26列' },
-            { level: 1.2, cols: 35, label: '35列' },
-            { level: 1.5, cols: 52, label: '52列' }
-        ];
-        function getPreset(z) {
-            if (z < 0.3) return ZOOM_PRESETS[0];
-            if (z < 0.4) return ZOOM_PRESETS[1];
-            if (z < 0.5) return ZOOM_PRESETS[2];
-            if (z < 0.6) return ZOOM_PRESETS[3];
-            if (z < 0.7) return ZOOM_PRESETS[4];
-            if (z < 0.9) return ZOOM_PRESETS[5];
-            if (z < 1.1) return ZOOM_PRESETS[6];
-            if (z < 1.35) return ZOOM_PRESETS[7];
-            return ZOOM_PRESETS[8];
+        // ==================== GRID ZOOM ====================
+        // Zoom changes physical cell size only. Every row always remains 52 weeks.
+        const ZOOM_LEVELS = [0.75, 1, 1.25, 1.5, 2];
+        function getZoomIndex(value) {
+            return ZOOM_LEVELS.reduce((best, level, index) =>
+                Math.abs(level - value) < Math.abs(ZOOM_LEVELS[best] - value) ? index : best, 0);
         }
         function gridZoomIn() {
-            const p = getPreset(gridZoom);
-            const i = ZOOM_PRESETS.indexOf(p);
-            if (i < ZOOM_PRESETS.length - 1) { gridZoom = ZOOM_PRESETS[i + 1].level; applyGridZoom(); }
+            const index = getZoomIndex(gridZoom);
+            if (index < ZOOM_LEVELS.length - 1) { gridZoom = ZOOM_LEVELS[index + 1]; applyGridZoom(); }
         }
         function gridZoomOut() {
-            const p = getPreset(gridZoom);
-            const i = ZOOM_PRESETS.indexOf(p);
-            if (i > 0) { gridZoom = ZOOM_PRESETS[i - 1].level; applyGridZoom(); }
+            const index = getZoomIndex(gridZoom);
+            if (index > 0) { gridZoom = ZOOM_LEVELS[index - 1]; applyGridZoom(); }
+        }
+        function applyGridDimensions() {
+            gridZoom = ZOOM_LEVELS[getZoomIndex(gridZoom)];
+            const grid = document.getElementById('lifeGrid');
+            grid.style.width = `${Math.round(700 * gridZoom)}px`;
+            grid.style.minWidth = grid.style.width;
+            document.getElementById('zoomLevel').textContent = `${Math.round(gridZoom * 100)}%`;
         }
         function applyGridZoom() {
-            const p = getPreset(gridZoom);
-            document.getElementById('zoomLevel').textContent = `${Math.round(gridZoom * 100)}%`;
-            // Rebuild grid with new column count (fast — innerHTML rebuild)
-            initLifeGrid(p.cols);
+            applyGridDimensions();
+            saveState();
         }
 
         // ==================== LIFE GRID (DOM optimized) ====================
@@ -1506,7 +1511,7 @@
             return { start, end, startKey: formatDateKey(start), endKey: formatDateKey(end) };
         }
 
-        function getWeekAccessibleLabel(weekIndex, milestoneLabels = []) {
+        function getWeekAccessibleLabel(weekIndex, milestoneLabels = [], eventCount = 0) {
             const range = getWeekDateRange(weekIndex);
             const ageYears = Math.floor(weekIndex / 52);
             const weekOfAge = (weekIndex % 52) + 1;
@@ -1514,13 +1519,16 @@
             const label = range
                 ? `人生第 ${weekIndex + 1} 周，${age}，${range.startKey} 至 ${range.endKey}`
                 : `人生第 ${weekIndex + 1} 周`;
-            return milestoneLabels.length ? `${label}，里程碑：${milestoneLabels.join('、')}` : label;
+            const details = [];
+            if (milestoneLabels.length) details.push(`里程碑：${milestoneLabels.join('、')}`);
+            if (eventCount) details.push(`${eventCount} 个家庭事件`);
+            return details.length ? `${label}，${details.join('，')}` : label;
         }
 
-        function initLifeGrid(overrideCols) {
-            const birthDate = state.profile.birthDate ? new Date(state.profile.birthDate) : null;
+        function initLifeGrid() {
+            const birthDate = parseDateKey(state.profile.birthDate);
             const expectedAge = state.profile.expectedAge || 80;
-            const cols = overrideCols || 52;
+            const cols = 52;
             const totalWeeks = expectedAge * 52;
             const totalRows = Math.ceil(totalWeeks / cols);
 
@@ -1548,12 +1556,22 @@
                     milestoneWeeks.set(week, labels);
                 });
             }
+            const eventWeeks = new Map();
+            if (birthMs) {
+                state.events.forEach(event => {
+                    const eventDate = parseDateKey(event.date);
+                    if (!eventDate) return;
+                    const week = Math.floor((eventDate.getTime() - birthMs) / (7 * 86400000));
+                    if (week < 0 || week >= totalWeeks) return;
+                    eventWeeks.set(week, (eventWeeks.get(week) || 0) + 1);
+                });
+            }
 
             let html = '';
 
             // Build cells in week order, assign to grid position based on cols
             for (let g = 0; g < totalWeeks; g++) {
-                // Calculate row & column based on dynamic column count
+                // A row is always one 52-week year; zoom only changes its physical size.
                 const col = g % cols;
                 const row = Math.floor(g / cols);
                 const rowInGrid = row + 2; // +1 for age label column, +1 for row offset
@@ -1588,20 +1606,22 @@
                     if (g === currentWeek) cls += ' current';
                 }
                 const milestoneLabels = milestoneWeeks.get(g) || [];
+                const eventCount = eventWeeks.get(g) || 0;
                 if (milestoneLabels.length) cls += ' milestone-dot';
+                if (eventCount) cls += ' event-marker';
 
-                html += `<button type="button" class="${cls}" data-week="${g}" tabindex="${g === keyboardWeek ? '0' : '-1'}" aria-label="${getWeekAccessibleLabel(g, milestoneLabels)}" style="grid-column:${colInGrid};grid-row:${rowInGrid};${styles}"></button>`;
+                html += `<button type="button" class="${cls}" data-week="${g}" tabindex="${g === keyboardWeek ? '0' : '-1'}" aria-label="${getWeekAccessibleLabel(g, milestoneLabels, eventCount)}" style="grid-column:${colInGrid};grid-row:${rowInGrid};${styles}"></button>`;
             }
 
             const grid = document.getElementById('lifeGrid');
             grid.innerHTML = html;
-            grid.style.gridTemplateColumns = '32px repeat(' + cols + ', 1fr)';
-            grid.style.gridTemplateRows = '20px repeat(' + totalRows + ', 1fr)';
-            grid.style.width = '100%';
-            grid.style.minWidth = 'unset';
+            grid.style.gridTemplateColumns = '32px repeat(' + cols + ', minmax(0, 1fr))';
+            grid.style.gridTemplateRows = '20px repeat(' + totalRows + ', minmax(0, 1fr))';
+            applyGridDimensions();
             grid.dataset.cols = String(cols);
             grid.setAttribute('role', 'group');
             grid.setAttribute('aria-label', `${state.profile.name || '家庭成员'}的人生周格`);
+            document.getElementById('locateCurrentWeekButton').disabled = currentWeek < 0 || currentWeek >= totalWeeks;
 
             gsap.fromTo(grid, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power1.out', clearProps: 'opacity' });
         }
@@ -1653,6 +1673,20 @@
 
         function hideTooltip() {
             document.getElementById('photoTooltip').classList.remove('visible');
+        }
+
+        function locateCurrentWeek() {
+            const current = document.querySelector('.week-cell.current');
+            if (!current) {
+                showToast('当前周不在设定的人生范围内');
+                return;
+            }
+            const previous = document.querySelector('.week-cell[tabindex="0"]');
+            if (previous) previous.tabIndex = -1;
+            current.tabIndex = 0;
+            current.focus({ preventScroll: true });
+            current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            showToast('已定位到当前周', 1400);
         }
 
         function getWeekStageLabel(weekIndex) {
@@ -2730,8 +2764,13 @@
             ]);
             if (full && full.education) state._apiEducation = full.education;
             if (Array.isArray(events)) {
+                const openWeek = selectedWeekIndex;
                 state.events = events;
-                if (selectedWeekIndex != null) renderWeekDetail(selectedWeekIndex);
+                initLifeGrid();
+                if (openWeek != null) {
+                    weekDetailTrigger = document.querySelector(`[data-week="${openWeek}"]`);
+                    renderWeekDetail(openWeek);
+                }
             }
         }
 
@@ -3239,7 +3278,7 @@
 
         // ==================== WHEEL ZOOM ====================
         function initWheelZoom() {
-            const sc = document.querySelector('.overflow-x-auto');
+            const sc = document.querySelector('.grid-scroll');
             if (!sc) return;
             sc.addEventListener('wheel', (e) => {
                 if (e.ctrlKey || e.metaKey) {
