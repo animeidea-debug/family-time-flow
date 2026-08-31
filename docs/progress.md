@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `8800c6ea92fceb676c48ba1b397219465e5b94d1`
+- Production runs commit `734326025b7750c0935e128c775e27c0e209684c`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -39,6 +39,12 @@
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
   backgrounds. Desktop and 390px mobile layouts were visually verified.
+- The accessible week-detail release is deployed. Production verification
+  confirmed four persisted members, 4,160 week cells for the sampled member,
+  eight date-derived milestone markers, all four legend meanings, pointer and
+  keyboard detail opening, adjacent-key navigation, Escape focus restoration,
+  and a clean browser console. The grid now reserves color for elapsed/current/
+  future time and uses one opaque white diamond shape for milestones.
 - Personal and household navigation now resets the page to the top. Members
   without a target still receive no fabricated countdown, and identity tags
   remain manually editable after Immich import.
@@ -61,7 +67,7 @@
 
 ## Active work
 
-- Branch `codex/week-detail-ux` contains an undeployed household-usage candidate.
+- Branch `codex/week-detail-ux` contains the deployed household-usage release.
   Week cells are now real accessible controls with roving keyboard focus,
   arrow/Home/End navigation, explicit Enter/Space activation, and a responsive
   week-detail dialog. The dialog shows date range, age, stage, milestones, and
@@ -76,12 +82,14 @@
   a single white diamond shape expresses milestones. The previous incomplete
   and mismatched stage-color legend was removed. Milestone cells are calculated
   from their actual dates rather than approximate `age × 52` positions.
-- The candidate passed 21 frontend contracts and 24 backend integration tests,
+- The release passed 21 frontend contracts and 24 backend integration tests
+  both locally and in the NAS release gate,
   backend syntax and `git diff --check`. Isolated desktop and 390×844 browser
   verification covered pointer and keyboard opening, event display,
   previous/next boundaries, Escape focus restoration, mobile layout, all three
   theme palettes, milestone contrast, capability status, and a clean browser
-  console. No production data or Immich request was used during this validation.
+  console. The isolated validation used no production data or Immich request;
+  post-deployment verification was read-only and did not change family data.
 - The Immich 3.x adapter hardening is deployed. It sends the required
   `personIds` array, validates asset inputs, and reports permission or upstream
   failures instead of returning false empty results.
@@ -110,9 +118,9 @@
 
 ## Next steps
 
-1. Let the user batch-validate the week-detail interaction on real household
-   members and events. If accepted, commit and push this branch for review, then
-   deploy only the approved full SHA through `nas-deploy`.
+1. Let the user batch-validate the deployed week-detail interaction, legend,
+   themes, and real household events. If accepted, merge the reviewed branch
+   into `main` and keep the deployed full SHA in the release record.
 2. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
 3. Verify an event edit when a real change is needed; exercise deletion only
