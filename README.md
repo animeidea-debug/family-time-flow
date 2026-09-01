@@ -135,7 +135,8 @@ interactive controls retain a visible keyboard-focus outline.
 - Active week pulses with theme color
 - Upcoming weeks remain empty
 - Click or press Enter on a week to open its date range, age, life stage,
-  milestones, and locally stored family events
+  milestones, locally stored family events, and an on-demand personal photo
+  playback of up to nine deduplicated images
 - Keyboard users enter the grid once, then use arrow keys or Home/End to move;
   touch devices use the same detail view
 - Every visual row always represents 52 weeks and always fits the available
@@ -183,6 +184,18 @@ data explicitly.
 - Presents them in glassmorphic popover card
 - A future reviewed interaction may open a larger preview; original-file
   download remains outside the current permission scope
+
+#### Week Photo Playback
+- Opens inside the existing click, touch, and keyboard week-detail dialog;
+  hovering over the life grid still does not query photos
+- Addresses the request by Family Time Flow member ID and life-week index so
+  the backend computes the date range and resolves the Immich person privately
+- Shows up to nine person-focused, deduplicated photos, balanced across days and
+  ordered chronologically; unrelated photos never fill empty positions
+- Uses a three-column desktop and two-column mobile gallery with read-only
+  preview, retry, unlinked, empty, disabled, and unavailable states
+- Excludes photos before the member's birth date and ignores stale responses
+  after member or week changes
 
 #### "On This Day" Time Capsule
 - Feature-flagged household card and persistent bottom ticker
@@ -241,6 +254,8 @@ data explicitly.
 - [x] Implement the first “On This Day” experience behind a server feature flag
 - [x] Review and enable “On This Day” in production before considering photo
   timeline or hover memories
+- [x] Add on-demand personal week photo playback to the accessible week detail
+  without enabling hover queries
 
 ---
 

@@ -64,6 +64,57 @@ before(async () => {
                 res.writeHead(200, { 'content-type': 'application/json' });
                 return res.end(JSON.stringify({ assets: { items: [] } }));
             }
+            if (lastSearchBody.takenAfter?.includes('-01-01T') && lastSearchBody.takenBefore?.includes('-01-07T')) {
+                const assetYear = lastSearchBody.takenAfter.slice(0, 4);
+                const at = (day, time) => `${assetYear}-01-${String(day).padStart(2, '0')}T${time}.000Z`;
+                res.writeHead(200, { 'content-type': 'application/json' });
+                return res.end(JSON.stringify({ assets: { items: [
+                    {
+                        id: `week-first-${assetYear}`,
+                        fileCreatedAt: at(1, '09:00:00'),
+                        isFavorite: true,
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(1, '09:00:00') }
+                    },
+                    {
+                        id: `week-first-copy-${assetYear}`,
+                        duplicateId: `week-first-${assetYear}`,
+                        fileCreatedAt: at(1, '09:02:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(1, '09:02:00') }
+                    },
+                    {
+                        id: `week-second-${assetYear}`,
+                        fileCreatedAt: at(2, '10:00:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(2, '10:00:00') }
+                    },
+                    {
+                        id: `week-second-burst-${assetYear}`,
+                        fileCreatedAt: at(2, '10:00:45'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(2, '10:00:45') }
+                    },
+                    {
+                        id: `week-third-${assetYear}`,
+                        fileCreatedAt: at(3, '15:00:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(3, '15:00:00') }
+                    },
+                    {
+                        id: `week-other-person-${assetYear}`,
+                        fileCreatedAt: at(4, '12:00:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-1', name: '家人甲' }],
+                        exifInfo: { dateTimeOriginal: at(4, '12:00:00') }
+                    }
+                ] } }));
+            }
             if (lastSearchBody.takenAfter?.includes('-01-02T')) {
                 const assetYear = lastSearchBody.takenAfter.slice(0, 4);
                 const at = time => `${assetYear}-01-02T${time}.000Z`;
@@ -280,7 +331,10 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
     const unlinkedCreated = await fetch(`${baseUrl}/users`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: '未关联照片测试成员' })
+        body: JSON.stringify({
+            name: '未关联照片测试成员',
+            birth_date: `${new Date().getFullYear() - 5}-01-01`
+        })
     }).then(response => response.json());
     try {
         const response = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2`);
@@ -319,6 +373,48 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             personFocused: 6,
             deduplicated: 3
         });
+
+        const weekResponse = await fetch(`${baseUrl}/members/${secondCreated.id}/weeks/0/memories?limit=9`);
+        assert.equal(weekResponse.status, 200);
+        const weekBody = await weekResponse.json();
+        const birthYear = new Date().getFullYear() - 3;
+        assert.deepEqual(weekBody.range, {
+            start: `${birthYear}-01-01`,
+            end: `${birthYear}-01-07`
+        });
+        assert.deepEqual(weekBody.assets.map(asset => asset.date), [
+            `${birthYear}-01-01`, `${birthYear}-01-02`, `${birthYear}-01-03`
+        ]);
+        assert.equal(weekBody.assets.every(asset => !('people' in asset) && !('originalFileName' in asset)), true);
+        assert.deepEqual(weekBody.selection, {
+            mode: 'linked-member-week', linkedPeople: 1,
+            candidates: 6, personFocused: 5, deduplicated: 3
+        });
+        assert.deepEqual(lastSearchBody.personIds, ['person-2']);
+        assert.equal(lastSearchBody.type, 'IMAGE');
+        assert.equal(lastSearchBody.withPeople, true);
+        assert.equal(lastSearchBody.size, 72);
+
+        const unlinkedWeek = await fetch(`${baseUrl}/members/${unlinkedCreated.id}/weeks/0/memories`);
+        assert.equal(unlinkedWeek.status, 200);
+        assert.deepEqual(await unlinkedWeek.json(), {
+            assets: [],
+            range: {
+                start: `${new Date().getFullYear() - 5}-01-01`,
+                end: `${new Date().getFullYear() - 5}-01-07`
+            },
+            selection: {
+                mode: 'linked-member-week', linkedPeople: 0,
+                candidates: 0, personFocused: 0, deduplicated: 0
+            }
+        });
+        const invalidWeek = await fetch(`${baseUrl}/members/${secondCreated.id}/weeks/not-a-week/memories`);
+        assert.equal(invalidWeek.status, 400);
+        const outOfRangeWeek = await fetch(`${baseUrl}/members/${secondCreated.id}/weeks/99999/memories`);
+        assert.equal(outOfRangeWeek.status, 400);
+        const missingWeekMember = await fetch(`${baseUrl}/members/999999/weeks/0/memories`);
+        assert.equal(missingWeekMember.status, 404);
+
         const unlinkedPersonal = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&memberId=${unlinkedCreated.id}`);
         assert.equal(unlinkedPersonal.status, 200);
         assert.deepEqual(await unlinkedPersonal.json(), {
@@ -398,6 +494,9 @@ test('keeps photo memories disabled unless the dedicated flag is enabled', async
         const memories = await fetch(`${disabledBaseUrl}/immich/on-this-day`);
         assert.equal(memories.status, 503);
         assert.deepEqual(await memories.json(), { error: 'Immich memories are disabled', status: 'disabled' });
+        const weekMemories = await fetch(`${disabledBaseUrl}/members/1/weeks/0/memories`);
+        assert.equal(weekMemories.status, 503);
+        assert.deepEqual(await weekMemories.json(), { error: 'Immich memories are disabled', status: 'disabled' });
     } finally {
         disabledBackend.kill('SIGTERM');
         await new Promise(resolve => disabledBackend.once('exit', resolve));

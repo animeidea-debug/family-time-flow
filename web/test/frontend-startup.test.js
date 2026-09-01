@@ -184,7 +184,8 @@ test('life grid opens an accessible local-data week detail on pointer and keyboa
     for (const id of [
         'weekDetailOverlay', 'weekDetailTitle', 'weekDetailRange', 'weekDetailAge',
         'weekDetailStage', 'weekDetailMilestones', 'weekDetailEvents',
-        'weekDetailPrevious', 'weekDetailNext'
+        'weekDetailPrevious', 'weekDetailNext', 'weekMemorySection',
+        'weekMemoryStatus', 'weekMemoryGallery', 'weekMemoryRetry'
     ]) {
         assert.match(html, new RegExp(`id="${id}"`));
     }
@@ -202,7 +203,22 @@ test('life grid opens an accessible local-data week detail on pointer and keyboa
         applicationScript.indexOf('// ==================== COUNTDOWN')
     );
     assert.match(weekDetailSource, /title\.textContent = event\.title/);
-    assert.doesNotMatch(weekDetailSource, /immichGet|fetchPhotosForDate|innerHTML\s*=\s*event/);
+    assert.doesNotMatch(weekDetailSource, /innerHTML\s*=\s*event/);
+    assert.match(weekDetailSource, /async function loadWeekMemories/);
+    assert.match(weekDetailSource, /\/members\/\$\{encodeURIComponent\(requestedMemberId\)\}\/weeks\/\$\{requestedWeek\}\/memories\?limit=9/);
+    assert.match(weekDetailSource, /selectedWeekIndex !== requestedWeek/);
+    assert.match(weekDetailSource, /weekMemoryRequestSequence \+= 1/);
+    assert.match(applicationScript, /appendMemoryAssetButtons\(gallery, weekMemoryAssets, 'week'/);
+    assert.match(html, /grid-cols-2 sm:grid-cols-3/);
+    assert.match(html, /照片仅按需读取压缩缩略图与只读预览，不下载原图/);
+    const keyboardSource = applicationScript.slice(
+        applicationScript.indexOf('function initKeyboard'),
+        applicationScript.indexOf('// ==================== API CLIENT')
+    );
+    assert.ok(
+        keyboardSource.indexOf("const memoryPreview = document.getElementById('memoryPreviewOverlay')") <
+        keyboardSource.indexOf("const weekDetail = document.getElementById('weekDetailOverlay')")
+    );
 });
 
 test('life grid legend separates time state from milestone and event shapes', () => {

@@ -946,6 +946,46 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earlies
     };
 }
 
+function selectWeeklyPersonMemories(candidates, linkedPersonIds, limit, earliestCaptureTime) {
+    const base = selectPersonFocusedMemories(
+        candidates,
+        linkedPersonIds,
+        candidates.length,
+        earliestCaptureTime
+    );
+    const byDay = new Map();
+    for (const candidate of base.selected) {
+        const dayKey = new Date(candidate.captureTime).toISOString().slice(0, 10);
+        if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+        byDay.get(dayKey).push(candidate);
+    }
+    const days = [...byDay.keys()].sort();
+    const selected = [];
+    while (selected.length < limit) {
+        let added = false;
+        for (const day of days) {
+            const candidate = byDay.get(day).shift();
+            if (!candidate) continue;
+            selected.push(candidate);
+            added = true;
+            if (selected.length >= limit) break;
+        }
+        if (!added) break;
+    }
+    selected.sort((a, b) => a.captureTime - b.captureTime || String(a.asset.id).localeCompare(String(b.asset.id)));
+    return { ...base, selected };
+}
+
+function parseDateOnlyUtc(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const timestamp = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    const date = new Date(timestamp);
+    if (date.getUTCFullYear() !== Number(match[1]) || date.getUTCMonth() !== Number(match[2]) - 1 ||
+        date.getUTCDate() !== Number(match[3])) return null;
+    return date;
+}
+
 // GET /api/immich/on-this-day?month=&day=&limit=5&memberId= — person-focused memories across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     if (!IMMICH_MEMORIES_ENABLED) {
@@ -1049,6 +1089,85 @@ app.get("/api/immich/on-this-day", async (req, res) => {
             deduplicated: selection.deduplicatedCount
         },
         ...(firstFailure ? { partial: true, status: firstFailure.kind } : {})
+    });
+});
+
+// GET /api/members/:id/weeks/:weekIndex/memories?limit=9 — personal week playback
+app.get("/api/members/:id/weeks/:weekIndex/memories", async (req, res) => {
+    if (!IMMICH_MEMORIES_ENABLED) {
+        return res.status(503).json({ error: "Immich memories are disabled", status: "disabled" });
+    }
+    if (!/^[1-9][0-9]{0,11}$/.test(String(req.params.id)) || !/^\d{1,5}$/.test(String(req.params.weekIndex))) {
+        return res.status(400).json({ error: "invalid member or week" });
+    }
+    const member = queryOne(
+        "SELECT birth_date, expected_age, immich_person_id FROM users WHERE id = ?",
+        [req.params.id]
+    );
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const birthDate = parseDateOnlyUtc(member.birth_date);
+    if (!birthDate) return res.status(409).json({ error: "Member birth date required" });
+    const weekIndex = Number.parseInt(req.params.weekIndex, 10);
+    const totalWeeks = Math.max(1, Number(member.expected_age) || 80) * 52;
+    if (weekIndex < 0 || weekIndex >= totalWeeks) {
+        return res.status(400).json({ error: "week outside member lifespan" });
+    }
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 9) : 9;
+    const start = new Date(birthDate.getTime() + weekIndex * 7 * 86400000);
+    const end = new Date(start.getTime() + 6 * 86400000);
+    const startKey = start.toISOString().slice(0, 10);
+    const endKey = end.toISOString().slice(0, 10);
+    const personId = member.immich_person_id && member.immich_person_id.trim();
+    if (!personId) {
+        res.set('Cache-Control', 'private, max-age=300');
+        return res.json({
+            assets: [], range: { start: startKey, end: endKey },
+            selection: {
+                mode: "linked-member-week", linkedPeople: 0,
+                candidates: 0, personFocused: 0, deduplicated: 0
+            }
+        });
+    }
+
+    const candidateSize = Math.min(Math.max(limit * 8, 40), 100);
+    const result = await immichFetch("/api/search/metadata", {
+        method: "POST",
+        body: {
+            page: 1,
+            size: candidateSize,
+            takenAfter: `${startKey}T00:00:00.000Z`,
+            takenBefore: `${endKey}T23:59:59.999Z`,
+            type: "IMAGE",
+            personIds: [personId],
+            withExif: true,
+            withPeople: true
+        }
+    });
+    if (!result.ok) return sendImmichFailure(res, result, "week memories");
+    const items = (result.data.assets && result.data.assets.items) || [];
+    const candidates = items.map(asset => ({
+        asset,
+        year: new Date(memoryCaptureTime(asset) || start.getTime()).getUTCFullYear()
+    }));
+    const selection = selectWeeklyPersonMemories(candidates, new Set([personId]), limit, birthDate.getTime());
+    res.set('Cache-Control', 'private, max-age=300');
+    res.json({
+        assets: selection.selected.map(({ asset, captureTime }) => ({
+            id: asset.id,
+            fileCreatedAt: asset.fileCreatedAt,
+            capturedAt: new Date(captureTime).toISOString(),
+            date: new Date(captureTime).toISOString().slice(0, 10),
+            type: asset.type
+        })),
+        range: { start: startKey, end: endKey },
+        selection: {
+            mode: "linked-member-week",
+            linkedPeople: 1,
+            candidates: candidates.length,
+            personFocused: selection.focusedCount,
+            deduplicated: selection.deduplicatedCount
+        }
     });
 });
 
