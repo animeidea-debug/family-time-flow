@@ -7,7 +7,7 @@
 
 ## Current state
 
-- Production runs commit `2088447afdc0d3117f7e55ac30a3b11b51d3fcbf`
+- Production runs commit `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -39,14 +39,19 @@
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
   backgrounds. Desktop and 390px mobile layouts were visually verified.
-- The fixed-row week-grid release is deployed. Production verification
-  confirmed 4,160 week cells for the active member, 52-column year rows,
-  week 52/53 crossing into separate rows, the family-event legend, current-week
-  focus/recentering, and a clean browser console. The active member had no local
-  events, so the production event underline remains a user batch-check item;
-  its marker, accessible count, and detail display passed isolated browser
-  verification. Color remains reserved for elapsed/current/future time, a white
-  diamond marks milestones, and a dark underline marks local family events.
+- The fit-width week-grid release is deployed. Production verification
+  confirmed 4,160 week cells for the active member, 52-column year rows, no
+  horizontal overflow in desktop default, desktop full-row focus, or 390px
+  mobile layouts, removal of the old percentage zoom controls, and a clean
+  browser error console. Color remains reserved for elapsed/current/future
+  time, a white diamond marks milestones, and a dark underline marks local
+  family events.
+- Production batch verification now covers all four household members. Each
+  member retained 4,160 cells, one current week, keyboard current-week location,
+  Arrow-key movement, Enter/Esc week detail, restored focus, and overflow-free
+  desktop default/full-row and 390px mobile layouts. The one real event marker
+  opened the “中考” detail for 陈婧文 on both desktop and mobile; the 390px
+  dialog remained within the viewport and the browser error log stayed empty.
 - Personal and household navigation now resets the page to the top. Members
   without a target still receive no fabricated countdown, and identity tags
   remain manually editable after Immich import.
@@ -60,44 +65,24 @@
   NAS-hosted assets, no external script or stylesheet elements, and no browser
   warnings or errors. The committed bundle is protected by a rebuild-and-hash
   comparison in `npm test`.
-- PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
-  regression), PR #7 (first-member polish), PR #9 (additional-member picker),
-  PR #11 (readability and picker clarity), PR #14 (offline frontend assets),
-  PR #16 (read-only “On This Day” memories), and PR #17 (independent memory
-  capability hardening), and PR #18 (accessible week detail and unified grid
-  semantics) are merged into `main`. The existing two experimental HTML files
-  remain untracked and excluded from release.
+- The reviewed baseline and week-grid improvements are included in `main`.
+  The existing two experimental HTML files remain untracked and excluded from
+  release.
 
 ## Active work
 
-- Branch `codex/current-week-event-markers` contains and has deployed commit
-  `2088447afdc0d3117f7e55ac30a3b11b51d3fcbf`. It fixes every row at 52 weeks
-  while zooming only the physical grid size, adds an explicit “locate current
-  week” control, and marks weeks containing local family events with a dark
-  underline rather than another competing color. Async event loading rebuilds
-  the markers and preserves an open week-detail dialog's focus target.
-- The branch's validated fit-width follow-up replaces the 75%/100%/150% in-card
-  zoom controls with an always-fit-width overview. Desktop can expand the life
-  grid across the full dashboard row; 390px mobile retains the complete 52-week
-  row without horizontal scrolling and continues to use the week-detail dialog
-  for precise reading. Isolated browser verification covered default,
-  expanded, collapsed, event-detail, and mobile states with an empty error
-  console. The follow-up passes all 23 frontend contracts, all 24 backend
-  integration tests, backend syntax validation, frontend asset rebuild/hash
-  verification, and `git diff --check`.
+- Branch `codex/current-week-event-markers` contains deployed commit
+  `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`. It keeps every row at 52 weeks,
+  replaces in-card percentage zoom with fit-width and desktop full-row focus
+  modes, retains “locate current week”, and marks local family events with a
+  dark underline. Async event loading rebuilds markers and preserves an open
+  week-detail dialog's focus target.
 - The release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
-  rebuild/hash verification, and `git diff --check`. Isolated browser checks at
-  desktop and 390×844 covered the deployed zoom behavior, unchanged 52-week
-  rows, the event marker and event detail, current-week focus/recentering,
-  mobile navigation, and an empty warning/error console. No production or
-  Immich data was used.
+  rebuild/hash verification, and `git diff --check`.
 - `nas-deploy status` and `nas-deploy doctor` passed after release. The NAS
-  created the required pre-release SQLite backup before the atomic switch;
-  rollback remains `nas-deploy rollback family-time-flow`.
-- `main` is merged through PR #18. Production is intentionally one reviewed
-  feature commit ahead on `codex/current-week-event-markers` until the user
-  completes the batch interaction check and the branch is merged.
+  created `/app/data/backups/ftf-pre-release-20260901-142848.db` before the
+  atomic switch; rollback remains `nas-deploy rollback family-time-flow`.
 - No code or infrastructure blocker remains for current household use.
 - The production household has four user-created members and one real event;
   the agent did not create synthetic production records.
@@ -113,19 +98,13 @@
 
 ## Next steps
 
-1. Deploy the validated fit-width/focus-mode follow-up only after explicit
-   approval through the NAS-owned immutable-SHA release command.
-2. Batch-verify all members in desktop default/expanded and 390px mobile views,
-   including current-week location, event-marked details, and keyboard focus.
-3. Review and merge `codex/current-week-event-markers` after the batch check;
-   production can remain on the immutable reviewed SHA meanwhile.
-4. Observe “On This Day” during normal family use before proposing any broader
+1. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
-5. Verify an event edit when a real change is needed; exercise deletion only
+2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-6. Let the user add any remaining household members and complete missing birth
+3. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-7. Keep the unauthenticated API on the trusted LAN; review authentication before
+4. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
