@@ -944,12 +944,12 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
     };
 }
 
-// GET /api/immich/on-this-day?month=&day=&limit=5 — person-focused memories across years
+// GET /api/immich/on-this-day?month=&day=&limit=5&memberId= — person-focused memories across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     if (!IMMICH_MEMORIES_ENABLED) {
         return res.status(503).json({ error: "Immich memories are disabled", status: "disabled" });
     }
-    const { month, day, limit } = req.query;
+    const { month, day, limit, memberId } = req.query;
     const now = new Date();
     const m = month === undefined ? now.getMonth() + 1 : Number.parseInt(month, 10);
     const d = day === undefined ? now.getDate() : Number.parseInt(day, 10);
@@ -969,15 +969,29 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         const candidate = new Date(Date.UTC(y, m - 1, d));
         return candidate.getUTCMonth() === m - 1 && candidate.getUTCDate() === d;
     });
-    const linkedPersonIds = new Set(queryAll(
-        "SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''"
-    ).map(row => row.immich_person_id));
+    let selectionMode = "linked-household-people";
+    let linkedPersonIds;
+    if (memberId !== undefined) {
+        if (!/^[1-9][0-9]{0,11}$/.test(String(memberId))) {
+            return res.status(400).json({ error: "invalid member id" });
+        }
+        const member = queryOne("SELECT immich_person_id FROM users WHERE id = ?", [memberId]);
+        if (!member) return res.status(404).json({ error: "Member not found" });
+        selectionMode = "linked-member-person";
+        linkedPersonIds = new Set(member.immich_person_id && member.immich_person_id.trim()
+            ? [member.immich_person_id]
+            : []);
+    } else {
+        linkedPersonIds = new Set(queryAll(
+            "SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''"
+        ).map(row => row.immich_person_id));
+    }
     if (!linkedPersonIds.size) {
         res.set('Cache-Control', 'private, max-age=300');
         return res.json({
             assets: [], month: m, day: d,
             selection: {
-                mode: "linked-household-people",
+                mode: selectionMode,
                 linkedPeople: 0,
                 candidates: 0,
                 personFocused: 0,
@@ -1021,7 +1035,7 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         month: m,
         day: d,
         selection: {
-            mode: "linked-household-people",
+            mode: selectionMode,
             linkedPeople: linkedPersonIds.size,
             candidates: allAssets.length,
             personFocused: selection.focusedCount,

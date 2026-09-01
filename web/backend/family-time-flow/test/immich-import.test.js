@@ -273,6 +273,11 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: '回忆筛选测试成员乙', immich_person_id: 'person-2' })
     }).then(response => response.json());
+    const unlinkedCreated = await fetch(`${baseUrl}/users`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '未关联照片测试成员' })
+    }).then(response => response.json());
     try {
         const response = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2`);
         assert.equal(response.status, 200);
@@ -296,6 +301,33 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.equal(lastSearchBody.withPeople, true);
         assert.equal(lastSearchBody.withExif, true);
         assert.equal(lastSearchBody.size, 40);
+
+        const personalResponse = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2&memberId=${secondCreated.id}`);
+        assert.equal(personalResponse.status, 200);
+        const personalBody = await personalResponse.json();
+        assert.equal(personalBody.assets.length, 2);
+        assert.equal(personalBody.assets.every(asset => asset.id.includes('group-')), true);
+        assert.deepEqual(personalBody.selection, {
+            mode: 'linked-member-person',
+            linkedPeople: 1,
+            candidates: 35,
+            personFocused: 10,
+            deduplicated: 5
+        });
+        const unlinkedPersonal = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&memberId=${unlinkedCreated.id}`);
+        assert.equal(unlinkedPersonal.status, 200);
+        assert.deepEqual(await unlinkedPersonal.json(), {
+            assets: [], month: 1, day: 2,
+            selection: {
+                mode: 'linked-member-person', linkedPeople: 0,
+                candidates: 0, personFocused: 0, deduplicated: 0
+            }
+        });
+
+        const invalidMember = await fetch(`${baseUrl}/immich/on-this-day?memberId=not-a-member`);
+        assert.equal(invalidMember.status, 400);
+        const missingMember = await fetch(`${baseUrl}/immich/on-this-day?memberId=999999`);
+        assert.equal(missingMember.status, 404);
 
         const partial = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=3&limit=2`);
         assert.equal(partial.status, 200);
@@ -323,6 +355,7 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.equal(denied.status, 502);
         assert.deepEqual(await denied.json(), { error: 'Immich memories unavailable', status: 'unauthorized' });
     } finally {
+        await fetch(`${baseUrl}/users/${unlinkedCreated.id}`, { method: 'DELETE' });
         await fetch(`${baseUrl}/users/${secondCreated.id}`, { method: 'DELETE' });
         await fetch(`${baseUrl}/users/${created.id}`, { method: 'DELETE' });
     }

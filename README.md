@@ -191,6 +191,9 @@ data explicitly.
   member; personless photos are not used as filler
 - Removes exact duplicates and same-person camera bursts, then balances the
   limited gallery across years
+- Member pages request the same read-only selector by Family Time Flow member
+  ID and show a compact personal gallery containing only that member; the
+  backend resolves the Immich link without accepting a person ID from the UI
 - Shows compressed thumbnails and a larger read-only preview without original download
 - Keeps explicit disabled, loading, empty, partial, and unavailable states
 

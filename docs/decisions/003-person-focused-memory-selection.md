@@ -32,6 +32,10 @@ household members.
   gallery.
 - Continue returning only the minimal public asset DTO. Selection diagnostics
   expose counts and the mode name, never person names, file paths, or secrets.
+- Keep the household selector as the default. An optional Family Time Flow
+  member ID selects only that member's server-side Immich link and returns mode
+  `linked-member-person`; the browser never supplies the Immich person ID for
+  personal-memory searches.
 
 ## Consequences
 
@@ -42,5 +46,7 @@ household members.
   minutes.
 - Face-recognition misses or incorrect Immich person links affect selection
   quality but never block household data or mutate Immich.
+- Rapid member switching may leave older network requests in flight, so the
+  personal UI ignores any response that no longer matches the active member.
 - The existing thumbnail/preview-only permission and feature-flag boundaries
   remain unchanged.

@@ -862,6 +862,26 @@
             <!-- Meso + Micro Column -->
             <div id="personalSideColumn" class="flex flex-col gap-4 sm:gap-6">
 
+                <section id="personalMemorySection" class="emma-card p-4 sm:p-5"
+                    aria-labelledby="personalMemoryHeading">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 id="personalMemoryHeading" class="text-lg sm:text-xl font-black text-theme-text">个人照片记忆</h2>
+                        <button id="personalMemoryRefresh" onclick="loadPersonalOnThisDayMemories({ memberId: activeUserId, force: true })"
+                            class="btn btn-ghost btn-xs font-bold hidden">刷新</button>
+                    </div>
+                    <div id="personalMemoryStatus"
+                        class="rounded-2xl bg-theme-muted/70 border-2 border-theme-border p-4 text-center">
+                        <div class="text-2xl mb-2">📷</div>
+                        <p id="personalMemoryTitle" class="text-sm font-bold text-theme-text">正在准备个人回忆</p>
+                        <p id="personalMemoryDetail" class="text-xs text-theme-text/45 mt-1">只显示与当前成员有关的往年今日照片。</p>
+                        <button id="personalMemoryRetry" onclick="loadPersonalOnThisDayMemories({ memberId: activeUserId, force: true })"
+                            class="btn btn-ghost btn-xs font-bold mt-3 hidden">重新加载</button>
+                    </div>
+                    <div id="personalMemoryGallery" class="hidden grid grid-cols-2 gap-2" aria-live="polite"></div>
+                    <p id="personalMemorySelectionNote" class="hidden text-[10px] text-theme-text/55 mt-2">只显示当前成员入镜的照片，并自动避开重复与连拍。</p>
+                    <p id="personalMemoryPartial" class="hidden text-[10px] text-theme-text/45 mt-2">部分年份暂时无法读取，已显示可用回忆。</p>
+                </section>
+
                 <!-- Milestone Timeline (visible when Student theme) -->
                 <section id="milestoneSection" class="emma-card p-4 sm:p-5 hidden">
                     <h2 class="text-lg sm:text-xl font-black text-theme-text mb-2 flex items-center gap-2">
@@ -2032,6 +2052,12 @@
         let onThisDayPartial = false;
         let onThisDaySelection = null;
         let onThisDayDateKey = null;
+        let personalMemoryState = 'idle';
+        let personalMemoryAssets = [];
+        let personalMemoryPartial = false;
+        let personalMemorySelection = null;
+        let personalMemoryDateKey = null;
+        let personalMemoryMemberId = null;
         let memoryPreviewTrigger = null;
 
         function renderImmichStatus() {
@@ -2053,6 +2079,7 @@
                 status.className = 'text-theme-text/50';
             }
             renderOnThisDayMemories();
+            renderPersonalOnThisDayMemories();
             updateTicker();
         }
 
@@ -2060,6 +2087,37 @@
             document.getElementById('immichMemoryTitle').textContent = title;
             document.getElementById('immichMemoryDetail').textContent = detail;
             document.getElementById('immichMemoryRetry').classList.toggle('hidden', !retry);
+        }
+
+        function appendMemoryAssetButtons(gallery, assets, scope, personName = '') {
+            assets.forEach(asset => {
+                const memoryLabel = scope === 'personal'
+                    ? `${asset.year} 年与${personName || '当前成员'}有关的回忆`
+                    : `${asset.year} 年的家庭回忆`;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'relative h-28 overflow-hidden rounded-xl border-2 border-theme-border bg-theme-muted focus:outline-none';
+                button.setAttribute('aria-label', `查看 ${memoryLabel}`);
+                button.addEventListener('click', () => openMemoryPreview(asset.id, scope));
+
+                const image = document.createElement('img');
+                image.className = 'h-28 w-full object-cover';
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                image.alt = memoryLabel;
+                image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(asset.id)}`;
+                image.addEventListener('error', () => {
+                    button.disabled = true;
+                    button.classList.add('opacity-50');
+                    image.alt = '缩略图暂时不可用';
+                }, { once: true });
+
+                const year = document.createElement('span');
+                year.className = 'absolute bottom-1.5 left-1.5 rounded-full bg-slate-950/75 px-2 py-0.5 text-[10px] font-black text-white';
+                year.textContent = `${asset.year} 年`;
+                button.append(image, year);
+                gallery.appendChild(button);
+            });
         }
 
         function renderOnThisDayMemories() {
@@ -2104,31 +2162,7 @@
             gallery.classList.remove('hidden');
             selectionNote.classList.toggle('hidden', onThisDaySelection?.mode !== 'linked-household-people');
             partial.classList.toggle('hidden', !onThisDayPartial);
-            onThisDayAssets.forEach(asset => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'relative h-28 overflow-hidden rounded-xl border-2 border-theme-border bg-theme-muted focus:outline-none';
-                button.setAttribute('aria-label', `查看 ${asset.year} 年的家庭回忆`);
-                button.addEventListener('click', () => openMemoryPreview(asset.id));
-
-                const image = document.createElement('img');
-                image.className = 'h-28 w-full object-cover';
-                image.loading = 'lazy';
-                image.decoding = 'async';
-                image.alt = `${asset.year} 年的家庭回忆`;
-                image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(asset.id)}`;
-                image.addEventListener('error', () => {
-                    button.disabled = true;
-                    button.classList.add('opacity-50');
-                    image.alt = '缩略图暂时不可用';
-                }, { once: true });
-
-                const year = document.createElement('span');
-                year.className = 'absolute bottom-1.5 left-1.5 rounded-full bg-slate-950/75 px-2 py-0.5 text-[10px] font-black text-white';
-                year.textContent = `${asset.year} 年`;
-                button.append(image, year);
-                gallery.appendChild(button);
-            });
+            appendMemoryAssetButtons(gallery, onThisDayAssets, 'household');
         }
 
         async function loadOnThisDayMemories({ force = false } = {}) {
@@ -2164,14 +2198,115 @@
             updateTicker();
         }
 
-        function openMemoryPreview(assetId) {
-            const asset = onThisDayAssets.find(item => item.id === assetId);
+        function setPersonalMemoryPanelStatus(title, detail, retry = false) {
+            document.getElementById('personalMemoryTitle').textContent = title;
+            document.getElementById('personalMemoryDetail').textContent = detail;
+            document.getElementById('personalMemoryRetry').classList.toggle('hidden', !retry);
+        }
+
+        function renderPersonalOnThisDayMemories() {
+            const status = document.getElementById('personalMemoryStatus');
+            const gallery = document.getElementById('personalMemoryGallery');
+            const refresh = document.getElementById('personalMemoryRefresh');
+            const selectionNote = document.getElementById('personalMemorySelectionNote');
+            const partial = document.getElementById('personalMemoryPartial');
+            if (!status || !gallery) return;
+            gallery.innerHTML = '';
+            gallery.classList.add('hidden');
+            status.classList.remove('hidden');
+            selectionNote.classList.add('hidden');
+            partial.classList.add('hidden');
+            refresh.classList.toggle('hidden', !immichConfigured || !immichMemoriesEnabled || personalMemoryState === 'loading');
+
+            if (!immichConfigured) {
+                setPersonalMemoryPanelStatus('照片服务未连接', '个人时间功能可以独立使用，照片服务准备好后再连接。');
+                return;
+            }
+            if (!immichMemoriesEnabled) {
+                setPersonalMemoryPanelStatus('人物档案已连接', '个人照片回忆当前尚未启用。');
+                return;
+            }
+            if (personalMemoryState === 'loading') {
+                setPersonalMemoryPanelStatus('正在寻找个人回忆', '只寻找当前成员入镜的照片，并自动避开重复与连拍。');
+                return;
+            }
+            if (personalMemoryState === 'error') {
+                setPersonalMemoryPanelStatus('个人回忆暂时无法读取', '个人资料和家庭数据不受影响，可以稍后重试。', true);
+                return;
+            }
+            if (personalMemoryState !== 'loaded') {
+                setPersonalMemoryPanelStatus('那年今日', '进入成员页面后，会寻找过去五年与此人有关的同日照片。');
+                return;
+            }
+            if (!personalMemoryAssets.length) {
+                const unlinked = personalMemorySelection?.linkedPeople === 0;
+                setPersonalMemoryPanelStatus(
+                    unlinked ? '尚未关联照片人物' : '今天没有找到个人回忆',
+                    unlinked ? '可在添加成员流程中从 Immich 选择对应人物。' : '只展示当前成员入镜且去重后的照片，其他日期仍可能有回忆。'
+                );
+                return;
+            }
+
+            status.classList.add('hidden');
+            gallery.classList.remove('hidden');
+            selectionNote.classList.toggle('hidden', personalMemorySelection?.mode !== 'linked-member-person');
+            partial.classList.toggle('hidden', !personalMemoryPartial);
+            appendMemoryAssetButtons(gallery, personalMemoryAssets, 'personal', state.profile.name);
+        }
+
+        async function loadPersonalOnThisDayMemories({ memberId, force = false } = {}) {
+            const requestedMemberId = String(memberId || '');
+            if (!/^[1-9][0-9]{0,11}$/.test(requestedMemberId)) return;
+            const now = new Date();
+            const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+            if (!force && personalMemoryState === 'loaded' &&
+                personalMemoryMemberId === requestedMemberId && personalMemoryDateKey === dateKey) return;
+
+            personalMemoryMemberId = requestedMemberId;
+            personalMemoryState = 'idle';
+            personalMemoryAssets = [];
+            personalMemoryPartial = false;
+            personalMemorySelection = null;
+            renderPersonalOnThisDayMemories();
+            if (!immichConfigured || !immichMemoriesEnabled) return;
+
+            personalMemoryState = 'loading';
+            renderPersonalOnThisDayMemories();
+            const path = `/on-this-day?month=${now.getMonth() + 1}&day=${now.getDate()}&limit=4&memberId=${encodeURIComponent(requestedMemberId)}`;
+            const data = await immichGet(path, { timeoutMs: 10000 });
+            if (personalMemoryMemberId !== requestedMemberId || String(activeUserId) !== requestedMemberId) return;
+            if (!data || !Array.isArray(data.assets)) {
+                personalMemoryState = 'error';
+                personalMemoryAssets = [];
+                personalMemoryPartial = false;
+                personalMemorySelection = null;
+            } else {
+                personalMemoryAssets = data.assets.filter(asset =>
+                    asset && typeof asset.id === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(asset.id) &&
+                    Number.isInteger(asset.year)
+                );
+                personalMemoryPartial = data.partial === true;
+                personalMemorySelection = data.selection && data.selection.mode === 'linked-member-person'
+                    ? data.selection
+                    : null;
+                personalMemoryDateKey = dateKey;
+                personalMemoryState = 'loaded';
+            }
+            renderPersonalOnThisDayMemories();
+        }
+
+        function openMemoryPreview(assetId, scope = 'household') {
+            const source = scope === 'personal' ? personalMemoryAssets : onThisDayAssets;
+            const asset = source.find(item => item.id === assetId);
             if (!asset) return;
             const overlay = document.getElementById('memoryPreviewOverlay');
             const image = document.getElementById('memoryPreviewImage');
             const caption = document.getElementById('memoryPreviewCaption');
+            document.getElementById('memoryPreviewTitle').textContent = scope === 'personal'
+                ? `${state.profile.name || '成员'}的回忆`
+                : '家庭回忆';
             memoryPreviewTrigger = document.activeElement;
-            caption.textContent = `${asset.year} 年 · 只读预览`;
+            caption.textContent = `${asset.year} 年 · ${scope === 'personal' ? '个人' : '家庭'}只读预览`;
             image.classList.remove('hidden');
             image.onload = () => image.classList.remove('hidden');
             image.onerror = () => {
@@ -2700,6 +2835,7 @@
             state.events = [];
             showPersonalView();
             document.getElementById('personalViewName').textContent = state.profile.name || '个人时间';
+            document.getElementById('personalMemoryHeading').textContent = `${state.profile.name || '成员'}的照片记忆`;
             const age = state.profile.birthDate
                 ? Math.max(0, Math.floor((Date.now() - new Date(state.profile.birthDate).getTime()) / 31557600000))
                 : null;
@@ -2715,6 +2851,7 @@
             renderUserButtons();
             updateUserMenu();
             showToast(`👤 切换到 ${state.profile.name || '用户'}`, 1200);
+            loadPersonalOnThisDayMemories({ memberId: normalizedId, force: true });
             // Background fetch full user data and date-bound events.
             const [full, events] = await Promise.all([
                 apiGet(`/users/${normalizedId}`),
