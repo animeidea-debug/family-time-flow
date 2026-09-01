@@ -869,6 +869,14 @@ function compareMemoryCandidates(a, b) {
         String(a.asset.id).localeCompare(String(b.asset.id));
 }
 
+function hasSimilarHouseholdPeople(a, b) {
+    const smallerSize = Math.min(a.length, b.length);
+    if (!smallerSize) return false;
+    const bIds = new Set(b);
+    const overlap = a.filter(id => bIds.has(id)).length;
+    return overlap / smallerSize >= 0.5;
+}
+
 function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
     const focused = candidates.flatMap(candidate => {
         const people = Array.isArray(candidate.asset.people) ? candidate.asset.people : [];
@@ -885,7 +893,6 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
     }).sort(compareMemoryCandidates);
 
     const exactKeys = new Set();
-    const burstTimes = new Map();
     const deduplicated = [];
     for (const candidate of focused) {
         const asset = candidate.asset;
@@ -897,15 +904,17 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
         const usableIdentityKeys = identityKeys.filter(Boolean);
         if (usableIdentityKeys.some(key => exactKeys.has(key))) continue;
 
-        const burstKey = `${candidate.year}:${candidate.householdPersonIds.join(",")}`;
-        const times = burstTimes.get(burstKey) || [];
-        if (candidate.captureTime && times.some(time => Math.abs(time - candidate.captureTime) <= MEMORY_BURST_WINDOW_MS)) {
+        const matchesBurst = candidate.captureTime && deduplicated.some(existing =>
+            existing.year === candidate.year &&
+            existing.captureTime &&
+            Math.abs(existing.captureTime - candidate.captureTime) <= MEMORY_BURST_WINDOW_MS &&
+            hasSimilarHouseholdPeople(existing.householdPersonIds, candidate.householdPersonIds)
+        );
+        if (matchesBurst) {
             continue;
         }
 
         usableIdentityKeys.forEach(key => exactKeys.add(key));
-        if (candidate.captureTime) times.push(candidate.captureTime);
-        burstTimes.set(burstKey, times);
         deduplicated.push(candidate);
     }
 

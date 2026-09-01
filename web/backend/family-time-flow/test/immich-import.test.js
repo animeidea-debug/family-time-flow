@@ -87,6 +87,13 @@ before(async () => {
                         exifInfo: { dateTimeOriginal: at('09:05:00') }
                     },
                     {
+                        id: `group-face-variance-${assetYear}`,
+                        fileCreatedAt: at('09:00:45'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-1', name: '家人甲' }],
+                        exifInfo: { dateTimeOriginal: at('09:00:45') }
+                    },
+                    {
                         id: `portrait-${assetYear}`,
                         fileCreatedAt: at('10:00:00'),
                         type: 'IMAGE',
@@ -261,6 +268,11 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: '回忆筛选测试成员', immich_person_id: 'person-1' })
     }).then(response => response.json());
+    const secondCreated = await fetch(`${baseUrl}/users`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '回忆筛选测试成员乙', immich_person_id: 'person-2' })
+    }).then(response => response.json());
     try {
         const response = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&limit=2`);
         assert.equal(response.status, 200);
@@ -268,15 +280,16 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.equal(body.assets.length, 2);
         assert.equal(new Set(body.assets.map(asset => asset.year)).size, 2);
         assert.equal(body.assets.every(asset => asset.id.includes('group-')), true);
+        assert.equal(body.assets.some(asset => asset.id.includes('face-variance')), false);
         assert.equal(body.assets.some(asset => asset.id.includes('landscape')), false);
         assert.equal(body.month, 1);
         assert.equal(body.day, 2);
         assert.equal(body.partial, undefined);
         assert.deepEqual(body.selection, {
             mode: 'linked-household-people',
-            linkedPeople: 1,
-            candidates: 30,
-            personFocused: 25,
+            linkedPeople: 2,
+            candidates: 35,
+            personFocused: 30,
             deduplicated: 15
         });
         assert.equal(lastSearchBody.type, 'IMAGE');
@@ -289,7 +302,7 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.deepEqual(await partial.json(), {
             assets: [], month: 1, day: 3,
             selection: {
-                mode: 'linked-household-people', linkedPeople: 1,
+                mode: 'linked-household-people', linkedPeople: 2,
                 candidates: 4, personFocused: 0, deduplicated: 0
             },
             partial: true,
@@ -301,7 +314,7 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.deepEqual(await empty.json(), {
             assets: [], month: 2, day: 29,
             selection: {
-                mode: 'linked-household-people', linkedPeople: 1,
+                mode: 'linked-household-people', linkedPeople: 2,
                 candidates: 0, personFocused: 0, deduplicated: 0
             }
         });
@@ -310,6 +323,7 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.equal(denied.status, 502);
         assert.deepEqual(await denied.json(), { error: 'Immich memories unavailable', status: 'unauthorized' });
     } finally {
+        await fetch(`${baseUrl}/users/${secondCreated.id}`, { method: 'DELETE' });
         await fetch(`${baseUrl}/users/${created.id}`, { method: 'DELETE' });
     }
 });
