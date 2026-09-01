@@ -8,10 +8,11 @@
 ## Current state
 
 - Production runs commit
-  `0904259138061f67c8c4102111b19155c9767fb9` through the NAS-owned
+  `8c44e23ec2617eec21c76bd73e4e5be89a1891e3` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
-  photo playback inside the accessible week detail.
+  photo playback inside the accessible week detail, bounded Immich pagination,
+  and server-private person links.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
@@ -39,18 +40,27 @@
   1, 4, 1, and 0 eligible photos for the four members; the member whose stored
   birth date is later than every candidate now correctly receives the empty
   state instead of an impossible 2022 face match.
-- Opening a week now performs one bounded personal-photo query by Family Time
+- Opening a week now performs a bounded personal-photo search by Family Time
   Flow member ID and life-week index. The backend computes the seven-day range,
-  resolves the Immich person, removes duplicates and overlapping bursts,
-  balances at most nine results across represented days, and returns them in
-  chronological order. Hovering over the life grid still performs no photo
-  lookup.
+  resolves the Immich person, follows at most three 100-item metadata pages,
+  removes duplicates and overlapping bursts, balances at most nine results
+  across represented days, and returns them in chronological order. Hovering
+  over the life grid still performs no photo lookup.
 - Production API sampling covered four members: representative weeks returned
   6, 9, 1, and 9 eligible photos with valid private selection diagnostics. A
   browser check loaded all nine thumbnails for a photo-rich historical week,
   preserved the correct week after a rapid next/previous sequence, opened the
   read-only preview above the week dialog, restored photo and week-cell focus on
   close, and reported no browser errors.
+- A post-release photo-rich-week check returned 96 candidates instead of the
+  former 72-item request cap, reduced them to 38 after duplicate/burst handling,
+  and displayed nine loaded thumbnails. A second historical week also retained
+  nine items.
+- Ordinary `/users`, `/sync`, `/bootstrap`, and `/household/view` responses were
+  checked in production and contain neither `immich_person_id` nor `personId`.
+  They expose only linked state; member avatars use the private member-ID proxy.
+  Browser QA confirmed a loaded avatar, no old person-thumbnail URL, and a
+  visible “已关联照片人物” state in member settings.
 - Browser verification from the home LAN confirms four persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -127,14 +137,14 @@
   modes, retains “locate current week”, and marks local family events with a
   dark underline. Async event loading rebuilds markers and preserves an open
   week-detail dialog's focus target.
-- The release passed 23 frontend contracts and 24 backend integration tests
+- The privacy and pagination release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`.
-- `nas-deploy status` and `nas-deploy doctor` passed after the week-photo
-  release. The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260901-222055.db` before the atomic
+- `nas-deploy status` and `nas-deploy doctor` passed after the final release.
+  The NAS created readable pre-release SQLite backup
+  `/app/data/backups/ftf-pre-release-20260901-230609.db` before the atomic
   switch; rollback remains `nas-deploy rollback family-time-flow` and currently
-  returns to `29cc19f46d0efcb5f8a6ce7b27f33b4445738390`.
+  returns to `caa028a50ec26397ccb974328cc781bd714508bd`.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
@@ -156,9 +166,10 @@
 ## Next steps
 
 1. Let the family batch-observe household, personal, and click-opened weekly
-   memories across additional dates. Confirm the two-column 390px phone gallery
-   and report any repeated composition or wrong-person match without changing
-   Immich from this application.
+   memories across additional dates. Include photo-rich weeks that require more
+   than one Immich page, confirm the two-column 390px phone gallery, and report
+   any repeated composition or wrong-person match without changing Immich from
+   this application.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth
