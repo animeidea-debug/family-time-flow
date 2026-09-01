@@ -851,7 +851,91 @@ app.get("/api/immich/person-thumb", async (req, res) => {
     }
 });
 
-// GET /api/immich/on-this-day?month=&day=&limit=5 — "On This Day" across years
+const MEMORY_BURST_WINDOW_MS = 90 * 1000;
+
+function memoryCaptureTime(asset) {
+    const raw = asset.exifInfo && asset.exifInfo.dateTimeOriginal
+        ? asset.exifInfo.dateTimeOriginal
+        : asset.fileCreatedAt;
+    const value = Date.parse(raw || "");
+    return Number.isFinite(value) ? value : 0;
+}
+
+function compareMemoryCandidates(a, b) {
+    return Number(Boolean(b.asset.isFavorite)) - Number(Boolean(a.asset.isFavorite)) ||
+        b.householdPersonIds.length - a.householdPersonIds.length ||
+        b.peopleCount - a.peopleCount ||
+        b.captureTime - a.captureTime ||
+        String(a.asset.id).localeCompare(String(b.asset.id));
+}
+
+function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
+    const focused = candidates.flatMap(candidate => {
+        const people = Array.isArray(candidate.asset.people) ? candidate.asset.people : [];
+        const householdPersonIds = [...new Set(people
+            .map(person => person && person.id)
+            .filter(id => linkedPersonIds.has(id)))].sort();
+        if (!householdPersonIds.length) return [];
+        return [{
+            ...candidate,
+            householdPersonIds,
+            peopleCount: people.length,
+            captureTime: memoryCaptureTime(candidate.asset)
+        }];
+    }).sort(compareMemoryCandidates);
+
+    const exactKeys = new Set();
+    const burstTimes = new Map();
+    const deduplicated = [];
+    for (const candidate of focused) {
+        const asset = candidate.asset;
+        const identityKeys = [asset.id ? `asset:${asset.id}` : null];
+        if (asset.duplicateId) {
+            identityKeys.push(`asset:${asset.duplicateId}`, `duplicate:${asset.duplicateId}`);
+        }
+        if (asset.checksum) identityKeys.push(`checksum:${String(asset.checksum)}`);
+        const usableIdentityKeys = identityKeys.filter(Boolean);
+        if (usableIdentityKeys.some(key => exactKeys.has(key))) continue;
+
+        const burstKey = `${candidate.year}:${candidate.householdPersonIds.join(",")}`;
+        const times = burstTimes.get(burstKey) || [];
+        if (candidate.captureTime && times.some(time => Math.abs(time - candidate.captureTime) <= MEMORY_BURST_WINDOW_MS)) {
+            continue;
+        }
+
+        usableIdentityKeys.forEach(key => exactKeys.add(key));
+        if (candidate.captureTime) times.push(candidate.captureTime);
+        burstTimes.set(burstKey, times);
+        deduplicated.push(candidate);
+    }
+
+    const byYear = new Map();
+    for (const candidate of deduplicated) {
+        if (!byYear.has(candidate.year)) byYear.set(candidate.year, []);
+        byYear.get(candidate.year).push(candidate);
+    }
+    const years = [...byYear.keys()].sort((a, b) => b - a);
+    const selected = [];
+    while (selected.length < limit) {
+        let added = false;
+        for (const year of years) {
+            const candidate = byYear.get(year).shift();
+            if (!candidate) continue;
+            selected.push(candidate);
+            added = true;
+            if (selected.length >= limit) break;
+        }
+        if (!added) break;
+    }
+
+    return {
+        selected,
+        focusedCount: focused.length,
+        deduplicatedCount: deduplicated.length
+    };
+}
+
+// GET /api/immich/on-this-day?month=&day=&limit=5 — person-focused memories across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     if (!IMMICH_MEMORIES_ENABLED) {
         return res.status(503).json({ error: "Immich memories are disabled", status: "disabled" });
@@ -876,15 +960,34 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         const candidate = new Date(Date.UTC(y, m - 1, d));
         return candidate.getUTCMonth() === m - 1 && candidate.getUTCDate() === d;
     });
+    const linkedPersonIds = new Set(queryAll(
+        "SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''"
+    ).map(row => row.immich_person_id));
+    if (!linkedPersonIds.size) {
+        res.set('Cache-Control', 'private, max-age=300');
+        return res.json({
+            assets: [], month: m, day: d,
+            selection: {
+                mode: "linked-household-people",
+                linkedPeople: 0,
+                candidates: 0,
+                personFocused: 0,
+                deduplicated: 0
+            }
+        });
+    }
+    const candidateSize = Math.min(Math.max(lim * 8, 40), 100);
     const results = await Promise.all(years.map(async y => {
         const dateStr = `${y}-${pad(m)}-${pad(d)}`;
         const result = await immichFetch("/api/search/metadata", {
             method: "POST",
             body: {
-                page: 1, size: lim,
+                page: 1, size: candidateSize,
                 takenAfter: `${dateStr}T00:00:00.000Z`,
                 takenBefore: `${dateStr}T23:59:59.999Z`,
-                type: "IMAGE"
+                type: "IMAGE",
+                withExif: true,
+                withPeople: true
             }
         });
         return { year: y, result };
@@ -895,18 +998,26 @@ app.get("/api/immich/on-this-day", async (req, res) => {
     const allAssets = results.flatMap(({ year: assetYear, result }) => {
         if (!result.ok) return [];
         const items = (result.data.assets && result.data.assets.items) || [];
-        return items.map(asset => ({
+        return items.map(asset => ({ asset, year: assetYear }));
+    });
+    const selection = selectPersonFocusedMemories(allAssets, linkedPersonIds, lim);
+    res.set('Cache-Control', 'private, max-age=300');
+    res.json({
+        assets: selection.selected.map(({ asset, year: assetYear }) => ({
             id: asset.id,
             fileCreatedAt: asset.fileCreatedAt,
             year: assetYear,
             type: asset.type
-        }));
-    }).sort((a, b) => String(b.fileCreatedAt).localeCompare(String(a.fileCreatedAt)));
-    res.set('Cache-Control', 'private, max-age=300');
-    res.json({
-        assets: allAssets.slice(0, lim),
+        })),
         month: m,
         day: d,
+        selection: {
+            mode: "linked-household-people",
+            linkedPeople: linkedPersonIds.size,
+            candidates: allAssets.length,
+            personFocused: selection.focusedCount,
+            deduplicated: selection.deduplicatedCount
+        },
         ...(firstFailure ? { partial: true, status: firstFailure.kind } : {})
     });
 });

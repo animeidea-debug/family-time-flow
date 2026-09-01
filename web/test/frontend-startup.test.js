@@ -147,7 +147,8 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
 test('on-this-day memories are feature flagged, retryable, and preview-only', () => {
     for (const id of [
         'immichMemoryStatus', 'immichMemoryGallery', 'immichMemoryRetry',
-        'immichMemoryRefresh', 'memoryPreviewOverlay', 'memoryPreviewImage'
+        'immichMemoryRefresh', 'immichMemorySelectionNote',
+        'memoryPreviewOverlay', 'memoryPreviewImage'
     ]) {
         assert.match(html, new RegExp(`id="${id}"`));
     }
@@ -164,6 +165,9 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /memoryPreviewTrigger\.focus\(\)/);
     assert.match(applicationScript, /if \(dateKey !== onThisDayDateKey\) force = true/);
     assert.match(applicationScript, /if \(!force && onThisDayState === 'loaded'\) return/);
+    assert.match(applicationScript, /data\.selection && data\.selection\.mode === 'linked-household-people'/);
+    assert.match(html, /优先显示已关联家人入镜的照片，并自动避开重复与连拍/);
+    assert.match(applicationScript, /找到 \$\{onThisDayAssets\.length\} 段去重后的家人回忆/);
     assert.doesNotMatch(applicationScript, /asset-thumb[^\n]+size=original/);
     assert.doesNotMatch(applicationScript, /asset\.download/);
 });

@@ -187,6 +187,10 @@ data explicitly.
 #### "On This Day" Time Capsule
 - Feature-flagged household card and persistent bottom ticker
 - Searches matching calendar days across the previous five years
+- Keeps only photos containing an Immich person linked to a created household
+  member; personless photos are not used as filler
+- Removes exact duplicates and same-person camera bursts, then balances the
+  limited gallery across years
 - Shows compressed thumbnails and a larger read-only preview without original download
 - Keeps explicit disabled, loading, empty, partial, and unavailable states
 

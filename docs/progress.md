@@ -71,6 +71,18 @@
 
 ## Active work
 
+- Branch `codex/person-focused-memories` contains a validated, not-yet-deployed follow-up
+  for “On This Day” selection quality. It keeps only photos containing linked
+  household people, removes duplicate groups and 90-second same-person bursts,
+  prefers stronger family-person matches, and balances results across years.
+  Personless photos are deliberately not used as filler. All 23 frontend
+  contracts and 24 backend integration tests pass.
+- A read-only production metadata audit sampled 34 matching assets across five
+  years: 19 had no linked household person, and seven of the 15 person-focused
+  candidates were short bursts. Eight remained after visible person/burst
+  rules, enough for the six-item gallery without unrelated fallback. The
+  anonymized evidence is in
+  `docs/reports/2026-09-01-memory-selection-audit.md`.
 - Branch `codex/current-week-event-markers` contains deployed commit
   `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`. It keeps every row at 52 weeks,
   replaces in-card percentage zoom with fit-width and desktop full-row focus
@@ -98,13 +110,15 @@
 
 ## Next steps
 
-1. Observe “On This Day” during normal family use before proposing any broader
-   photo timeline or week-hover scope.
-2. Verify an event edit when a real change is needed; exercise deletion only
+1. Review the pushed person-focused selector and deploy it by immutable SHA only
+   after separate explicit deployment approval.
+2. Observe the improved “On This Day” results after release before proposing any
+   broader photo timeline or week-hover scope.
+3. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-3. Let the user add any remaining household members and complete missing birth
+4. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-4. Keep the unauthenticated API on the trusted LAN; review authentication before
+5. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points

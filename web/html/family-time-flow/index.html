@@ -807,6 +807,7 @@
                             class="btn btn-ghost btn-xs font-bold mt-3 hidden">重新加载</button>
                     </div>
                     <div id="immichMemoryGallery" class="hidden grid grid-cols-2 gap-2" aria-live="polite"></div>
+                    <p id="immichMemorySelectionNote" class="hidden text-[10px] text-theme-text/55 mt-2">优先显示已关联家人入镜的照片，并自动避开重复与连拍。</p>
                     <p id="immichMemoryPartial" class="hidden text-[10px] text-theme-text/45 mt-2">部分年份暂时无法读取，已显示可用回忆。</p>
                 </section>
             </div>
@@ -2029,6 +2030,7 @@
         let onThisDayState = 'idle';
         let onThisDayAssets = [];
         let onThisDayPartial = false;
+        let onThisDaySelection = null;
         let onThisDayDateKey = null;
         let memoryPreviewTrigger = null;
 
@@ -2064,10 +2066,12 @@
             const status = document.getElementById('immichMemoryStatus');
             const gallery = document.getElementById('immichMemoryGallery');
             const refresh = document.getElementById('immichMemoryRefresh');
+            const selectionNote = document.getElementById('immichMemorySelectionNote');
             const partial = document.getElementById('immichMemoryPartial');
             gallery.innerHTML = '';
             gallery.classList.add('hidden');
             status.classList.remove('hidden');
+            selectionNote.classList.add('hidden');
             partial.classList.add('hidden');
             refresh.classList.toggle('hidden', !immichConfigured || !immichMemoriesEnabled || onThisDayState === 'loading');
 
@@ -2080,7 +2084,7 @@
                 return;
             }
             if (onThisDayState === 'loading') {
-                setMemoryPanelStatus('正在寻找今天的回忆', '只读取过去五年的压缩缩略图，请稍候。');
+                setMemoryPanelStatus('正在寻找今天的回忆', '优先寻找家人入镜照片，并自动避开重复与连拍。');
                 return;
             }
             if (onThisDayState === 'error') {
@@ -2092,12 +2096,13 @@
                 return;
             }
             if (!onThisDayAssets.length) {
-                setMemoryPanelStatus('今天没有找到往年照片', '这不是错误，其他日期仍可能有许多家庭回忆。');
+                setMemoryPanelStatus('今天没有找到合适的家人回忆', '只展示已关联家人入镜且去重后的照片，其他日期仍可能有许多回忆。');
                 return;
             }
 
             status.classList.add('hidden');
             gallery.classList.remove('hidden');
+            selectionNote.classList.toggle('hidden', onThisDaySelection?.mode !== 'linked-household-people');
             partial.classList.toggle('hidden', !onThisDayPartial);
             onThisDayAssets.forEach(asset => {
                 const button = document.createElement('button');
@@ -2142,12 +2147,16 @@
                 onThisDayState = 'error';
                 onThisDayAssets = [];
                 onThisDayPartial = false;
+                onThisDaySelection = null;
             } else {
                 onThisDayAssets = data.assets.filter(asset =>
                     asset && typeof asset.id === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(asset.id) &&
                     Number.isInteger(asset.year)
                 );
                 onThisDayPartial = data.partial === true;
+                onThisDaySelection = data.selection && data.selection.mode === 'linked-household-people'
+                    ? data.selection
+                    : null;
                 onThisDayDateKey = dateKey;
                 onThisDayState = 'loaded';
             }
@@ -2918,9 +2927,9 @@
             } else if (onThisDayState === 'error') {
                 track.textContent = `📸 ${md}：照片回忆暂时无法读取 · 家庭数据不受影响`;
             } else if (onThisDayAssets.length) {
-                track.textContent = `📸 ${md}：找到 ${onThisDayAssets.length} 段往年今日的家庭回忆`;
+                track.textContent = `📸 ${md}：找到 ${onThisDayAssets.length} 段去重后的家人回忆`;
             } else {
-                track.textContent = `📸 ${md}：今天没有找到往年照片 · 改天再回来看看`;
+                track.textContent = `📸 ${md}：今天没有找到合适的家人回忆 · 改天再回来看看`;
             }
         }
 
