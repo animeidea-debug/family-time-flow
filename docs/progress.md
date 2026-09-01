@@ -71,10 +71,10 @@
 
 ## Active work
 
-- Branch `codex/person-focused-memories` contains a validated, not-yet-deployed follow-up
-  for “On This Day” selection quality. It keeps only photos containing linked
-  household people, removes duplicate groups and 90-second same-person bursts,
-  prefers stronger family-person matches, and balances results across years.
+- Branch `codex/person-focused-memories` contains a validated, not-yet-deployed
+  follow-up for “On This Day” selection quality. It keeps only photos containing
+  linked household people, removes duplicate groups and 90-second same-person
+  bursts, prefers stronger family-person matches, and balances results across years.
   Personless photos are deliberately not used as filler. All 23 frontend
   contracts and 24 backend integration tests pass.
 - A read-only production metadata audit sampled 34 matching assets across five
@@ -110,8 +110,8 @@
 
 ## Next steps
 
-1. Review the pushed person-focused selector and deploy it by immutable SHA only
-   after separate explicit deployment approval.
+1. Deploy the pushed person-focused selector by immutable SHA through the
+   standing delivery workflow, then verify the live selection and rollback path.
 2. Observe the improved “On This Day” results after release before proposing any
    broader photo timeline or week-hover scope.
 3. Verify an event edit when a real change is needed; exercise deletion only

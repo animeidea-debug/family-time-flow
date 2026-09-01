@@ -64,7 +64,34 @@ Read `README.md`, `docs/progress.md`, `docs/DEPLOYMENT_READINESS.md`,
 3. Test Node runtime changes in the target NAS container before claiming
    production compatibility.
 4. Update `docs/progress.md` after a verified handoff, merge, or deployment.
-5. Deploy only an approved full commit SHA through the NAS repository.
+5. Deploy only a validated full commit SHA through the NAS repository.
+
+## Standing delivery authorization
+
+The project owner has granted standing authorization for routine application
+changes in this repository. After a scoped change is complete and the required
+validation passes, the agent should normally commit it, push the current branch,
+and deploy that exact full commit SHA through `nas-deploy` without asking for a
+second confirmation. Verify the release with `nas-deploy status` and
+`nas-deploy doctor`, and report the deployed SHA and rollback command.
+
+This standing authorization applies only when the release is reversible through
+the NAS release system and does not broaden the task's product scope. Stop and
+request explicit approval before:
+
+- deleting or rewriting production data, running a destructive or irreversible
+  database migration, or restoring a backup;
+- rotating credentials, expanding Immich permissions, changing secret values,
+  or exposing the service beyond the trusted private network;
+- changing NAS infrastructure, shared networking, host mounts, or another
+  project's production behavior;
+- rewriting Git history, merging branches or pull requests, publishing a public
+  release, or including unrelated work;
+- deploying when required validation fails, the release/rollback mechanism is
+  unhealthy, or the production impact cannot be bounded confidently.
+
+The owner may override the standing authorization for any task by explicitly
+saying not to commit, push, or deploy.
 
 Minimum validation:
 
@@ -74,5 +101,6 @@ node --check web/backend/family-time-flow/server.js
 git diff --check
 ```
 
-Do not deploy, commit, push, mutate production data, or change NAS
-infrastructure without explicit approval.
+Routine validated application changes are covered by the standing delivery
+authorization above. Production-data mutation and NAS infrastructure changes
+still require task-specific explicit approval.
