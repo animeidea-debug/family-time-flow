@@ -1345,6 +1345,7 @@
                 document.getElementById('settingsNoMember').classList.toggle('hidden', !noMember);
                 document.querySelectorAll('#settingsMemberPanel input, #settingsMemberPanel select, #settingsMemberPanel button')
                     .forEach(element => { element.disabled = noMember; });
+                renderMemberImmichLinkStatus();
             }
             if (tab === 'household') {
                 document.getElementById('cfgHouseholdName').value = householdViewModel && householdViewModel.household
@@ -3047,6 +3048,20 @@
         let immichConnected = false;
         let immichPeople = [];
 
+        function renderMemberImmichLinkStatus() {
+            const personSection = document.getElementById('immichPersonSection');
+            const linkStatus = document.getElementById('cfgImmichLinkStatus');
+            const currentMember = remoteUsers.find(user => String(user.id) === String(activeUserId));
+            personSection.classList.toggle('hidden', !immichConfigured || !currentMember);
+            if (!currentMember) {
+                linkStatus.textContent = '请先选择家庭成员。';
+            } else if (currentMember.immich_linked) {
+                linkStatus.textContent = '已关联照片人物；头像与回忆由服务端安全读取。';
+            } else {
+                linkStatus.textContent = '尚未关联照片人物；可从“添加成员”流程选择 Immich 人物。';
+            }
+        }
+
         async function immichGet(path, options = {}) {
             return await apiGet(`/immich${path}`, options);
         }
@@ -3054,12 +3069,7 @@
         async function checkImmichStatus() {
             const statusEl = document.getElementById('immichStatusText');
             const loadingEl = document.getElementById('immichLoading');
-            const personSection = document.getElementById('immichPersonSection');
-            const linkStatus = document.getElementById('cfgImmichLinkStatus');
-            const currentMember = remoteUsers.find(user => String(user.id) === String(activeUserId));
-            linkStatus.textContent = currentMember && currentMember.immich_linked
-                ? '已关联照片人物；头像与回忆由服务端安全读取。'
-                : '尚未关联照片人物；可从“添加成员”流程选择 Immich 人物。';
+            renderMemberImmichLinkStatus();
 
             // Skip status check if already done during onboarding
             if (immichConnected && immichPeople.length > 0) return;
@@ -3078,12 +3088,10 @@
                 const peopleData = await immichGet('/people');
                 if (peopleData && peopleData.people) {
                     immichPeople = peopleData.people;
-                    personSection.classList.remove('hidden');
                 }
             } else {
                 immichConnected = false;
                 statusEl.innerHTML = `<span class="text-orange-400">⚠️</span> Immich 未连接 (请确保 API Key 已配置)`;
-                personSection.classList.add('hidden');
             }
         }
 
