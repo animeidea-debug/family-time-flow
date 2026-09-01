@@ -7,8 +7,9 @@
 
 ## Current state
 
-- Production runs commit `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`
-  through the NAS-owned `nas-deploy` release system on Node 22.
+- Production includes the person-focused memory selector from commit
+  `e97ced6e22eccc91e85eca9b0ee223c60cd10208` through the NAS-owned
+  `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
@@ -71,19 +72,19 @@
 
 ## Active work
 
-- Branch `codex/person-focused-memories` contains a validated, not-yet-deployed
-  follow-up for “On This Day” selection quality. It keeps only photos containing
-  linked household people, removes duplicate groups and 90-second same-person
-  bursts, prefers stronger family-person matches, and balances results across years.
-  Personless photos are deliberately not used as filler. All 23 frontend
-  contracts and 24 backend integration tests pass.
+- Branch `codex/person-focused-memories` contains the deployed “On This Day”
+  selection-quality release. It keeps only photos containing linked household
+  people, removes duplicate groups and 90-second same-person bursts, prefers
+  stronger family-person matches, and balances results across years. Personless
+  photos are deliberately not used as filler. All 23 frontend contracts and 24
+  backend integration tests pass locally and in the NAS release gate.
 - A read-only production metadata audit sampled 34 matching assets across five
   years: 19 had no linked household person, and seven of the 15 person-focused
   candidates were short bursts. Eight remained after visible person/burst
   rules, enough for the six-item gallery without unrelated fallback. The
   anonymized evidence is in
   `docs/reports/2026-09-01-memory-selection-audit.md`.
-- Branch `codex/current-week-event-markers` contains deployed commit
+- The current production lineage also includes commit
   `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`. It keeps every row at 52 weeks,
   replaces in-card percentage zoom with fit-width and desktop full-row focus
   modes, retains “locate current week”, and marks local family events with a
@@ -92,9 +93,13 @@
 - The release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`.
-- `nas-deploy status` and `nas-deploy doctor` passed after release. The NAS
-  created `/app/data/backups/ftf-pre-release-20260901-142848.db` before the
+- `nas-deploy status` and `nas-deploy doctor` passed after the person-focused
+  release. The NAS created a readable pre-release SQLite backup before the
   atomic switch; rollback remains `nas-deploy rollback family-time-flow`.
+- Routine validated application changes now have standing project authorization
+  to commit, push, and deploy by immutable SHA. Destructive data operations,
+  credentials, network exposure, infrastructure, failed validation, and other
+  non-routine risks still stop for task-specific approval.
 - No code or infrastructure blocker remains for current household use.
 - The production household has four user-created members and one real event;
   the agent did not create synthetic production records.
@@ -110,15 +115,13 @@
 
 ## Next steps
 
-1. Deploy the pushed person-focused selector by immutable SHA through the
-   standing delivery workflow, then verify the live selection and rollback path.
-2. Observe the improved “On This Day” results after release before proposing any
+1. Observe the improved “On This Day” results after release before proposing any
    broader photo timeline or week-hover scope.
-3. Verify an event edit when a real change is needed; exercise deletion only
+2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-4. Let the user add any remaining household members and complete missing birth
+3. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-5. Keep the unauthenticated API on the trusted LAN; review authentication before
+4. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
@@ -128,7 +131,7 @@ npm test
 node --check web/backend/family-time-flow/server.js
 git diff --check
 
-# On the NAS, after an approved full SHA is pushed:
+# On the NAS, after a validated full SHA is pushed:
 nas-deploy family-time-flow --ref <full-40-char-commit-sha>
 nas-deploy status
 nas-deploy doctor
