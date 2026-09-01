@@ -7,9 +7,10 @@
 
 ## Current state
 
-- Production includes the overlap-tolerant person-focused memory selector from
-  commit `e0e8befeb768051c03c3ca2dd1ff5aa7b115d6b9` through the NAS-owned
-  `nas-deploy` release system on Node 22.
+- Production runs commit
+  `29cc19f46d0efcb5f8a6ce7b27f33b4445738390` through the NAS-owned
+  `nas-deploy` release system on Node 22. It includes household and personal
+  person-focused memories plus the personal pre-birth photo guard.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
@@ -31,6 +32,12 @@
   capabilities. Production reports `memoriesEnabled: true` and
   `weekHoverEnabled: false`, so the reviewed household card remains available
   without enabling per-week photo searches.
+- Each member page now requests a four-item personal “On This Day” gallery by
+  Family Time Flow member ID. The backend resolves the Immich person link and
+  never accepts that person ID from the browser. A production batch check found
+  1, 4, 1, and 0 eligible photos for the four members; the member whose stored
+  birth date is later than every candidate now correctly receives the empty
+  state instead of an impossible 2022 face match.
 - Browser verification from the home LAN confirms four persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -73,14 +80,17 @@
 ## Active work
 
 - Branch `codex/person-focused-memories` contains the deployed “On This Day”
-  selection-quality release. It keeps only photos containing linked household
-  people, removes exact duplicates, and collapses three-minute bursts when the
-  linked-person sets overlap by at least half of the smaller set. This tolerates
-  face-recognition variance while retaining genuinely different scenes. It
-  prefers stronger family-person matches and balances results across years;
-  personless photos are deliberately not used as filler. All 23 frontend
-  contracts and 24 backend integration tests pass locally and in the NAS
-  release gate.
+  selection-quality release. Household selection keeps only photos containing
+  linked people, removes exact duplicates, collapses overlapping three-minute
+  bursts, and balances results across years. Member pages apply the same
+  read-only selector to one server-resolved person and reject candidates before
+  that member's stored birth date. Personless photos are deliberately not used
+  as filler. All 23 frontend contracts and 24 backend integration tests pass
+  locally and in the NAS release gate.
+- A four-date read-only coverage audit found person-focused, deduplicated
+  candidates on every sampled date without downloading originals or recording
+  person or asset identifiers. Evidence is in
+  `docs/reports/2026-09-01-memory-date-coverage-audit.md`.
 - A read-only production metadata audit sampled 34 matching assets across five
   years: 19 had no linked household person, and seven of the 15 person-focused
   candidates were short bursts. Eight remained after visible person/burst
@@ -103,8 +113,10 @@
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`.
 - `nas-deploy status` and `nas-deploy doctor` passed after the person-focused
-  release. The NAS created a readable pre-release SQLite backup before the
-  atomic switch; rollback remains `nas-deploy rollback family-time-flow`.
+  release. The NAS created readable pre-release SQLite backup
+  `/app/data/backups/ftf-pre-release-20260901-174309.db` before the atomic
+  switch; rollback remains `nas-deploy rollback family-time-flow` and currently
+  returns to `e38f05f1a90d36bde6250f2547ecfb18c8b1e397`.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
@@ -124,8 +136,9 @@
 
 ## Next steps
 
-1. Observe “On This Day” over additional calendar dates before proposing any
-   broader photo timeline or week-hover scope.
+1. Let the family batch-observe household and personal “On This Day” cards over
+   additional calendar dates; report any repeated composition or wrong-person
+   match without changing Immich from this application.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth
