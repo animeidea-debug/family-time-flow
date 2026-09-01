@@ -177,7 +177,7 @@ test('life grid opens an accessible local-data week detail on pointer and keyboa
         assert.match(html, new RegExp(`id="${id}"`));
     }
     assert.match(applicationScript, /<button type="button" class="\$\{cls\}" data-week="\$\{g\}" tabindex=/);
-    assert.match(applicationScript, /aria-label="\$\{getWeekAccessibleLabel\(g, milestoneLabels\)\}"/);
+    assert.match(applicationScript, /aria-label="\$\{getWeekAccessibleLabel\(g, milestoneLabels, eventCount\)\}"/);
     assert.match(applicationScript, /wrapper\.addEventListener\('click'/);
     assert.match(applicationScript, /e\.key === 'Enter' \|\| e\.key === ' '/);
     assert.match(applicationScript, /\['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'\]/);
@@ -193,20 +193,47 @@ test('life grid opens an accessible local-data week detail on pointer and keyboa
     assert.doesNotMatch(weekDetailSource, /immichGet|fetchPhotosForDate|innerHTML\s*=\s*event/);
 });
 
-test('life grid legend separates time state from milestone shape', () => {
+test('life grid legend separates time state from milestone and event shapes', () => {
     for (const className of [
         'week-legend-spent', 'week-legend-current',
-        'week-legend-future', 'week-legend-milestone'
+        'week-legend-future', 'week-legend-milestone', 'week-legend-event'
     ]) {
         assert.match(html, new RegExp(className));
     }
     assert.match(html, /week-legend-milestone[^>]*><\/span>里程碑/);
+    assert.match(html, /week-legend-event[^>]*><\/span>家庭事件/);
     assert.match(html, /\.week-cell\.spent\s*\{[\s\S]*background-color:\s*color-mix\(in srgb, var\(--accent-color\) 48%, var\(--surface-color\)\)/);
     assert.match(html, /\.week-cell\.milestone-dot::after,[\s\S]*transform:\s*translate\(-50%, -50%\) rotate\(45deg\)/);
+    assert.match(html, /\.week-cell\.event-marker::before,[\s\S]*height:\s*2px/);
     assert.doesNotMatch(html, /stage-dot|\.week-cell\.stage-[0-5]|milestone-dot\.(?:中考|高考)/);
     assert.match(applicationScript, /const milestoneWeeks = new Map\(\)/);
     assert.match(applicationScript, /milestone\.eventDate\.getTime\(\) - birthMs/);
     assert.match(applicationScript, /里程碑：\$\{milestoneLabels\.join\('、'\)\}/);
+    assert.match(applicationScript, /const eventWeeks = new Map\(\)/);
+    assert.match(applicationScript, /if \(eventCount\) details\.push\(`\$\{eventCount\} 个家庭事件`\)/);
+});
+
+test('life grid focus mode preserves 52-week rows without horizontal scrolling', () => {
+    assert.match(applicationScript, /const cols = 52/);
+    assert.match(applicationScript, /repeat\(' \+ cols \+ ', minmax\(0, 1fr\)\)'/);
+    assert.match(html, /\.week-cell\s*\{[\s\S]*min-width:\s*0;[\s\S]*min-height:\s*0;/);
+    assert.match(html, /\.life-grid\s*\{[\s\S]*width:\s*100%;[\s\S]*min-width:\s*0;/);
+    assert.match(html, /\.grid-scroll\s*\{[\s\S]*overflow-x:\s*clip;/);
+    assert.match(html, /#personalView\.grid-focus-mode #lifeGridSection\s*\{[\s\S]*grid-column:\s*1 \/ -1/);
+    assert.match(html, /id="gridFocusButton"[^>]*onclick="toggleGridFocus\(\)"[^>]*aria-expanded="false"/);
+    assert.match(applicationScript, /function setGridFocus\(expanded, announce = true\)/);
+    assert.match(applicationScript, /personalView\.classList\.toggle\('grid-focus-mode', gridFocusExpanded\)/);
+    assert.doesNotMatch(html, /id="zoomLevel"|onclick="gridZoom(?:In|Out)\(\)"|overflow-x-auto pb-2 grid-scroll/);
+    assert.doesNotMatch(html, /\.life-grid\s*\{\s*min-width:\s*600px|zoom-controls|zoom-btn|zoom-level/);
+    assert.doesNotMatch(applicationScript, /ZOOM_LEVELS|ZOOM_PRESETS|gridZoom|initWheelZoom|overrideCols/);
+    assert.match(html, /id="locateCurrentWeekButton"[^>]*onclick="locateCurrentWeek\(\)"/);
+    assert.match(applicationScript, /function locateCurrentWeek\(\)[\s\S]*\.week-cell\.current[\s\S]*scrollIntoView\(\{ behavior: 'smooth', block: 'center', inline: 'center' \}\)/);
+});
+
+test('event markers refresh after the member event request completes', () => {
+    assert.match(applicationScript, /if \(Array\.isArray\(events\)\) \{[\s\S]*state\.events = events;[\s\S]*initLifeGrid\(\)/);
+    assert.match(applicationScript, /weekDetailTrigger = document\.querySelector\(`\[data-week="\$\{openWeek\}"\]`\)/);
+    assert.match(applicationScript, /const wrapper = document\.querySelector\('\.grid-scroll'\)/);
 });
 
 test('system settings report current Immich capabilities without stale setup instructions', () => {

@@ -3,11 +3,11 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-08-31 Asia/Shanghai
+> Last verified: 2026-09-01 Asia/Shanghai
 
 ## Current state
 
-- Production runs commit `734326025b7750c0935e128c775e27c0e209684c`
+- Production runs commit `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`
   through the NAS-owned `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -39,12 +39,19 @@
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
   backgrounds. Desktop and 390px mobile layouts were visually verified.
-- The accessible week-detail release is deployed. Production verification
-  confirmed four persisted members, 4,160 week cells for the sampled member,
-  eight date-derived milestone markers, all four legend meanings, pointer and
-  keyboard detail opening, adjacent-key navigation, Escape focus restoration,
-  and a clean browser console. The grid now reserves color for elapsed/current/
-  future time and uses one opaque white diamond shape for milestones.
+- The fit-width week-grid release is deployed. Production verification
+  confirmed 4,160 week cells for the active member, 52-column year rows, no
+  horizontal overflow in desktop default, desktop full-row focus, or 390px
+  mobile layouts, removal of the old percentage zoom controls, and a clean
+  browser error console. Color remains reserved for elapsed/current/future
+  time, a white diamond marks milestones, and a dark underline marks local
+  family events.
+- Production batch verification now covers all four household members. Each
+  member retained 4,160 cells, one current week, keyboard current-week location,
+  Arrow-key movement, Enter/Esc week detail, restored focus, and overflow-free
+  desktop default/full-row and 390px mobile layouts. The one real event marker
+  opened the “中考” detail for 陈婧文 on both desktop and mobile; the 390px
+  dialog remained within the viewport and the browser error log stayed empty.
 - Personal and household navigation now resets the page to the top. Members
   without a target still receive no fabricated countdown, and identity tags
   remain manually editable after Immich import.
@@ -58,55 +65,24 @@
   NAS-hosted assets, no external script or stylesheet elements, and no browser
   warnings or errors. The committed bundle is protected by a rebuild-and-hash
   comparison in `npm test`.
-- PR #4 (documentation and live-status UX), PR #5 (duplicate ticker
-  regression), PR #7 (first-member polish), PR #9 (additional-member picker),
-  PR #11 (readability and picker clarity), PR #14 (offline frontend assets),
-  PR #16 (read-only “On This Day” memories), and PR #17 (independent memory
-  capability hardening), and PR #18 (accessible week detail and unified grid
-  semantics) are merged into `main`. The existing two experimental HTML files
-  remain untracked and excluded from release.
+- The reviewed baseline and week-grid improvements are included in `main`.
+  The existing two experimental HTML files remain untracked and excluded from
+  release.
 
 ## Active work
 
-- `main` contains the deployed household-usage release. Production intentionally
-  remains on the already tested application commit
-  `734326025b7750c0935e128c775e27c0e209684c`; the PR #18 merge commit adds no
-  unverified runtime behavior beyond that release.
-  Week cells are now real accessible controls with roving keyboard focus,
-  arrow/Home/End navigation, explicit Enter/Space activation, and a responsive
-  week-detail dialog. The dialog shows date range, age, stage, milestones, and
-  that member's local family events, supports adjacent-week navigation, closes
-  with Escape or backdrop click, and restores focus to the originating cell.
-- The same candidate removes obsolete “Immich paused / new key required” system
-  copy. Settings now render the bootstrap capabilities and clearly distinguish
-  read-only configuration, “On This Day”, and the independently disabled
-  week-grid photo capability without making an automatic Immich health request.
-- The week grid now uses one consistent visual grammar across student, worker,
-  and family themes: color intensity expresses elapsed/current/future time, and
-  a single white diamond shape expresses milestones. The previous incomplete
-  and mismatched stage-color legend was removed. Milestone cells are calculated
-  from their actual dates rather than approximate `age × 52` positions.
-- The release passed 21 frontend contracts and 24 backend integration tests
-  both locally and in the NAS release gate,
-  backend syntax and `git diff --check`. Isolated desktop and 390×844 browser
-  verification covered pointer and keyboard opening, event display,
-  previous/next boundaries, Escape focus restoration, mobile layout, all three
-  theme palettes, milestone contrast, capability status, and a clean browser
-  console. The isolated validation used no production data or Immich request;
-  post-deployment verification was read-only and did not change family data.
-- The Immich 3.x adapter hardening is deployed. It sends the required
-  `personIds` array, validates asset inputs, and reports permission or upstream
-  failures instead of returning false empty results.
-- `main` contains the deployed first photo-memory experience. It is
-  server-gated, searches only the previous five years, and offers
-  thumbnail/preview access without original downloads.
-- `main` contains the deployed stability fix that separates the default-off
-  week-hover capability from “On This Day” and adds empty-result,
-  Immich-offline, and cross-date refresh contracts.
-- A read-only production compatibility audit on 2026-08-30 returned successful
-  metadata responses for all five year windows; all six sampled thumbnails and
-  all three sampled previews were readable. Only aggregate counts and HTTP
-  status were retained in the audit output.
+- Branch `codex/current-week-event-markers` contains deployed commit
+  `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`. It keeps every row at 52 weeks,
+  replaces in-card percentage zoom with fit-width and desktop full-row focus
+  modes, retains “locate current week”, and marks local family events with a
+  dark underline. Async event loading rebuilds markers and preserves an open
+  week-detail dialog's focus target.
+- The release passed 23 frontend contracts and 24 backend integration tests
+  locally and in the NAS release gate, plus backend syntax, frontend asset
+  rebuild/hash verification, and `git diff --check`.
+- `nas-deploy status` and `nas-deploy doctor` passed after release. The NAS
+  created `/app/data/backups/ftf-pre-release-20260901-142848.db` before the
+  atomic switch; rollback remains `nas-deploy rollback family-time-flow`.
 - No code or infrastructure blocker remains for current household use.
 - The production household has four user-created members and one real event;
   the agent did not create synthetic production records.
@@ -122,16 +98,13 @@
 
 ## Next steps
 
-1. Observe the deployed week-detail interaction, legend, themes, and real
-   household events during normal use; collect concrete feedback before the
-   next UI batch.
-2. Observe “On This Day” during normal family use before proposing any broader
+1. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
-3. Verify an event edit when a real change is needed; exercise deletion only
+2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-4. Let the user add any remaining household members and complete missing birth
+3. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-5. Keep the unauthenticated API on the trusted LAN; review authentication before
+4. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
