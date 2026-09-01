@@ -8,9 +8,10 @@
 ## Current state
 
 - Production runs commit
-  `29cc19f46d0efcb5f8a6ce7b27f33b4445738390` through the NAS-owned
+  `0904259138061f67c8c4102111b19155c9767fb9` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
-  person-focused memories plus the personal pre-birth photo guard.
+  person-focused memories, the personal pre-birth guard, and on-demand week
+  photo playback inside the accessible week detail.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
@@ -38,6 +39,18 @@
   1, 4, 1, and 0 eligible photos for the four members; the member whose stored
   birth date is later than every candidate now correctly receives the empty
   state instead of an impossible 2022 face match.
+- Opening a week now performs one bounded personal-photo query by Family Time
+  Flow member ID and life-week index. The backend computes the seven-day range,
+  resolves the Immich person, removes duplicates and overlapping bursts,
+  balances at most nine results across represented days, and returns them in
+  chronological order. Hovering over the life grid still performs no photo
+  lookup.
+- Production API sampling covered four members: representative weeks returned
+  6, 9, 1, and 9 eligible photos with valid private selection diagnostics. A
+  browser check loaded all nine thumbnails for a photo-rich historical week,
+  preserved the correct week after a rapid next/previous sequence, opened the
+  read-only preview above the week dialog, restored photo and week-cell focus on
+  close, and reported no browser errors.
 - Browser verification from the home LAN confirms four persisted household
   members, the Immich-aware welcome hint, deferred-photo-memory ticker, in-app
   brand navigation, and the multi-select person picker. The picker loads all 10
@@ -87,6 +100,11 @@
   that member's stored birth date. Personless photos are deliberately not used
   as filler. All 23 frontend contracts and 24 backend integration tests pass
   locally and in the NAS release gate.
+- The same branch now contains the deployed week-photo playback described in
+  `docs/decisions/004-on-demand-week-photo-playback.md`. Desktop uses a
+  three-column gallery and the responsive bundle uses two columns below the
+  mobile breakpoint. Loading, disabled, unlinked, empty, error, and retry states
+  do not block local milestones or family events.
 - A four-date read-only coverage audit found person-focused, deduplicated
   candidates on every sampled date without downloading originals or recording
   person or asset identifiers. Evidence is in
@@ -112,11 +130,11 @@
 - The release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`.
-- `nas-deploy status` and `nas-deploy doctor` passed after the person-focused
+- `nas-deploy status` and `nas-deploy doctor` passed after the week-photo
   release. The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260901-174309.db` before the atomic
+  `/app/data/backups/ftf-pre-release-20260901-222055.db` before the atomic
   switch; rollback remains `nas-deploy rollback family-time-flow` and currently
-  returns to `e38f05f1a90d36bde6250f2547ecfb18c8b1e397`.
+  returns to `29cc19f46d0efcb5f8a6ce7b27f33b4445738390`.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
@@ -129,16 +147,18 @@
 
 - Additional household members remain a human decision: select the intended
   people and supply any missing birth dates.
-- Photo timeline and week-hover memories remain outside the reviewed production
-  scope; “On This Day” is the only enabled photo-memory experience.
+- A broad photo timeline and week-hover requests remain outside the reviewed
+  production scope. “On This Day”, personal “On This Day”, and click-opened
+  week playback are the enabled photo-memory experiences.
 - The family API has no login and must remain restricted to the trusted LAN or
   an access-controlled private network.
 
 ## Next steps
 
-1. Let the family batch-observe household and personal “On This Day” cards over
-   additional calendar dates; report any repeated composition or wrong-person
-   match without changing Immich from this application.
+1. Let the family batch-observe household, personal, and click-opened weekly
+   memories across additional dates. Confirm the two-column 390px phone gallery
+   and report any repeated composition or wrong-person match without changing
+   Immich from this application.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
 3. Let the user add any remaining household members and complete missing birth
