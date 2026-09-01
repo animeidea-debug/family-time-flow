@@ -88,10 +88,10 @@ before(async () => {
                     },
                     {
                         id: `group-face-variance-${assetYear}`,
-                        fileCreatedAt: at('09:00:45'),
+                        fileCreatedAt: at('09:01:54'),
                         type: 'IMAGE',
                         people: [{ id: 'person-1', name: '家人甲' }],
-                        exifInfo: { dateTimeOriginal: at('09:00:45') }
+                        exifInfo: { dateTimeOriginal: at('09:01:54') }
                     },
                     {
                         id: `portrait-${assetYear}`,

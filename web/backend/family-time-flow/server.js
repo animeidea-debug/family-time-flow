@@ -851,7 +851,7 @@ app.get("/api/immich/person-thumb", async (req, res) => {
     }
 });
 
-const MEMORY_BURST_WINDOW_MS = 90 * 1000;
+const MEMORY_BURST_WINDOW_MS = 3 * 60 * 1000;
 
 function memoryCaptureTime(asset) {
     const raw = asset.exifInfo && asset.exifInfo.dateTimeOriginal

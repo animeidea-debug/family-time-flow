@@ -25,7 +25,7 @@ household members.
   photos containing more recognized people.
 - Remove exact duplicates by Immich duplicate group or checksum, with asset ID
   as the final identity fallback.
-- Treat photos captured within 90 seconds as one camera burst when their linked
+- Treat photos captured within three minutes as one camera burst when their linked
   household-person sets overlap by at least half of the smaller set. This
   tolerates face-recognition variance between otherwise repetitive frames.
 - Select from years in rounds so one recent year cannot occupy the whole

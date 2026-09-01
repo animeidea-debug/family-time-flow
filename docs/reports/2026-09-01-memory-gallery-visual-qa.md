@@ -19,6 +19,8 @@ or Immich data, and records no names, face images, or asset identifiers.
 
 ## Follow-up
 
-Short-window burst matching should tolerate small face-recognition differences.
-Comparing linked-person overlap, rather than requiring an identical set, keeps
-the selector metadata-only and read-only while addressing the observed repeat.
+The two visually repetitive group photos were captured 114 seconds apart.
+Three-minute burst matching should therefore tolerate both small
+face-recognition differences and the observed camera cadence. Comparing
+linked-person overlap, rather than requiring an identical set, keeps the
+selector metadata-only and read-only while addressing the repeat.
