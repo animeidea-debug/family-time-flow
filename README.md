@@ -89,9 +89,14 @@ FamilyTimeFlow helps students visualize time slippage for academic planning whil
   "birth_date": "string (YYYY-MM-DD)",
   "expected_age": "integer (default: 80)",
   "identity_tag": "string (student | worker | family)",
-  "immich_person_id": "string, optional"
+  "immich_linked": "boolean"
 }
 ```
+
+Immich person identifiers remain server-private in ordinary member responses.
+The browser receives only the linked state and uses Family Time Flow member IDs
+for avatars and memories; the explicit onboarding picker is the sole UI flow
+that receives selectable Immich person IDs.
 
 ### Timeline Events
 
@@ -192,6 +197,9 @@ data explicitly.
   the backend computes the date range and resolves the Immich person privately
 - Shows up to nine person-focused, deduplicated photos, balanced across days and
   ordered chronologically; unrelated photos never fill empty positions
+- Follows at most three Immich metadata pages (300 candidates) so photo-rich
+  weeks are not silently limited to the first page while every request remains
+  bounded
 - Uses a three-column desktop and two-column mobile gallery with read-only
   preview, retry, unlinked, empty, disabled, and unavailable states
 - Excludes photos before the member's birth date and ignores stale responses

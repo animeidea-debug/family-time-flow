@@ -67,6 +67,36 @@ before(async () => {
             if (lastSearchBody.takenAfter?.includes('-01-01T') && lastSearchBody.takenBefore?.includes('-01-07T')) {
                 const assetYear = lastSearchBody.takenAfter.slice(0, 4);
                 const at = (day, time) => `${assetYear}-01-${String(day).padStart(2, '0')}T${time}.000Z`;
+                const page = Number(lastSearchBody.page || 1);
+                if (page === 2) {
+                    res.writeHead(200, { 'content-type': 'application/json' });
+                    return res.end(JSON.stringify({ assets: { items: [
+                        {
+                            id: `week-fourth-${assetYear}`,
+                            fileCreatedAt: at(4, '11:00:00'),
+                            type: 'IMAGE',
+                            people: [{ id: 'person-2', name: '家人乙' }],
+                            exifInfo: { dateTimeOriginal: at(4, '11:00:00') }
+                        },
+                        {
+                            id: `week-fifth-${assetYear}`,
+                            fileCreatedAt: at(5, '14:00:00'),
+                            type: 'IMAGE',
+                            people: [{ id: 'person-2', name: '家人乙' }],
+                            exifInfo: { dateTimeOriginal: at(5, '14:00:00') }
+                        }
+                    ], nextPage: '3' } }));
+                }
+                if (page === 3) {
+                    res.writeHead(200, { 'content-type': 'application/json' });
+                    return res.end(JSON.stringify({ assets: { items: [{
+                        id: `week-sixth-${assetYear}`,
+                        fileCreatedAt: at(6, '16:00:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(6, '16:00:00') }
+                    }], nextPage: '4' } }));
+                }
                 res.writeHead(200, { 'content-type': 'application/json' });
                 return res.end(JSON.stringify({ assets: { items: [
                     {
@@ -113,7 +143,7 @@ before(async () => {
                         people: [{ id: 'person-1', name: '家人甲' }],
                         exifInfo: { dateTimeOriginal: at(4, '12:00:00') }
                     }
-                ] } }));
+                ], nextPage: '2' } }));
             }
             if (lastSearchBody.takenAfter?.includes('-01-02T')) {
                 const assetYear = lastSearchBody.takenAfter.slice(0, 4);
@@ -383,17 +413,27 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             end: `${birthYear}-01-07`
         });
         assert.deepEqual(weekBody.assets.map(asset => asset.date), [
-            `${birthYear}-01-01`, `${birthYear}-01-02`, `${birthYear}-01-03`
+            `${birthYear}-01-01`, `${birthYear}-01-02`, `${birthYear}-01-03`,
+            `${birthYear}-01-04`, `${birthYear}-01-05`, `${birthYear}-01-06`
         ]);
         assert.equal(weekBody.assets.every(asset => !('people' in asset) && !('originalFileName' in asset)), true);
         assert.deepEqual(weekBody.selection, {
             mode: 'linked-member-week', linkedPeople: 1,
-            candidates: 6, personFocused: 5, deduplicated: 3
+            candidates: 9, personFocused: 8, deduplicated: 6,
+            pages: 3, truncated: true
         });
         assert.deepEqual(lastSearchBody.personIds, ['person-2']);
         assert.equal(lastSearchBody.type, 'IMAGE');
         assert.equal(lastSearchBody.withPeople, true);
-        assert.equal(lastSearchBody.size, 72);
+        assert.equal(lastSearchBody.page, 3);
+        assert.equal(lastSearchBody.size, 100);
+
+        const memberAvatar = await fetch(`${baseUrl}/members/${secondCreated.id}/avatar`);
+        assert.equal(memberAvatar.status, 200);
+        assert.equal(memberAvatar.headers.get('content-type'), 'image/jpeg');
+        assert.deepEqual(Buffer.from(await memberAvatar.arrayBuffer()), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+        assert.equal((await fetch(`${baseUrl}/members/not-a-member/avatar`)).status, 400);
+        assert.equal((await fetch(`${baseUrl}/members/999999/avatar`)).status, 404);
 
         const unlinkedWeek = await fetch(`${baseUrl}/members/${unlinkedCreated.id}/weeks/0/memories`);
         assert.equal(unlinkedWeek.status, 200);
@@ -582,7 +622,8 @@ test('imports selected people transactionally and is idempotent by Immich person
 
     const members = await fetch(`${baseUrl}/bootstrap`).then(response => response.json());
     assert.equal(members.members.length, 2);
-    assert.deepEqual(members.members.map(member => member.immich.personId), ['person-1', 'person-2']);
+    assert.deepEqual(members.members.map(member => member.immich.linked), [true, true]);
+    assert.equal(members.members.every(member => !('personId' in member.immich)), true);
 });
 
 test('rejects stale or malformed import selections without partial creation', async () => {

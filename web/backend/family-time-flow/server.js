@@ -214,7 +214,7 @@ function toLegacyUserDto(user) {
         school_system: user.school_system,
         target_date: user.target_date,
         immich_sync: user.immich_sync,
-        immich_person_id: user.immich_person_id,
+        immich_linked: Boolean(user.immich_person_id),
         color: user.color || "#3B82F6",
         sort_order: user.sort_order ?? user.id,
         created_at: user.created_at,
@@ -235,7 +235,6 @@ function toMemberDto(user) {
         sortOrder: user.sort_order ?? user.id,
         immich: {
             linked: Boolean(user.immich_person_id),
-            personId: user.immich_person_id || null,
             syncEnabled: Boolean(user.immich_sync)
         },
         createdAt: user.created_at,
@@ -851,6 +850,36 @@ app.get("/api/immich/person-thumb", async (req, res) => {
     }
 });
 
+// GET /api/members/:id/avatar — Resolve a linked Immich face without exposing its person ID
+app.get("/api/members/:id/avatar", async (req, res) => {
+    if (!/^[1-9][0-9]{0,11}$/.test(String(req.params.id))) {
+        return res.status(400).json({ error: "invalid member id" });
+    }
+    const member = queryOne("SELECT immich_person_id FROM users WHERE id = ?", [req.params.id]);
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const personId = member.immich_person_id && member.immich_person_id.trim();
+    if (!personId) return res.status(404).json({ error: "Member avatar not linked" });
+    const apiKey = getImmichKey();
+    if (!apiKey) return res.status(503).json({ error: "Member avatar unavailable", status: "not_configured" });
+    try {
+        const thumbResp = await fetch(`${getImmichUrl()}/api/people/${encodeURIComponent(personId)}/thumbnail`, {
+            headers: { 'x-api-key': apiKey },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!thumbResp.ok) {
+            await thumbResp.arrayBuffer();
+            if (thumbResp.status === 404) return res.status(404).json({ error: "Member avatar not found" });
+            return sendImmichFailure(res, { kind: immichFailureKind(thumbResp.status) }, "member avatar");
+        }
+        const buffer = await thumbResp.arrayBuffer();
+        res.set('Content-Type', thumbResp.headers.get('content-type') || 'image/jpeg');
+        res.set('Cache-Control', 'private, max-age=86400');
+        res.send(Buffer.from(buffer));
+    } catch {
+        res.status(503).json({ error: "Member avatar unavailable", status: "unreachable" });
+    }
+});
+
 const MEMORY_BURST_WINDOW_MS = 3 * 60 * 1000;
 
 function memoryCaptureTime(asset) {
@@ -984,6 +1013,38 @@ function parseDateOnlyUtc(value) {
     if (date.getUTCFullYear() !== Number(match[1]) || date.getUTCMonth() !== Number(match[2]) - 1 ||
         date.getUTCDate() !== Number(match[3])) return null;
     return date;
+}
+
+async function searchImmichMetadataPages(body, { maxPages = 3, maxItems = 300 } = {}) {
+    const items = [];
+    let page = 1;
+    let pages = 0;
+    let nextPage = null;
+    while (pages < maxPages && items.length < maxItems) {
+        const size = Math.min(Number(body.size) || 100, maxItems - items.length);
+        const result = await immichFetch("/api/search/metadata", {
+            method: "POST",
+            body: { ...body, page, size }
+        });
+        if (!result.ok) return { ...result, items: [], pages };
+        const assets = result.data.assets || {};
+        const pageItems = Array.isArray(assets.items) ? assets.items : [];
+        items.push(...pageItems.slice(0, maxItems - items.length));
+        pages += 1;
+        nextPage = assets.nextPage;
+        if (!nextPage) break;
+        const parsedNextPage = Number.parseInt(nextPage, 10);
+        if (!Number.isInteger(parsedNextPage) || parsedNextPage <= page) break;
+        page = parsedNextPage;
+    }
+    return {
+        ok: true,
+        items,
+        pages,
+        // A remaining cursor means the bounded search intentionally left more
+        // Immich results unread (including a defensive stop on an invalid cursor).
+        truncated: Boolean(nextPage)
+    };
 }
 
 // GET /api/immich/on-this-day?month=&day=&limit=5&memberId= — person-focused memories across years
@@ -1130,23 +1191,17 @@ app.get("/api/members/:id/weeks/:weekIndex/memories", async (req, res) => {
         });
     }
 
-    const candidateSize = Math.min(Math.max(limit * 8, 40), 100);
-    const result = await immichFetch("/api/search/metadata", {
-        method: "POST",
-        body: {
-            page: 1,
-            size: candidateSize,
+    const result = await searchImmichMetadataPages({
+            size: 100,
             takenAfter: `${startKey}T00:00:00.000Z`,
             takenBefore: `${endKey}T23:59:59.999Z`,
             type: "IMAGE",
             personIds: [personId],
             withExif: true,
             withPeople: true
-        }
-    });
+    }, { maxPages: 3, maxItems: 300 });
     if (!result.ok) return sendImmichFailure(res, result, "week memories");
-    const items = (result.data.assets && result.data.assets.items) || [];
-    const candidates = items.map(asset => ({
+    const candidates = result.items.map(asset => ({
         asset,
         year: new Date(memoryCaptureTime(asset) || start.getTime()).getUTCFullYear()
     }));
@@ -1166,7 +1221,9 @@ app.get("/api/members/:id/weeks/:weekIndex/memories", async (req, res) => {
             linkedPeople: 1,
             candidates: candidates.length,
             personFocused: selection.focusedCount,
-            deduplicated: selection.deduplicatedCount
+            deduplicated: selection.deduplicatedCount,
+            pages: result.pages,
+            truncated: result.truncated
         }
     });
 });

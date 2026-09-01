@@ -20,8 +20,9 @@ milestones, and family events.
   person ID; the browser never supplies an Immich person ID.
 - Reuse the enabled read-only memory capability and existing thumbnail/preview
   proxy. Do not add Immich permissions, original downloads, or write behavior.
-- Query only images for the resolved person and seven-day range, with at most
-  100 metadata candidates. Reject pre-birth or unusable capture dates, exact
+- Query only images for the resolved person and seven-day range. Follow
+  Immich's `assets.nextPage` cursor for at most three 100-item pages (300
+  metadata candidates). Reject pre-birth or unusable capture dates, exact
   duplicates, and overlapping three-minute bursts.
 - Select at most nine photos in rounds across represented calendar days, then
   show the result chronologically. Do not fill missing positions with unrelated
@@ -34,8 +35,8 @@ milestones, and family events.
 
 ## Consequences
 
-- Opening a week performs one bounded read-only Immich metadata query; merely
-  moving across the life grid performs none.
+- Opening a week performs one bounded read-only Immich search of up to three
+  requests; merely moving across the life grid performs none.
 - A photo-rich week may show fewer than all available photos by design. Nine is
   a playback summary, not a photo browser.
 - The feature inherits the trusted-LAN boundary and the existing

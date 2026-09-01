@@ -129,7 +129,7 @@ async function run() {
             console.log('  ℹ️ No users in DB (clean state)');
             return;
         }
-        // Check for duplicate names with different immich_person_id
+        // Report duplicate display names without depending on private Immich identifiers.
         const nameMap = {};
         for (const u of users) {
             if (!nameMap[u.name]) nameMap[u.name] = [];
@@ -137,9 +137,7 @@ async function run() {
         }
         for (const [name, list] of Object.entries(nameMap)) {
             if (list.length > 1) {
-                const ids = list.map(u => u.immich_person_id).filter(Boolean);
-                if (new Set(ids).size !== ids.length) throw new Error('Duplicate name ' + name + ' with same immich_person_id');
-                console.log('  ⚠️ ' + name + ' has ' + list.length + ' entries with different person_ids');
+                console.log('  ⚠️ ' + name + ' has ' + list.length + ' member entries');
             }
         }
     });

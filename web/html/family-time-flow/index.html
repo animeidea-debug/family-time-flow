@@ -1190,11 +1190,10 @@
             </div>
 
             <div id="immichPersonSection" class="form-control hidden">
-                <label class="label py-1"><span class="label-text font-bold text-theme-text">关联 Immich 人物</span></label>
-                <select id="cfgImmichPerson"
-                    class="select select-bordered select-sm bg-theme-muted/80 border-2 border-theme-border text-theme-text focus:border-theme-accent transition-all duration-300">
-                    <option value="">-- 未关联 --</option>
-                </select>
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">照片人物关联</span></label>
+                <p id="cfgImmichLinkStatus" class="rounded-xl border-2 border-theme-border bg-theme-muted/80 px-3 py-2 text-xs text-theme-text/70">
+                    正在读取关联状态…
+                </p>
             </div>
 
             <div class="form-control">
@@ -1236,8 +1235,7 @@
                 expectedAge: 80,
                 identityTag: 'student',
                 schoolSystem: 'shanghai',
-                color: '#3B82F6',
-                immichPersonId: null
+                color: '#3B82F6'
             },
             events: [],
             targetDate: null,
@@ -1436,7 +1434,7 @@
             localStorage.removeItem(STATE_KEY);
             state = {
                 currentUser: 'student',
-                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', color: '#3B82F6', immichPersonId: null },
+                profile: { name: '', birthDate: '', expectedAge: 80, identityTag: 'student', schoolSystem: 'shanghai', color: '#3B82F6' },
                 events: [],
                 targetDate: null,
                 immichSync: false
@@ -2467,7 +2465,7 @@
                 target_date: member.targetDate,
                 color: member.color || '#3B82F6',
                 sort_order: member.sortOrder,
-                immich_person_id: member.immich && member.immich.personId,
+                immich_linked: member.immich && member.immich.linked === true,
                 immich_sync: member.immich && member.immich.syncEnabled ? 1 : 0
             };
         }
@@ -2511,12 +2509,11 @@
                 initial.textContent = (member.name || '家').charAt(0);
                 return initial;
             };
-            const personId = member.immich && member.immich.personId;
-            if (!personId) return fallback();
+            if (!member.immich || member.immich.linked !== true) return fallback();
 
             const image = document.createElement('img');
             image.className = 'w-12 h-12 rounded-full object-cover border-2 border-theme-border';
-            image.src = `${API_BASE}/immich/person-thumb?id=${encodeURIComponent(personId)}`;
+            image.src = `${API_BASE}/members/${encodeURIComponent(member.id)}/avatar`;
             image.alt = `${member.name || '家庭成员'}头像`;
             image.addEventListener('error', () => image.replaceWith(fallback()), { once: true });
             return image;
@@ -2811,7 +2808,6 @@
                 if (match.education) {
                     state._apiEducation = match.education;
                 }
-                state.profile.immichPersonId = match.immich_person_id || state.profile.immichPersonId;
                 state.immichSync = match.immich_sync ? true : (state.immichSync || false);
                 saveState();
                 hydrateFormFromState();
@@ -2950,7 +2946,6 @@
             state.profile.identityTag = user.identity_tag || 'student';
             state.targetDate = user.target_date || null;
             state.profile.schoolSystem = user.school_system || 'shanghai';
-            state.profile.immichPersonId = user.immich_person_id || null;
             state.immichSync = Boolean(user.immich_sync);
             state.events = [];
             showPersonalView();
@@ -2994,9 +2989,9 @@
             document.getElementById('userMenuName').textContent = name;
             document.getElementById('userMenuTitle').textContent = name;
             const avatar = document.getElementById('userAvatar');
-            const pid = state.profile.immichPersonId;
-            if (pid) {
-                avatar.outerHTML = '<img id="userAvatar" src="' + API_BASE + '/immich/person-thumb?id=' + pid + '" class="w-6 h-6 rounded-full object-cover border-2 border-theme-accent/50" onerror="this.onerror=null;this.outerHTML=\'<span id=userAvatar class=\\\'w-6\\\\ h-6\\\\ rounded-full\\\\ bg-theme-accent/20\\\\ flex\\\\ items-center\\\\ justify-center\\\\ text-xs\\\\ font-black\\\'\\\'>' + name.charAt(0) + '</span>\'">';
+            const member = remoteUsers.find(user => String(user.id) === String(activeUserId));
+            if (member && member.immich_linked) {
+                avatar.outerHTML = '<img id="userAvatar" src="' + API_BASE + '/members/' + encodeURIComponent(member.id) + '/avatar" class="w-6 h-6 rounded-full object-cover border-2 border-theme-accent/50" onerror="this.onerror=null;this.outerHTML=\'<span id=userAvatar class=\\\'w-6\\\\ h-6\\\\ rounded-full\\\\ bg-theme-accent/20\\\\ flex\\\\ items-center\\\\ justify-center\\\\ text-xs\\\\ font-black\\\'\\\'>' + name.charAt(0) + '</span>\'">';
             } else {
                 avatar.textContent = name.charAt(0);
                 avatar.style.backgroundColor = `${state.profile.color || '#3B82F6'}22`;
@@ -3060,7 +3055,11 @@
             const statusEl = document.getElementById('immichStatusText');
             const loadingEl = document.getElementById('immichLoading');
             const personSection = document.getElementById('immichPersonSection');
-            const personSelect = document.getElementById('cfgImmichPerson');
+            const linkStatus = document.getElementById('cfgImmichLinkStatus');
+            const currentMember = remoteUsers.find(user => String(user.id) === String(activeUserId));
+            linkStatus.textContent = currentMember && currentMember.immich_linked
+                ? '已关联照片人物；头像与回忆由服务端安全读取。'
+                : '尚未关联照片人物；可从“添加成员”流程选择 Immich 人物。';
 
             // Skip status check if already done during onboarding
             if (immichConnected && immichPeople.length > 0) return;
@@ -3080,41 +3079,12 @@
                 if (peopleData && peopleData.people) {
                     immichPeople = peopleData.people;
                     personSection.classList.remove('hidden');
-                    personSelect.innerHTML = '<option value="">-- 未关联 --</option>';
-                    immichPeople.forEach(p => {
-                        const opt = document.createElement('option');
-                        opt.value = p.id;
-                        const bd = p.birthDate ? `🎂${p.birthDate}` : '';
-                        opt.textContent = `${p.name} ${bd}(${p.assetsCount}张照片)`;
-                        opt.dataset.birthDate = p.birthDate || '';
-                        if (p.id === state.profile.immichPersonId) opt.selected = true;
-                        personSelect.appendChild(opt);
-                    });
-                    // Auto-fill birthDate when selecting a person
-                    personSelect.onchange = function () {
-                        const selected = immichPeople.find(p => p.id === this.value);
-                        if (selected && selected.birthDate) {
-                            document.getElementById('cfgBirthDate').value = selected.birthDate;
-                            state.profile.birthDate = selected.birthDate;
-                            state.profile.name = selected.name;
-                            document.getElementById('cfgName').value = selected.name;
-                            showToast(`📸 已自动填入 ${selected.name} 的出生日期`);
-                        }
-                    };
                 }
             } else {
                 immichConnected = false;
                 statusEl.innerHTML = `<span class="text-orange-400">⚠️</span> Immich 未连接 (请确保 API Key 已配置)`;
                 personSection.classList.add('hidden');
             }
-        }
-
-        // Fetch photos for a date range (for tooltip)
-        async function fetchPhotosForDate(dateStr, personId) {
-            let path = `/assets?date=${dateStr}&limit=3`;
-            if (personId) path += `&personId=${personId}`;
-            const data = await immichGet(path);
-            return data && data.assets ? data.assets : [];
         }
 
         // Update tooltip when hovering a week cell (replaces placeholder)
@@ -3143,8 +3113,8 @@
 
                 // Week-hover photos are a separate, default-off capability.
                 if (immichWeekHoverEnabled && immichConnected && state.immichSync) {
-                    const midDate = f(new Date(ws.getTime() + 3 * 24 * 60 * 60 * 1000));
-                    fetchPhotosForDate(midDate, state.profile.immichPersonId).then(assets => {
+                    apiGet(`/members/${encodeURIComponent(activeUserId)}/weeks/${weekIndex}/memories?limit=3`).then(data => {
+                        const assets = data && Array.isArray(data.assets) ? data.assets : [];
                         const imgs = [1, 2, 3];
                         imgs.forEach((i, idx) => {
                             const img = document.getElementById(`tooltipImg${i}`);
@@ -3281,10 +3251,9 @@
             const list = document.getElementById('onbPersonList');
             list.innerHTML = '';
             document.getElementById('onbPersonError').textContent = '';
-            const initializedIds = new Set(remoteUsers.filter(u => u.immich_person_id).map(u => u.immich_person_id));
             const peopleWithState = immichPeople.map(person => ({
                 ...person,
-                isInitialized: person.linked === true || initializedIds.has(person.id)
+                isInitialized: person.linked === true
             }));
             const selectableCount = peopleWithState.filter(person => !person.isInitialized).length;
             const initializedCount = peopleWithState.length - selectableCount;
@@ -3447,8 +3416,7 @@
             remoteUsers.forEach(user => {
                 const card = document.createElement('div');
                 const isActive = user.id === activeUserId;
-                const pid = user.immich_person_id;
-                const thumbUrl = pid ? API_BASE + '/immich/person-thumb?id=' + pid : '';
+                const thumbUrl = user.immich_linked ? API_BASE + '/members/' + encodeURIComponent(user.id) + '/avatar' : '';
                 const age = user.birth_date ? Math.floor((new Date() - new Date(user.birth_date)) / 31557600000) : '?';
                 card.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg ' + (isActive ? 'border-theme-accent bg-theme-accent/5' : 'border-gray-100 hover:border-theme-accent');
                 if (isActive) card.style.cursor = 'default';

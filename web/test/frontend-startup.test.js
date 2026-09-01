@@ -96,8 +96,8 @@ test('household home is available without Immich', () => {
     );
     assert.doesNotMatch(householdSource, /immichGet|checkImmichStatus/);
     assert.match(householdSource, /function createHouseholdMemberAvatar/);
-    assert.match(householdSource, /member\.immich && member\.immich\.personId/);
-    assert.match(householdSource, /\/immich\/person-thumb\?id=/);
+    assert.match(householdSource, /member\.immich\.linked !== true/);
+    assert.match(householdSource, /\/members\/\$\{encodeURIComponent\(member\.id\)\}\/avatar/);
 });
 
 test('members without a target do not receive a fabricated countdown', () => {
@@ -128,13 +128,15 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(addMemberBody, /onboardingOverlay/);
     assert.match(addMemberBody, /onboardingPersonIds = new Set\(\)/);
     assert.match(addMemberBody, /await startOnboarding\(\)/);
-    assert.match(applicationScript, /person\.linked === true \|\| initializedIds\.has\(person\.id\)/);
+    assert.match(applicationScript, /isInitialized: person\.linked === true/);
+    assert.doesNotMatch(applicationScript, /initializedIds/);
     assert.match(applicationScript, /可选 \$\{selectableCount\} 位 · 已创建 \$\{initializedCount\} 位/);
     assert.match(applicationScript, /Number\(a\.isInitialized\) - Number\(b\.isInitialized\)/);
     assert.match(applicationScript, /\/onboarding\/immich-import/);
     assert.match(applicationScript, /\/onboarding\/immich-import'[\s\S]*timeoutMs:\s*10000/);
     assert.match(html, /id="onboardingSourceHint"/);
     assert.match(html, /id="immichMemoryTitle"/);
+    assert.match(html, /id="cfgImmichLinkStatus"/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.memoriesEnabled === true/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.weekHoverEnabled === true/);
@@ -157,6 +159,7 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /async function loadOnThisDayMemories/);
     assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
     assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConnected && state\.immichSync\)/);
+    assert.match(applicationScript, /\/members\/\$\{encodeURIComponent\(activeUserId\)\}\/weeks\/\$\{weekIndex\}\/memories\?limit=3/);
     assert.doesNotMatch(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
     assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
     assert.match(applicationScript, /immichGet\(path, \{ timeoutMs: 10000 \}\)/);
@@ -178,6 +181,9 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /找到 \$\{onThisDayAssets\.length\} 段去重后的家人回忆/);
     assert.doesNotMatch(applicationScript, /asset-thumb[^\n]+size=original/);
     assert.doesNotMatch(applicationScript, /asset\.download/);
+    assert.doesNotMatch(applicationScript, /immichPersonId|immich_person_id/);
+    assert.match(applicationScript, /immich_linked: member\.immich && member\.immich\.linked === true/);
+    assert.match(applicationScript, /\/members\/['"]? \+ encodeURIComponent\(member\.id\) \+ ['"]?\/avatar/);
 });
 
 test('life grid opens an accessible local-data week detail on pointer and keyboard input', () => {

@@ -105,7 +105,11 @@ test('public member endpoints omit internal persistence fields', async () => {
     const sync = await fetch(`${baseUrl}/sync`).then(response => response.json());
     for (const member of [users[0], sync.users[0]]) {
         assert.equal('creation_key' in member, false);
+        assert.equal('immich_person_id' in member, false);
+        assert.equal(typeof member.immich_linked, 'boolean');
     }
+    const bootstrap = await fetch(`${baseUrl}/bootstrap`).then(response => response.json());
+    assert.equal(bootstrap.members.every(member => !('personId' in member.immich)), true);
     assert.equal('immich_url' in sync.config, false);
     assert.equal('immich_api_key' in sync.config, false);
 });
@@ -183,7 +187,8 @@ test('household view aggregates member summaries and upcoming events', async () 
     const workerSummary = data.members.find(member => member.id === String(worker.id));
     assert.equal(workerSummary.stageLabel, '职场');
     assert.equal(workerSummary.targetDate, null);
-    assert.equal(workerSummary.immich.personId, 'household-worker-person');
+    assert.equal(workerSummary.immich.linked, true);
+    assert.equal('personId' in workerSummary.immich, false);
     assert.equal(data.upcomingEvents.some(event => event.title === '家庭测试事件'), true);
     assert.equal(data.upcomingEvents.find(event => event.title === '家庭测试事件').memberName, owner.name);
 });
