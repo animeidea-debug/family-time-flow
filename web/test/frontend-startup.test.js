@@ -213,13 +213,19 @@ test('life grid legend separates time state from milestone and event shapes', ()
     assert.match(applicationScript, /if \(eventCount\) details\.push\(`\$\{eventCount\} 个家庭事件`\)/);
 });
 
-test('life grid zoom preserves 52-week rows and can locate the current week', () => {
-    assert.match(applicationScript, /const ZOOM_LEVELS = \[0\.75, 1, 1\.25, 1\.5, 2\]/);
+test('life grid focus mode preserves 52-week rows without horizontal scrolling', () => {
     assert.match(applicationScript, /const cols = 52/);
-    assert.match(applicationScript, /Math\.round\(700 \* gridZoom\)/);
     assert.match(applicationScript, /repeat\(' \+ cols \+ ', minmax\(0, 1fr\)\)'/);
     assert.match(html, /\.week-cell\s*\{[\s\S]*min-width:\s*0;[\s\S]*min-height:\s*0;/);
-    assert.doesNotMatch(applicationScript, /ZOOM_PRESETS|overrideCols|initLifeGrid\(p\.cols\)/);
+    assert.match(html, /\.life-grid\s*\{[\s\S]*width:\s*100%;[\s\S]*min-width:\s*0;/);
+    assert.match(html, /\.grid-scroll\s*\{[\s\S]*overflow-x:\s*clip;/);
+    assert.match(html, /#personalView\.grid-focus-mode #lifeGridSection\s*\{[\s\S]*grid-column:\s*1 \/ -1/);
+    assert.match(html, /id="gridFocusButton"[^>]*onclick="toggleGridFocus\(\)"[^>]*aria-expanded="false"/);
+    assert.match(applicationScript, /function setGridFocus\(expanded, announce = true\)/);
+    assert.match(applicationScript, /personalView\.classList\.toggle\('grid-focus-mode', gridFocusExpanded\)/);
+    assert.doesNotMatch(html, /id="zoomLevel"|onclick="gridZoom(?:In|Out)\(\)"|overflow-x-auto pb-2 grid-scroll/);
+    assert.doesNotMatch(html, /\.life-grid\s*\{\s*min-width:\s*600px|zoom-controls|zoom-btn|zoom-level/);
+    assert.doesNotMatch(applicationScript, /ZOOM_LEVELS|ZOOM_PRESETS|gridZoom|initWheelZoom|overrideCols/);
     assert.match(html, /id="locateCurrentWeekButton"[^>]*onclick="locateCurrentWeek\(\)"/);
     assert.match(applicationScript, /function locateCurrentWeek\(\)[\s\S]*\.week-cell\.current[\s\S]*scrollIntoView\(\{ behavior: 'smooth', block: 'center', inline: 'center' \}\)/);
 });
@@ -227,7 +233,7 @@ test('life grid zoom preserves 52-week rows and can locate the current week', ()
 test('event markers refresh after the member event request completes', () => {
     assert.match(applicationScript, /if \(Array\.isArray\(events\)\) \{[\s\S]*state\.events = events;[\s\S]*initLifeGrid\(\)/);
     assert.match(applicationScript, /weekDetailTrigger = document\.querySelector\(`\[data-week="\$\{openWeek\}"\]`\)/);
-    assert.match(applicationScript, /const sc = document\.querySelector\('\.grid-scroll'\)/);
+    assert.match(applicationScript, /const wrapper = document\.querySelector\('\.grid-scroll'\)/);
 });
 
 test('system settings report current Immich capabilities without stale setup instructions', () => {

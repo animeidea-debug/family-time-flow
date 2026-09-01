@@ -76,13 +76,22 @@
   week” control, and marks weeks containing local family events with a dark
   underline rather than another competing color. Async event loading rebuilds
   the markers and preserves an open week-detail dialog's focus target.
+- The branch's validated fit-width follow-up replaces the 75%/100%/150% in-card
+  zoom controls with an always-fit-width overview. Desktop can expand the life
+  grid across the full dashboard row; 390px mobile retains the complete 52-week
+  row without horizontal scrolling and continues to use the week-detail dialog
+  for precise reading. Isolated browser verification covered default,
+  expanded, collapsed, event-detail, and mobile states with an empty error
+  console. The follow-up passes all 23 frontend contracts, all 24 backend
+  integration tests, backend syntax validation, frontend asset rebuild/hash
+  verification, and `git diff --check`.
 - The release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`. Isolated browser checks at
-  desktop and 390×844 covered
-  75%/100%/150% physical zoom with unchanged 52-week rows, the event marker and
-  event detail, current-week focus/recentering, mobile horizontal navigation,
-  and an empty warning/error console. No production or Immich data was used.
+  desktop and 390×844 covered the deployed zoom behavior, unchanged 52-week
+  rows, the event marker and event detail, current-week focus/recentering,
+  mobile navigation, and an empty warning/error console. No production or
+  Immich data was used.
 - `nas-deploy status` and `nas-deploy doctor` passed after release. The NAS
   created the required pre-release SQLite backup before the atomic switch;
   rollback remains `nas-deploy rollback family-time-flow`.
@@ -104,17 +113,19 @@
 
 ## Next steps
 
-1. Batch-verify all members at 75%/100%/150%, current-week
-   location, event-marked week details, keyboard focus, and 390px mobile use.
-2. Review and merge `codex/current-week-event-markers` after the batch check;
+1. Deploy the validated fit-width/focus-mode follow-up only after explicit
+   approval through the NAS-owned immutable-SHA release command.
+2. Batch-verify all members in desktop default/expanded and 390px mobile views,
+   including current-week location, event-marked details, and keyboard focus.
+3. Review and merge `codex/current-week-event-markers` after the batch check;
    production can remain on the immutable reviewed SHA meanwhile.
-3. Observe “On This Day” during normal family use before proposing any broader
+4. Observe “On This Day” during normal family use before proposing any broader
    photo timeline or week-hover scope.
-4. Verify an event edit when a real change is needed; exercise deletion only
+5. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-5. Let the user add any remaining household members and complete missing birth
+6. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-6. Keep the unauthenticated API on the trusted LAN; review authentication before
+7. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
