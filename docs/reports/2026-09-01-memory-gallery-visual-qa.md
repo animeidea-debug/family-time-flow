@@ -24,3 +24,11 @@ Three-minute burst matching should therefore tolerate both small
 face-recognition differences and the observed camera cadence. Comparing
 linked-person overlap, rather than requiring an identical set, keeps the
 selector metadata-only and read-only while addressing the repeat.
+
+## Post-release verification
+
+The three-minute overlap rule reduced 14 person-focused candidates to six final
+gallery items. The visually repetitive group composition appeared only once;
+the replacement thumbnail showed a different scene. All six thumbnails loaded,
+two years remained represented, and the browser reported no warning or error
+messages.

@@ -7,8 +7,8 @@
 
 ## Current state
 
-- Production includes the person-focused memory selector from commit
-  `e97ced6e22eccc91e85eca9b0ee223c60cd10208` through the NAS-owned
+- Production includes the overlap-tolerant person-focused memory selector from
+  commit `e0e8befeb768051c03c3ca2dd1ff5aa7b115d6b9` through the NAS-owned
   `nas-deploy` release system on Node 22.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
@@ -74,16 +74,25 @@
 
 - Branch `codex/person-focused-memories` contains the deployed “On This Day”
   selection-quality release. It keeps only photos containing linked household
-  people, removes duplicate groups and 90-second same-person bursts, prefers
-  stronger family-person matches, and balances results across years. Personless
-  photos are deliberately not used as filler. All 23 frontend contracts and 24
-  backend integration tests pass locally and in the NAS release gate.
+  people, removes exact duplicates, and collapses three-minute bursts when the
+  linked-person sets overlap by at least half of the smaller set. This tolerates
+  face-recognition variance while retaining genuinely different scenes. It
+  prefers stronger family-person matches and balances results across years;
+  personless photos are deliberately not used as filler. All 23 frontend
+  contracts and 24 backend integration tests pass locally and in the NAS
+  release gate.
 - A read-only production metadata audit sampled 34 matching assets across five
   years: 19 had no linked household person, and seven of the 15 person-focused
   candidates were short bursts. Eight remained after visible person/burst
   rules, enough for the six-item gallery without unrelated fallback. The
   anonymized evidence is in
   `docs/reports/2026-09-01-memory-selection-audit.md`.
+- Post-release visual QA found one pair of similar group photos captured 114
+  seconds apart. After the three-minute overlap rule shipped, production reduced
+  14 person-focused candidates to six distinct gallery items, removed the
+  repeated composition, retained two represented years, loaded every thumbnail,
+  and reported no browser warnings or errors. The anonymized evidence is in
+  `docs/reports/2026-09-01-memory-gallery-visual-qa.md`.
 - The current production lineage also includes commit
   `255cf76a8bf8aad0d74116c7f3098eb98c5f010a`. It keeps every row at 52 weeks,
   replaces in-card percentage zoom with fit-width and desktop full-row focus
@@ -115,7 +124,7 @@
 
 ## Next steps
 
-1. Observe the improved “On This Day” results after release before proposing any
+1. Observe “On This Day” over additional calendar dates before proposing any
    broader photo timeline or week-hover scope.
 2. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
