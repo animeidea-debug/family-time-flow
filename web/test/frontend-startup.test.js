@@ -186,6 +186,7 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /\/members\/['"]? \+ encodeURIComponent\(member\.id\) \+ ['"]?\/avatar/);
     assert.match(applicationScript, /openSettingsTab[\s\S]*renderMemberImmichLinkStatus\(\)/);
     assert.match(applicationScript, /personSection\.classList\.toggle\('hidden', !immichConfigured \|\| !currentMember\)/);
+    assert.match(html, /id="settingsMemberPanel"[\s\S]*id="immichPersonSection"[\s\S]*id="settingsHouseholdPanel"/);
 });
 
 test('life grid opens an accessible local-data week detail on pointer and keyboard input', () => {

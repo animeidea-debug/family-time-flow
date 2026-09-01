@@ -1140,6 +1140,13 @@
                 </select>
             </div>
 
+            <div id="immichPersonSection" class="form-control hidden">
+                <label class="label py-1"><span class="label-text font-bold text-theme-text">照片人物关联</span></label>
+                <p id="cfgImmichLinkStatus" class="rounded-xl border-2 border-theme-border bg-theme-muted/80 px-3 py-2 text-xs text-theme-text/70">
+                    正在读取关联状态…
+                </p>
+            </div>
+
             <div class="flex gap-2 pt-3">
                 <button onclick="saveConfig()"
                     class="btn btn-accent btn-sm flex-1 font-bold transition-all duration-300 hover:shadow-lg hover:shadow-accent/30">💾
@@ -1187,13 +1194,6 @@
                     <span class="loading loading-dots loading-xs hidden" id="immichLoading"></span>
                     <span id="immichStatusText" class="text-theme-text/50">正在读取...</span>
                 </div>
-            </div>
-
-            <div id="immichPersonSection" class="form-control hidden">
-                <label class="label py-1"><span class="label-text font-bold text-theme-text">照片人物关联</span></label>
-                <p id="cfgImmichLinkStatus" class="rounded-xl border-2 border-theme-border bg-theme-muted/80 px-3 py-2 text-xs text-theme-text/70">
-                    正在读取关联状态…
-                </p>
             </div>
 
             <div class="form-control">
