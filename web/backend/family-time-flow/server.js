@@ -877,18 +877,20 @@ function hasSimilarHouseholdPeople(a, b) {
     return overlap / smallerSize >= 0.5;
 }
 
-function selectPersonFocusedMemories(candidates, linkedPersonIds, limit) {
+function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earliestCaptureTime = 0) {
     const focused = candidates.flatMap(candidate => {
         const people = Array.isArray(candidate.asset.people) ? candidate.asset.people : [];
         const householdPersonIds = [...new Set(people
             .map(person => person && person.id)
             .filter(id => linkedPersonIds.has(id)))].sort();
         if (!householdPersonIds.length) return [];
+        const captureTime = memoryCaptureTime(candidate.asset);
+        if (earliestCaptureTime && (!captureTime || captureTime < earliestCaptureTime)) return [];
         return [{
             ...candidate,
             householdPersonIds,
             peopleCount: people.length,
-            captureTime: memoryCaptureTime(candidate.asset)
+            captureTime
         }];
     }).sort(compareMemoryCandidates);
 
@@ -971,16 +973,21 @@ app.get("/api/immich/on-this-day", async (req, res) => {
     });
     let selectionMode = "linked-household-people";
     let linkedPersonIds;
+    let earliestCaptureTime = 0;
     if (memberId !== undefined) {
         if (!/^[1-9][0-9]{0,11}$/.test(String(memberId))) {
             return res.status(400).json({ error: "invalid member id" });
         }
-        const member = queryOne("SELECT immich_person_id FROM users WHERE id = ?", [memberId]);
+        const member = queryOne("SELECT immich_person_id, birth_date FROM users WHERE id = ?", [memberId]);
         if (!member) return res.status(404).json({ error: "Member not found" });
         selectionMode = "linked-member-person";
         linkedPersonIds = new Set(member.immich_person_id && member.immich_person_id.trim()
             ? [member.immich_person_id]
             : []);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(member.birth_date || "")) {
+            const parsedBirthDate = Date.parse(`${member.birth_date}T00:00:00.000Z`);
+            if (Number.isFinite(parsedBirthDate)) earliestCaptureTime = parsedBirthDate;
+        }
     } else {
         linkedPersonIds = new Set(queryAll(
             "SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''"
@@ -1023,7 +1030,7 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         const items = (result.data.assets && result.data.assets.items) || [];
         return items.map(asset => ({ asset, year: assetYear }));
     });
-    const selection = selectPersonFocusedMemories(allAssets, linkedPersonIds, lim);
+    const selection = selectPersonFocusedMemories(allAssets, linkedPersonIds, lim, earliestCaptureTime);
     res.set('Cache-Control', 'private, max-age=300');
     res.json({
         assets: selection.selected.map(({ asset, year: assetYear }) => ({

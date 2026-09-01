@@ -271,7 +271,11 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
     const secondCreated = await fetch(`${baseUrl}/users`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: '回忆筛选测试成员乙', immich_person_id: 'person-2' })
+        body: JSON.stringify({
+            name: '回忆筛选测试成员乙',
+            birth_date: `${new Date().getFullYear() - 3}-01-01`,
+            immich_person_id: 'person-2'
+        })
     }).then(response => response.json());
     const unlinkedCreated = await fetch(`${baseUrl}/users`, {
         method: 'POST',
@@ -307,12 +311,13 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         const personalBody = await personalResponse.json();
         assert.equal(personalBody.assets.length, 2);
         assert.equal(personalBody.assets.every(asset => asset.id.includes('group-')), true);
+        assert.equal(personalBody.assets.every(asset => asset.year >= new Date().getFullYear() - 3), true);
         assert.deepEqual(personalBody.selection, {
             mode: 'linked-member-person',
             linkedPeople: 1,
             candidates: 35,
-            personFocused: 10,
-            deduplicated: 5
+            personFocused: 6,
+            deduplicated: 3
         });
         const unlinkedPersonal = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=2&memberId=${unlinkedCreated.id}`);
         assert.equal(unlinkedPersonal.status, 200);

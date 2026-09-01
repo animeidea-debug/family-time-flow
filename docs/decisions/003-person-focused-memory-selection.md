@@ -36,6 +36,9 @@ household members.
   member ID selects only that member's server-side Immich link and returns mode
   `linked-member-person`; the browser never supplies the Immich person ID for
   personal-memory searches.
+- For personal selection, exclude assets captured before the member's stored
+  birth date, including assets without a usable capture time when that boundary
+  is present. This contains false face merges without writing back to Immich.
 
 ## Consequences
 
@@ -45,7 +48,8 @@ household members.
   year, bounded to at most 100 candidates each and cached privately for five
   minutes.
 - Face-recognition misses or incorrect Immich person links affect selection
-  quality but never block household data or mutate Immich.
+  quality but never block household data or mutate Immich. The birth-date guard
+  prevents impossible pre-birth matches from reaching a personal gallery.
 - Rapid member switching may leave older network requests in flight, so the
   personal UI ignores any response that no longer matches the active member.
 - The existing thumbnail/preview-only permission and feature-flag boundaries

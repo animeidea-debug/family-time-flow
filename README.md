@@ -194,6 +194,8 @@ data explicitly.
 - Member pages request the same read-only selector by Family Time Flow member
   ID and show a compact personal gallery containing only that member; the
   backend resolves the Immich link without accepting a person ID from the UI
+- Personal galleries exclude photos captured before the member's stored birth
+  date, containing possible Immich face-merge mistakes without changing Immich
 - Shows compressed thumbnails and a larger read-only preview without original download
 - Keeps explicit disabled, loading, empty, partial, and unavailable states
 
