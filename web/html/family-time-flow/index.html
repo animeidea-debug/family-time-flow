@@ -1208,14 +1208,8 @@
 
     <!-- Photo Hover Tooltip -->
     <div id="photoTooltip" class="photo-tooltip">
-        <div class="flex gap-2">
-            <img id="tooltipImg1" src="" alt=""
-                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
-            <img id="tooltipImg2" src="" alt=""
-                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
-            <img id="tooltipImg3" src="" alt=""
-                class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-theme-border hidden">
-        </div>
+        <img id="tooltipImg1" src="" alt=""
+            class="w-48 h-32 object-cover rounded-xl border-2 border-theme-border hidden">
         <div id="tooltipNoPhotos" class="text-center py-3 text-theme-text/40 text-xs font-bold hidden">📷 暂无照片</div>
         <p id="tooltipCaption" class="text-[10px] sm:text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
     </div>
@@ -1243,6 +1237,12 @@
         };
 
         let gridFocusExpanded = false;
+        const WEEK_HOVER_DELAY_MS = 600;
+        const WEEK_HOVER_CACHE_LIMIT = 64;
+        const weekHoverCache = new Map();
+        let weekHoverTimer = null;
+        let weekHoverRequestSequence = 0;
+        let hoveredWeekKey = null;
 
         // ==================== TOAST ====================
         function showToast(msg, durationMs = 2200) {
@@ -1661,6 +1661,10 @@
         }
 
         function hideTooltip() {
+            clearTimeout(weekHoverTimer);
+            weekHoverTimer = null;
+            hoveredWeekKey = null;
+            weekHoverRequestSequence += 1;
             document.getElementById('photoTooltip').classList.remove('visible');
         }
 
@@ -3095,21 +3099,87 @@
             }
         }
 
-        // Update tooltip when hovering a week cell (replaces placeholder)
+        function resetWeekHoverPhoto() {
+            const image = document.getElementById('tooltipImg1');
+            image.onload = null;
+            image.onerror = null;
+            image.removeAttribute('src');
+            image.alt = '';
+            image.classList.add('hidden');
+            const empty = document.getElementById('tooltipNoPhotos');
+            empty.textContent = '📷 暂无照片';
+            empty.classList.add('hidden');
+        }
+
+        function cacheWeekHoverResult(key, result) {
+            if (weekHoverCache.has(key)) weekHoverCache.delete(key);
+            weekHoverCache.set(key, result);
+            while (weekHoverCache.size > WEEK_HOVER_CACHE_LIMIT) {
+                weekHoverCache.delete(weekHoverCache.keys().next().value);
+            }
+        }
+
+        function renderWeekHoverResult(result, weekIndex, dateStr) {
+            resetWeekHoverPhoto();
+            const caption = document.getElementById('tooltipCaption');
+            if (!result || !result.asset) {
+                const empty = document.getElementById('tooltipNoPhotos');
+                empty.textContent = result && result.unavailable ? '📷 暂时无法读取' : '📷 暂无照片';
+                empty.classList.remove('hidden');
+                caption.textContent = result && result.unavailable
+                    ? `第 ${weekIndex + 1} 周 · ${dateStr} 照片暂时无法读取`
+                    : `第 ${weekIndex + 1} 周 · ${dateStr} 暂无精选照片`;
+                return;
+            }
+            const image = document.getElementById('tooltipImg1');
+            image.alt = `${dateStr} 的代表照片`;
+            image.onload = () => image.classList.remove('hidden');
+            image.onerror = () => {
+                image.classList.add('hidden');
+                document.getElementById('tooltipNoPhotos').classList.remove('hidden');
+            };
+            image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(result.asset.id)}`;
+            caption.textContent = `第 ${weekIndex + 1} 周 · ${dateStr} · 精选 1 张`;
+        }
+
+        async function loadWeekHoverRepresentative({ memberId, weekIndex, dateStr, key }) {
+            const sequence = ++weekHoverRequestSequence;
+            const data = await apiGet(
+                `/members/${encodeURIComponent(memberId)}/weeks/${weekIndex}/memories?limit=9`,
+                { timeoutMs: 10000 }
+            );
+            const assets = data && Array.isArray(data.assets)
+                ? data.assets.filter(asset => asset && typeof asset.id === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(asset.id))
+                : [];
+            // The server selector has already removed unrelated images, exact
+            // duplicates and bursts. Its chronological midpoint avoids always
+            // favoring the first day of the week.
+            const result = {
+                asset: assets.length ? assets[Math.floor((assets.length - 1) / 2)] : null,
+                unavailable: !data
+            };
+            cacheWeekHoverResult(key, result);
+            if (sequence !== weekHoverRequestSequence || hoveredWeekKey !== key) return;
+            renderWeekHoverResult(result, weekIndex, dateStr);
+        }
+
+        // Intentional desktop hover offers one cached representative photo.
         function showWeekTooltip(event, weekIndex) {
             const tooltip = document.getElementById('photoTooltip');
             const rect = event.target.getBoundingClientRect();
 
-            let left = rect.left + (rect.width / 2) - 90;
-            let top = rect.top - 145;
+            let left = rect.left + (rect.width / 2) - 110;
+            let top = rect.top - 190;
 
             if (left < 8) left = 8;
-            if (left + 180 > window.innerWidth) left = window.innerWidth - 188;
+            if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
             if (top < 8) top = rect.bottom + 8;
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
             tooltip.classList.add('visible');
+            clearTimeout(weekHoverTimer);
+            resetWeekHoverPhoto();
 
             let dateStr = '';
             if (state.profile.birthDate) {
@@ -3119,29 +3189,23 @@
                 const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 dateStr = `${f(ws)} ~ ${f(we)}`;
 
-                // Week-hover photos are a separate, default-off capability.
-                if (immichWeekHoverEnabled && immichConnected && state.immichSync) {
-                    apiGet(`/members/${encodeURIComponent(activeUserId)}/weeks/${weekIndex}/memories?limit=3`).then(data => {
-                        const assets = data && Array.isArray(data.assets) ? data.assets : [];
-                        const imgs = [1, 2, 3];
-                        imgs.forEach((i, idx) => {
-                            const img = document.getElementById(`tooltipImg${i}`);
-                            if (assets[idx]) {
-                                img.src = `${API_BASE}/immich/asset-thumb?id=${assets[idx].id}`;
-                                img.classList.remove('hidden');
-                            } else {
-                                img.src = '';
-                                img.classList.add('hidden');
-                            }
-                        });
-                        if (assets.length > 0) {
-                            document.getElementById('tooltipCaption').textContent =
-                                `第 ${weekIndex + 1} 周 · ${dateStr} (${assets.length}张照片)`;
-                        } else {
-                            document.getElementById('tooltipCaption').textContent =
-                                `第 ${weekIndex + 1} 周 · ${dateStr} 暂无照片`;
-                        }
-                    });
+                const hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+                const isHistoricalWeek = ws.getTime() <= Date.now();
+                if (immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&
+                    state.immichSync && activeUserId && hoverCapable) {
+                    const key = `${activeUserId}:${weekIndex}`;
+                    hoveredWeekKey = key;
+                    const cached = weekHoverCache.get(key);
+                    if (cached) {
+                        renderWeekHoverResult(cached, weekIndex, dateStr);
+                    } else {
+                        document.getElementById('tooltipCaption').textContent =
+                            `第 ${weekIndex + 1} 周 · ${dateStr} · 停留片刻查看代表照片`;
+                        weekHoverTimer = setTimeout(() => {
+                            weekHoverTimer = null;
+                            loadWeekHoverRepresentative({ memberId: activeUserId, weekIndex, dateStr, key });
+                        }, WEEK_HOVER_DELAY_MS);
+                    }
                     return;
                 }
             }

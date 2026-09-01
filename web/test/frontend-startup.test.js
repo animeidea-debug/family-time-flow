@@ -140,6 +140,14 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.configured === true/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.memoriesEnabled === true/);
     assert.match(applicationScript, /data\.integrations\?\.immich\?\.weekHoverEnabled === true/);
+    assert.match(applicationScript, /const WEEK_HOVER_DELAY_MS = 600/);
+    assert.match(applicationScript, /const WEEK_HOVER_CACHE_LIMIT = 64/);
+    assert.match(applicationScript, /matchMedia\('\(hover: hover\) and \(pointer: fine\)'\)/);
+    assert.match(applicationScript, /memories\?limit=9/);
+    assert.match(applicationScript, /Math\.floor\(\(assets\.length - 1\) \/ 2\)/);
+    assert.match(applicationScript, /hoveredWeekKey !== key/);
+    assert.match(applicationScript, /const isHistoricalWeek = ws\.getTime\(\) <= Date\.now\(\)/);
+    assert.equal((html.match(/id="tooltipImg\d+"/g) || []).length, 1);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
     assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
@@ -158,8 +166,8 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     }
     assert.match(applicationScript, /async function loadOnThisDayMemories/);
     assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
-    assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConnected && state\.immichSync\)/);
-    assert.match(applicationScript, /\/members\/\$\{encodeURIComponent\(activeUserId\)\}\/weeks\/\$\{weekIndex\}\/memories\?limit=3/);
+    assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&\s*state\.immichSync && activeUserId && hoverCapable\)/);
+    assert.match(applicationScript, /\/members\/\$\{encodeURIComponent\(memberId\)\}\/weeks\/\$\{weekIndex\}\/memories\?limit=9/);
     assert.doesNotMatch(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
     assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
     assert.match(applicationScript, /immichGet\(path, \{ timeoutMs: 10000 \}\)/);

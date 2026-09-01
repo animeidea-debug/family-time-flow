@@ -183,12 +183,14 @@ data explicitly.
 #### Memory Hover Tooltips
 - Remains disabled unless the independent server capability
   `ENABLE_IMMICH_WEEK_HOVER=1` is explicitly reviewed and enabled
-- Hovering over historical grid nodes calls the Family Time Flow
-  `/api/immich/assets` adapter, which uses Immich's metadata search endpoint
-- Pulls Top 3 compressed thumbnails (`/api/assets/{id}/thumbnail?size=thumbnail`)
-- Presents them in glassmorphic popover card
-- A future reviewed interaction may open a larger preview; original-file
-  download remains outside the current permission scope
+- On a fine-pointer desktop, waits 600 ms before loading so merely crossing the
+  4,160-cell grid does not issue photo requests
+- Requests the existing member/week memory selector, then shows one
+  person-focused, deduplicated midpoint image as a representative preview
+- Caches at most 64 member/week results in page memory and ignores stale hover
+  responses; touch devices continue to use the week-detail gallery
+- Uses only the compressed thumbnail proxy; larger read-only preview stays in
+  the click-opened week detail and original download remains out of scope
 
 #### Week Photo Playback
 - Opens inside the existing click, touch, and keyboard week-detail dialog;
