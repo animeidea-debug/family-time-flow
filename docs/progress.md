@@ -3,16 +3,17 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-09-01 Asia/Shanghai
+> Last verified: 2026-09-02 Asia/Shanghai
 
 ## Current state
 
 - Production runs commit
-  `8c44e23ec2617eec21c76bd73e4e5be89a1891e3` through the NAS-owned
+  `cbb3e7c316a008fcc170ae666e259d7492984f25` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
   photo playback inside the accessible week detail, bounded Immich pagination,
-  and server-private person links.
+  server-private person links, and the default-off intentional desktop hover
+  preview implementation.
 - `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
@@ -33,7 +34,7 @@
 - “On This Day” and week-grid photo lookup now have independent server
   capabilities. Production reports `memoriesEnabled: true` and
   `weekHoverEnabled: false`, so the reviewed household card remains available
-  without enabling per-week photo searches.
+  without enabling hover photo searches.
 - Each member page now requests a four-item personal “On This Day” gallery by
   Family Time Flow member ID. The backend resolves the Immich person link and
   never accepts that person ID from the browser. A production batch check found
@@ -66,6 +67,13 @@
   brand navigation, and the multi-select person picker. The picker loads all 10
   person thumbnails, with six selectable and four already created people,
   prioritizes selectable people, and reports no business console errors.
+- The desktop hover implementation is deployed but remains safely disabled by
+  production configuration. It waits 600 ms on a historical cell, requests the
+  existing member/week selector only on fine-pointer devices, shows one
+  deduplicated midpoint image, caches at most 64 page-session results, and
+  ignores stale responses. With the flag still off, browser QA confirmed 4,160
+  cells, a date-only tooltip, no hover image, no browser errors, and an
+  unaffected click-opened gallery with 9/9 loaded thumbnails.
 - Student, worker, and family themes now use explicit high-contrast primary,
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
@@ -140,11 +148,14 @@
 - The privacy and pagination release passed 23 frontend contracts and 24 backend integration tests
   locally and in the NAS release gate, plus backend syntax, frontend asset
   rebuild/hash verification, and `git diff --check`.
+- The intentional-hover release passed the same 23 frontend and 24 backend
+  tests locally and in the NAS release gate. Its durable rationale is recorded
+  in `docs/decisions/006-intentional-week-hover-preview.md`.
 - `nas-deploy status` and `nas-deploy doctor` passed after the final release.
   The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260901-230609.db` before the atomic
+  `/app/data/backups/ftf-pre-release-20260901-234838.db` before the atomic
   switch; rollback remains `nas-deploy rollback family-time-flow` and currently
-  returns to `caa028a50ec26397ccb974328cc781bd714508bd`.
+  returns to `8c44e23ec2617eec21c76bd73e4e5be89a1891e3`.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
@@ -165,16 +176,21 @@
 
 ## Next steps
 
-1. Let the family batch-observe household, personal, and click-opened weekly
+1. After explicit owner approval, set `ENABLE_IMMICH_WEEK_HOVER=1` through the
+   NAS-owned runtime configuration, recreate only the FTF backend as prescribed
+   by the NAS project, then verify 600ms dwell, one loaded representative image,
+   stale-response cancellation, caching, and request volume before leaving it
+   enabled.
+2. Let the family batch-observe household, personal, and click-opened weekly
    memories across additional dates. Include photo-rich weeks that require more
    than one Immich page, confirm the two-column 390px phone gallery, and report
    any repeated composition or wrong-person match without changing Immich from
    this application.
-2. Verify an event edit when a real change is needed; exercise deletion only
+3. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-3. Let the user add any remaining household members and complete missing birth
+4. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-4. Keep the unauthenticated API on the trusted LAN; review authentication before
+5. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
