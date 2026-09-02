@@ -3066,6 +3066,12 @@
             }
         }
 
+        function isActiveMemberImmichLinked() {
+            return remoteUsers.some(user =>
+                String(user.id) === String(activeUserId) && user.immich_linked === true
+            );
+        }
+
         async function immichGet(path, options = {}) {
             return await apiGet(`/immich${path}`, options);
         }
@@ -3192,7 +3198,7 @@
                 const hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
                 const isHistoricalWeek = ws.getTime() <= Date.now();
                 if (immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&
-                    state.immichSync && activeUserId && hoverCapable) {
+                    isActiveMemberImmichLinked() && activeUserId && hoverCapable) {
                     const key = `${activeUserId}:${weekIndex}`;
                     hoveredWeekKey = key;
                     const cached = weekHoverCache.get(key);

@@ -147,6 +147,8 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(applicationScript, /Math\.floor\(\(assets\.length - 1\) \/ 2\)/);
     assert.match(applicationScript, /hoveredWeekKey !== key/);
     assert.match(applicationScript, /const isHistoricalWeek = ws\.getTime\(\) <= Date\.now\(\)/);
+    assert.match(applicationScript, /function isActiveMemberImmichLinked\(\)/);
+    assert.match(applicationScript, /user\.immich_linked === true/);
     assert.equal((html.match(/id="tooltipImg\d+"/g) || []).length, 1);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
@@ -166,7 +168,7 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     }
     assert.match(applicationScript, /async function loadOnThisDayMemories/);
     assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
-    assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&\s*state\.immichSync && activeUserId && hoverCapable\)/);
+    assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&\s*isActiveMemberImmichLinked\(\) && activeUserId && hoverCapable\)/);
     assert.match(applicationScript, /\/members\/\$\{encodeURIComponent\(memberId\)\}\/weeks\/\$\{weekIndex\}\/memories\?limit=9/);
     assert.doesNotMatch(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);
     assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
