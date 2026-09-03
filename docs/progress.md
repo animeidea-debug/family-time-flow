@@ -3,12 +3,12 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-09-02 Asia/Shanghai
+> Last verified: 2026-09-03 Asia/Shanghai
 
 ## Current state
 
 - Production runs commit
-  `d953dd40da8bec25d5ef035aebf6a62bf735c40b` through the NAS-owned
+  `1c22c8f4ab49f58d02c10d7cd052ff771bce502b` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
   photo playback inside the accessible week detail, bounded Immich pagination,
@@ -25,22 +25,23 @@
   returned assets; 12 sampled images had person and date metadata, and all 12
   thumbnail responses were valid images. No originals were downloaded
   and no Immich data was changed.
-- The server-gated “On This Day” card is enabled in production. Post-deployment
-  verification returned six current-date memories, 3/3 sampled thumbnails and
-  2/2 sampled previews; the household UI loaded all six thumbnails, opened a
-  1440×1920 read-only preview, restored keyboard focus on close, and reported
-  no browser console warnings or errors.
+- The server-gated “On This Day” card is enabled in production. It now searches
+  the exact day first, then fills a sparse gallery from non-overlapping ±1-day
+  and ±3-day bands while preserving linked-person, birth-date, duplicate, and
+  burst guards. Household selection gives each linked member a fair first pass,
+  and every adjacent result displays its real capture date.
 - “On This Day” and week-grid photo lookup now have independent server
   capabilities. Production reports `memoriesEnabled: true` and
   `weekHoverEnabled: true`; the independent switches still allow hover lookup
   to be disabled without affecting the reviewed household card or click-opened
   weekly playback.
-- Each member page now requests a four-item personal “On This Day” gallery by
+- Each member page requests a four-item personal “On This Day” gallery by
   Family Time Flow member ID. The backend resolves the Immich person link and
-  never accepts that person ID from the browser. A production batch check found
-  1, 4, 1, and 0 eligible photos for the four members; the member whose stored
-  birth date is later than every candidate now correctly receives the empty
-  state instead of an impossible 2022 face match.
+  never accepts that person ID from the browser. The September 3 adaptive-window
+  production check found 4, 4, 3, and 0 eligible photos for the four members;
+  responses completed in 244–471 ms. The member with no eligible result now
+  receives an explicit “exact day and ±3 days checked” empty state rather than
+  a personless or pre-birth fallback.
 - Opening a week now performs a bounded personal-photo search by Family Time
   Flow member ID and life-week index. The backend computes the seven-day range,
   resolves the Immich person, follows at most three 100-item metadata pages,
@@ -152,11 +153,17 @@
 - The intentional-hover release passed the same 23 frontend and 24 backend
   tests locally and in the NAS release gate. Its durable rationale is recorded
   in `docs/decisions/006-intentional-week-hover-preview.md`.
+- The adaptive “On This Day” release passed the same 23 frontend and 24 backend
+  tests locally and in both NAS release gates. Its exact-first, ±1/±3 fallback,
+  real-date, household-balance, and honest-empty-state contract is recorded in
+  `docs/decisions/007-adaptive-on-this-day-window.md`. Production returned six
+  household images in 316 ms, used a one-day margin, loaded all six thumbnails,
+  and showed the correct real-date badges and expansion explanation.
 - `nas-deploy status` and `nas-deploy doctor` passed after the final release.
   The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260902-105159.db` before the atomic
+  `/app/data/backups/ftf-pre-release-20260903-110207.db` before the atomic
   switch; rollback remains `nas-deploy rollback family-time-flow` and currently
-  returns to `cbb3e7c316a008fcc170ae666e259d7492984f25`.
+  returns to `25ecac84be0ea32e2e0d9dec3d8e9e14ba8ea5d3`.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
@@ -167,6 +174,12 @@
 
 ## Known issues
 
+- The 2026-09-03 production install reports three moderate npm audit findings
+  in one Express 4 → body-parser → `qs` query-parser chain; there are no high or
+  critical findings. The fixed `qs` 6.16.0 release is outside Express 4.22.2's
+  declared `~6.15.1` range, so an override or Express major migration requires
+  a separate compatibility change instead of an automatic audit rewrite. LAN
+  restriction limits exposure while that work is reviewed.
 - Additional household members remain a human decision: select the intended
   people and supply any missing birth dates.
 - A broad photo timeline remains outside the reviewed production scope. “On
@@ -177,16 +190,18 @@
 
 ## Next steps
 
-1. Let the family batch-observe household, personal, click-opened weekly, and
-   desktop-hover memories across additional dates. Include photo-rich weeks
-   that require more than one Immich page, confirm the two-column 390px phone
-   gallery, and report any repeated composition or wrong-person match without
-   changing Immich from this application.
-2. Verify an event edit when a real change is needed; exercise deletion only
+1. Let the family batch-observe exact and expanded “On This Day” results across
+   additional dates. Confirm that household member balance feels natural and
+   report repeated composition, weak nearby-date choices, or wrong-person
+   matches without changing Immich from this application.
+2. Resolve the moderate Express query-parser advisories in a separate dependency
+   compatibility change, validating either a reviewed `qs` override or Express
+   migration with the full backend and NAS release gates.
+3. Verify an event edit when a real change is needed; exercise deletion only
    with explicit approval for a disposable or obsolete event.
-3. Let the user add any remaining household members and complete missing birth
+4. Let the user add any remaining household members and complete missing birth
    dates in the home LAN.
-4. Keep the unauthenticated API on the trusted LAN; review authentication before
+5. Keep the unauthenticated API on the trusted LAN; review authentication before
    any broader network exposure.
 
 ## Operation entry points
