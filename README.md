@@ -194,7 +194,8 @@ data explicitly.
 
 #### Week Photo Playback
 - Opens inside the existing click, touch, and keyboard week-detail dialog;
-  hovering over the life grid still does not query photos
+  an intentional 600 ms fine-pointer hover can show one cached representative
+  photo when the independent server capability is enabled
 - Addresses the request by Family Time Flow member ID and life-week index so
   the backend computes the date range and resolves the Immich person privately
 - Shows up to nine person-focused, deduplicated photos, balanced across days and
@@ -209,16 +210,19 @@ data explicitly.
 
 #### "On This Day" Time Capsule
 - Feature-flagged household card and persistent bottom ticker
-- Searches matching calendar days across the previous five years
+- Searches the exact calendar day across the previous five years first, then
+  fills a sparse gallery from non-overlapping ±1-day and ±3-day bands
 - Keeps only photos containing an Immich person linked to a created household
   member; personless photos are not used as filler
-- Removes exact duplicates and same-person camera bursts, then balances the
-  limited gallery across years
+- Removes exact duplicates and same-person camera bursts, balances the limited
+  gallery across years, and gives linked household members a fair first pass
 - Member pages request the same read-only selector by Family Time Flow member
   ID and show a compact personal gallery containing only that member; the
   backend resolves the Immich link without accepting a person ID from the UI
 - Personal galleries exclude photos captured before the member's stored birth
   date, containing possible Immich face-merge mistakes without changing Immich
+- Adjacent-day fallback always displays the real capture date and explains the
+  expanded window instead of presenting the photo as an exact-day match
 - Shows compressed thumbnails and a larger read-only preview without original download
 - Keeps explicit disabled, loading, empty, partial, and unavailable states
 

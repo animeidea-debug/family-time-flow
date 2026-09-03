@@ -168,6 +168,11 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     }
     assert.match(applicationScript, /async function loadOnThisDayMemories/);
     assert.match(applicationScript, /if \(!immichConfigured \|\| !immichMemoriesEnabled/);
+    assert.match(applicationScript, /onThisDaySelection\?\.windowDays > 0/);
+    assert.match(applicationScript, /personalMemorySelection\?\.windowDays > 0/);
+    assert.match(applicationScript, /精确当天照片不足，已扩展到前后/);
+    assert.match(applicationScript, /const displayDate = exactDate/);
+    assert.match(applicationScript, /const memoryDate = asset\.date \|\| `\$\{asset\.year\} 年`/);
     assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&\s*isActiveMemberImmichLinked\(\) && activeUserId && hoverCapable\)/);
     assert.match(applicationScript, /\/members\/\$\{encodeURIComponent\(memberId\)\}\/weeks\/\$\{weekIndex\}\/memories\?limit=9/);
     assert.doesNotMatch(applicationScript, /if \(immichMemoriesEnabled && immichConnected && state\.immichSync\)/);

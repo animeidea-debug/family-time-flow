@@ -383,8 +383,12 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             linkedPeople: 2,
             candidates: 35,
             personFocused: 30,
-            deduplicated: 15
+            deduplicated: 15,
+            windowDays: 0,
+            searchedWindowDays: 0
         });
+        assert.equal(body.assets.every(asset => /^\d{4}-\d{2}-\d{2}$/.test(asset.date)), true);
+        assert.equal(body.assets.every(asset => asset.dayOffset === 0), true);
         assert.equal(lastSearchBody.type, 'IMAGE');
         assert.equal(lastSearchBody.withPeople, true);
         assert.equal(lastSearchBody.withExif, true);
@@ -401,7 +405,9 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             linkedPeople: 1,
             candidates: 35,
             personFocused: 6,
-            deduplicated: 3
+            deduplicated: 3,
+            windowDays: 0,
+            searchedWindowDays: 0
         });
 
         const weekResponse = await fetch(`${baseUrl}/members/${secondCreated.id}/weeks/0/memories?limit=9`);
@@ -472,15 +478,29 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
 
         const partial = await fetch(`${baseUrl}/immich/on-this-day?month=1&day=3&limit=2`);
         assert.equal(partial.status, 200);
-        assert.deepEqual(await partial.json(), {
-            assets: [], month: 1, day: 3,
-            selection: {
-                mode: 'linked-household-people', linkedPeople: 2,
-                candidates: 4, personFocused: 0, deduplicated: 0
-            },
-            partial: true,
-            status: 'unauthorized'
-        });
+        const partialBody = await partial.json();
+        assert.equal(partialBody.assets.length, 2);
+        assert.equal(partialBody.assets.every(asset => asset.dayOffset === -1), true);
+        assert.equal(partialBody.month, 1);
+        assert.equal(partialBody.day, 3);
+        assert.equal(partialBody.selection.mode, 'linked-household-people');
+        assert.equal(partialBody.selection.linkedPeople, 2);
+        assert.equal(partialBody.selection.windowDays, 1);
+        assert.equal(partialBody.selection.searchedWindowDays, 1);
+        assert.equal(partialBody.partial, true);
+        assert.equal(partialBody.status, 'unauthorized');
+
+        const personalFallback = await fetch(
+            `${baseUrl}/immich/on-this-day?month=1&day=3&limit=2&memberId=${secondCreated.id}`
+        );
+        assert.equal(personalFallback.status, 200);
+        const personalFallbackBody = await personalFallback.json();
+        assert.equal(personalFallbackBody.assets.length, 2);
+        assert.equal(personalFallbackBody.assets.every(asset => asset.dayOffset === -1), true);
+        assert.equal(personalFallbackBody.assets.every(asset => asset.date.endsWith('-01-02')), true);
+        assert.equal(personalFallbackBody.selection.mode, 'linked-member-person');
+        assert.equal(personalFallbackBody.selection.windowDays, 1);
+        assert.equal(personalFallbackBody.selection.searchedWindowDays, 1);
 
         const empty = await fetch(`${baseUrl}/immich/on-this-day?month=2&day=29&limit=6`);
         assert.equal(empty.status, 200);
@@ -488,7 +508,8 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             assets: [], month: 2, day: 29,
             selection: {
                 mode: 'linked-household-people', linkedPeople: 2,
-                candidates: 0, personFocused: 0, deduplicated: 0
+                candidates: 0, personFocused: 0, deduplicated: 0,
+                windowDays: 0, searchedWindowDays: 3
             }
         });
 

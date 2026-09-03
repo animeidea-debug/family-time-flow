@@ -891,7 +891,8 @@ function memoryCaptureTime(asset) {
 }
 
 function compareMemoryCandidates(a, b) {
-    return Number(Boolean(b.asset.isFavorite)) - Number(Boolean(a.asset.isFavorite)) ||
+    return Math.abs(Number(a.dayOffset) || 0) - Math.abs(Number(b.dayOffset) || 0) ||
+        Number(Boolean(b.asset.isFavorite)) - Number(Boolean(a.asset.isFavorite)) ||
         b.householdPersonIds.length - a.householdPersonIds.length ||
         b.peopleCount - a.peopleCount ||
         b.captureTime - a.captureTime ||
@@ -1005,6 +1006,35 @@ function selectWeeklyPersonMemories(candidates, linkedPersonIds, limit, earliest
     return { ...base, selected };
 }
 
+function selectHouseholdBalancedMemories(candidates, linkedPersonIds, limit) {
+    const base = selectPersonFocusedMemories(candidates, linkedPersonIds, candidates.length);
+    const selected = [];
+    const selectedIds = new Set();
+    const queues = [...linkedPersonIds].map(personId => base.selected.filter(candidate =>
+        candidate.householdPersonIds.includes(personId)
+    ));
+    let added = true;
+    while (selected.length < limit && added) {
+        added = false;
+        for (const queue of queues) {
+            while (queue.length && selectedIds.has(queue[0].asset.id)) queue.shift();
+            const candidate = queue.shift();
+            if (!candidate) continue;
+            selected.push(candidate);
+            selectedIds.add(candidate.asset.id);
+            added = true;
+            if (selected.length >= limit) break;
+        }
+    }
+    for (const candidate of base.selected) {
+        if (selected.length >= limit) break;
+        if (selectedIds.has(candidate.asset.id)) continue;
+        selected.push(candidate);
+        selectedIds.add(candidate.asset.id);
+    }
+    return { ...base, selected };
+}
+
 function parseDateOnlyUtc(value) {
     const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return null;
@@ -1047,6 +1077,34 @@ async function searchImmichMetadataPages(body, { maxPages = 3, maxItems = 300 } 
     };
 }
 
+function onThisDayStageRanges(year, month, day, stage) {
+    const center = Date.UTC(year, month - 1, day);
+    const range = (startOffset, endOffset) => ({
+        center,
+        start: new Date(center + startOffset * 86400000).toISOString().slice(0, 10),
+        end: new Date(center + endOffset * 86400000).toISOString().slice(0, 10)
+    });
+    if (stage === 0) return [range(0, 0)];
+    if (stage === 1) return [range(-1, -1), range(1, 1)];
+    return [range(-3, -2), range(2, 3)];
+}
+
+function toOnThisDayCandidate(asset, center, fallbackYear, start, end) {
+    const captureTime = memoryCaptureTime(asset);
+    if (!captureTime) return null;
+    const captured = new Date(captureTime);
+    const captureDate = captured.toISOString().slice(0, 10);
+    if (captureDate < start || captureDate > end) return null;
+    const captureDay = Date.UTC(captured.getUTCFullYear(), captured.getUTCMonth(), captured.getUTCDate());
+    return {
+        asset,
+        year: captured.getUTCFullYear() || fallbackYear,
+        captureTime,
+        captureDate,
+        dayOffset: Math.round((captureDay - center) / 86400000)
+    };
+}
+
 // GET /api/immich/on-this-day?month=&day=&limit=5&memberId= — person-focused memories across years
 app.get("/api/immich/on-this-day", async (req, res) => {
     if (!IMMICH_MEMORIES_ENABLED) {
@@ -1066,7 +1124,6 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         return res.status(400).json({ error: "invalid month or day" });
     }
 
-    const pad = n => n.toString().padStart(2, '0');
     const year = now.getFullYear();
     const years = Array.from({ length: 5 }, (_, index) => year - index - 1).filter(y => {
         const candidate = new Date(Date.UTC(y, m - 1, d));
@@ -1091,7 +1148,9 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         }
     } else {
         linkedPersonIds = new Set(queryAll(
-            "SELECT immich_person_id FROM users WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''"
+            `SELECT immich_person_id FROM users
+             WHERE immich_person_id IS NOT NULL AND TRIM(immich_person_id) != ''
+             ORDER BY COALESCE(sort_order, id), id`
         ).map(row => row.immich_person_id));
     }
     if (!linkedPersonIds.size) {
@@ -1108,37 +1167,60 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         });
     }
     const candidateSize = Math.min(Math.max(lim * 8, 40), 100);
-    const results = await Promise.all(years.map(async y => {
-        const dateStr = `${y}-${pad(m)}-${pad(d)}`;
-        const result = await immichFetch("/api/search/metadata", {
-            method: "POST",
-            body: {
-                page: 1, size: candidateSize,
-                takenAfter: `${dateStr}T00:00:00.000Z`,
-                takenBefore: `${dateStr}T23:59:59.999Z`,
-                type: "IMAGE",
-                withExif: true,
-                withPeople: true
-            }
-        });
-        return { year: y, result };
-    }));
-    const successfulQueries = results.filter(entry => entry.result.ok).length;
-    const firstFailure = results.find(entry => !entry.result.ok)?.result || null;
-    if (successfulQueries === 0 && firstFailure) return sendImmichFailure(res, firstFailure, "memories");
-    const allAssets = results.flatMap(({ year: assetYear, result }) => {
-        if (!result.ok) return [];
-        const items = (result.data.assets && result.data.assets.items) || [];
-        return items.map(asset => ({ asset, year: assetYear }));
-    });
-    const selection = selectPersonFocusedMemories(allAssets, linkedPersonIds, lim, earliestCaptureTime);
+    const allAssets = [];
+    let selection = { selected: [], focusedCount: 0, deduplicatedCount: 0 };
+    let firstFailure = null;
+    let successfulQueries = 0;
+    let searchedWindowDays = 0;
+    for (const stage of [0, 1, 3]) {
+        const queries = years.flatMap(year => onThisDayStageRanges(year, m, d, stage)
+            .map(async ({ center, start, end }) => {
+                const result = await immichFetch("/api/search/metadata", {
+                    method: "POST",
+                    body: {
+                        page: 1,
+                        size: stage === 0 ? candidateSize : 100,
+                        takenAfter: `${start}T00:00:00.000Z`,
+                        takenBefore: `${end}T23:59:59.999Z`,
+                        type: "IMAGE",
+                        withExif: true,
+                        withPeople: true
+                    }
+                });
+                return { year, center, start, end, result };
+            }));
+        const results = await Promise.all(queries);
+        successfulQueries += results.filter(entry => entry.result.ok).length;
+        firstFailure ||= results.find(entry => !entry.result.ok)?.result || null;
+        if (stage === 0 && successfulQueries === 0 && firstFailure) {
+            return sendImmichFailure(res, firstFailure, "memories");
+        }
+        for (const { year: assetYear, center, start, end, result } of results) {
+            if (!result.ok) continue;
+            const items = (result.data.assets && result.data.assets.items) || [];
+            allAssets.push(...items
+                .map(asset => toOnThisDayCandidate(asset, center, assetYear, start, end))
+                .filter(Boolean));
+        }
+        selection = memberId === undefined
+            ? selectHouseholdBalancedMemories(allAssets, linkedPersonIds, lim)
+            : selectPersonFocusedMemories(allAssets, linkedPersonIds, lim, earliestCaptureTime);
+        searchedWindowDays = stage;
+        if (selection.selected.length >= lim) break;
+    }
+    const usedWindowDays = selection.selected.reduce(
+        (largest, candidate) => Math.max(largest, Math.abs(candidate.dayOffset || 0)),
+        0
+    );
     res.set('Cache-Control', 'private, max-age=300');
     res.json({
-        assets: selection.selected.map(({ asset, year: assetYear }) => ({
+        assets: selection.selected.map(({ asset, year: assetYear, captureDate, dayOffset }) => ({
             id: asset.id,
             fileCreatedAt: asset.fileCreatedAt,
             year: assetYear,
-            type: asset.type
+            type: asset.type,
+            date: captureDate,
+            dayOffset
         })),
         month: m,
         day: d,
@@ -1147,7 +1229,9 @@ app.get("/api/immich/on-this-day", async (req, res) => {
             linkedPeople: linkedPersonIds.size,
             candidates: allAssets.length,
             personFocused: selection.focusedCount,
-            deduplicated: selection.deduplicatedCount
+            deduplicated: selection.deduplicatedCount,
+            windowDays: usedWindowDays,
+            searchedWindowDays
         },
         ...(firstFailure ? { partial: true, status: firstFailure.kind } : {})
     });

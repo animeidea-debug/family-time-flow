@@ -2208,11 +2208,13 @@
 
         function appendMemoryAssetButtons(gallery, assets, scope, personName = '') {
             assets.forEach(asset => {
+                const exactDate = /^\d{4}-\d{2}-\d{2}$/.test(asset.date || '') ? asset.date : null;
+                const displayDate = exactDate ? exactDate.replace(/-/g, '.') : `${asset.year} 年`;
                 const memoryLabel = scope === 'week'
                     ? `${asset.date} 与${personName || '当前成员'}有关的周照片`
                     : scope === 'personal'
-                        ? `${asset.year} 年与${personName || '当前成员'}有关的回忆`
-                        : `${asset.year} 年的家庭回忆`;
+                        ? `${exactDate || `${asset.year} 年`}与${personName || '当前成员'}有关的回忆`
+                        : `${exactDate || `${asset.year} 年`}的家庭回忆`;
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = scope === 'week'
@@ -2235,7 +2237,7 @@
 
                 const badge = document.createElement('span');
                 badge.className = 'absolute bottom-1.5 left-1.5 rounded-full bg-slate-950/75 px-2 py-0.5 text-[10px] font-black text-white';
-                badge.textContent = scope === 'week' ? asset.date.slice(5).replace('-', '.') : `${asset.year} 年`;
+                badge.textContent = scope === 'week' ? asset.date.slice(5).replace('-', '.') : displayDate;
                 button.append(image, badge);
                 gallery.appendChild(button);
             });
@@ -2282,6 +2284,9 @@
             status.classList.add('hidden');
             gallery.classList.remove('hidden');
             selectionNote.classList.toggle('hidden', onThisDaySelection?.mode !== 'linked-household-people');
+            selectionNote.textContent = onThisDaySelection?.windowDays > 0
+                ? `精确当天照片不足，已扩展到前后 ${onThisDaySelection.windowDays} 天；优先覆盖不同家人，并自动避开重复与连拍。`
+                : '优先覆盖不同家人，并自动避开重复与连拍。';
             partial.classList.toggle('hidden', !onThisDayPartial);
             appendMemoryAssetButtons(gallery, onThisDayAssets, 'household');
         }
@@ -2371,6 +2376,9 @@
             status.classList.add('hidden');
             gallery.classList.remove('hidden');
             selectionNote.classList.toggle('hidden', personalMemorySelection?.mode !== 'linked-member-person');
+            selectionNote.textContent = personalMemorySelection?.windowDays > 0
+                ? `精确当天照片不足，已扩展到前后 ${personalMemorySelection.windowDays} 天；只显示当前成员入镜的真实日期照片。`
+                : '只显示当前成员在精确当天入镜的照片，并自动避开重复与连拍。';
             partial.classList.toggle('hidden', !personalMemoryPartial);
             appendMemoryAssetButtons(gallery, personalMemoryAssets, 'personal', state.profile.name);
         }
@@ -2428,7 +2436,7 @@
                 ? `${state.profile.name || '成员'}的这一周`
                 : scope === 'personal' ? `${state.profile.name || '成员'}的回忆` : '家庭回忆';
             memoryPreviewTrigger = document.activeElement;
-            const memoryDate = scope === 'week' ? asset.date : `${asset.year} 年`;
+            const memoryDate = asset.date || `${asset.year} 年`;
             caption.textContent = `${memoryDate} · ${scope === 'household' ? '家庭' : '个人'}只读预览`;
             image.classList.remove('hidden');
             image.onload = () => image.classList.remove('hidden');
