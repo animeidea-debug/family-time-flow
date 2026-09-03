@@ -171,6 +171,9 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /onThisDaySelection\?\.windowDays > 0/);
     assert.match(applicationScript, /personalMemorySelection\?\.windowDays > 0/);
     assert.match(applicationScript, /精确当天照片不足，已扩展到前后/);
+    assert.match(applicationScript, /今天附近没有找到合适的家人回忆/);
+    assert.match(applicationScript, /今天附近没有找到个人回忆/);
+    assert.match(applicationScript, /已检查精确当天及前后/);
     assert.match(applicationScript, /const displayDate = exactDate/);
     assert.match(applicationScript, /const memoryDate = asset\.date \|\| `\$\{asset\.year\} 年`/);
     assert.match(applicationScript, /if \(immichWeekHoverEnabled && immichConfigured && immichMemoriesEnabled && isHistoricalWeek &&\s*isActiveMemberImmichLinked\(\) && activeUserId && hoverCapable\)/);

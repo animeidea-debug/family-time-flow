@@ -2277,7 +2277,13 @@
                 return;
             }
             if (!onThisDayAssets.length) {
-                setMemoryPanelStatus('今天没有找到合适的家人回忆', '只展示已关联家人入镜且去重后的照片，其他日期仍可能有许多回忆。');
+                const searchedWindow = onThisDaySelection?.searchedWindowDays || 0;
+                setMemoryPanelStatus(
+                    searchedWindow > 0 ? '今天附近没有找到合适的家人回忆' : '今天没有找到合适的家人回忆',
+                    searchedWindow > 0
+                        ? `已检查精确当天及前后 ${searchedWindow} 天；仍只展示已关联家人入镜且去重后的照片。`
+                        : '只展示已关联家人入镜且去重后的照片，其他日期仍可能有许多回忆。'
+                );
                 return;
             }
 
@@ -2366,9 +2372,14 @@
             }
             if (!personalMemoryAssets.length) {
                 const unlinked = personalMemorySelection?.linkedPeople === 0;
+                const searchedWindow = personalMemorySelection?.searchedWindowDays || 0;
                 setPersonalMemoryPanelStatus(
-                    unlinked ? '尚未关联照片人物' : '今天没有找到个人回忆',
-                    unlinked ? '可在添加成员流程中从 Immich 选择对应人物。' : '只展示当前成员入镜且去重后的照片，其他日期仍可能有回忆。'
+                    unlinked ? '尚未关联照片人物'
+                        : searchedWindow > 0 ? '今天附近没有找到个人回忆' : '今天没有找到个人回忆',
+                    unlinked ? '可在添加成员流程中从 Immich 选择对应人物。'
+                        : searchedWindow > 0
+                            ? `已检查精确当天及前后 ${searchedWindow} 天；仍只展示当前成员入镜且去重后的照片。`
+                            : '只展示当前成员入镜且去重后的照片，其他日期仍可能有回忆。'
                 );
                 return;
             }
