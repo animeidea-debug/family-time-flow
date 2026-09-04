@@ -463,6 +463,7 @@
         /* ===== Photo Tooltip ===== */
         .photo-tooltip {
             position: fixed;
+            width: min(380px, calc(100vw - 24px));
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -475,6 +476,32 @@
             transition: opacity 220ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 30;
             box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+        }
+
+        .week-hover-media {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-height: min(440px, calc(100vh - 140px));
+            overflow: hidden;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            background: color-mix(in srgb, var(--surface-color) 88%, var(--accent-color) 12%);
+        }
+
+        .week-hover-image {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: min(436px, calc(100vh - 144px));
+            object-fit: contain;
+        }
+
+        .week-hover-media.hidden,
+        .week-hover-image.hidden {
+            display: none;
         }
 
         .photo-tooltip.visible {
@@ -1208,8 +1235,9 @@
 
     <!-- Photo Hover Tooltip -->
     <div id="photoTooltip" class="photo-tooltip">
-        <img id="tooltipImg1" src="" alt=""
-            class="w-48 h-32 object-cover rounded-xl border-2 border-theme-border hidden">
+        <div id="tooltipMedia" class="week-hover-media hidden">
+            <img id="tooltipImg1" src="" alt="" class="week-hover-image hidden">
+        </div>
         <div id="tooltipNoPhotos" class="text-center py-3 text-theme-text/40 text-xs font-bold hidden">📷 暂无照片</div>
         <p id="tooltipCaption" class="text-[10px] sm:text-xs text-center mt-2 text-theme-text/70 font-semibold"></p>
     </div>
@@ -1243,6 +1271,7 @@
         let weekHoverTimer = null;
         let weekHoverRequestSequence = 0;
         let hoveredWeekKey = null;
+        let hoveredWeekTarget = null;
 
         // ==================== TOAST ====================
         function showToast(msg, durationMs = 2200) {
@@ -1623,7 +1652,7 @@
             wrapper.addEventListener('mouseover', (e) => {
                 const cell = e.target.closest('.week-cell');
                 if (!cell) { hideTooltip(); return; }
-                showWeekTooltip(e, parseInt(cell.dataset.week));
+                showWeekTooltip(cell, parseInt(cell.dataset.week));
             });
             wrapper.addEventListener('mouseout', (e) => {
                 if (!e.target.closest('.week-cell')) return;
@@ -1664,6 +1693,7 @@
             clearTimeout(weekHoverTimer);
             weekHoverTimer = null;
             hoveredWeekKey = null;
+            hoveredWeekTarget = null;
             weekHoverRequestSequence += 1;
             document.getElementById('photoTooltip').classList.remove('visible');
         }
@@ -3131,6 +3161,7 @@
             image.removeAttribute('src');
             image.alt = '';
             image.classList.add('hidden');
+            document.getElementById('tooltipMedia').classList.add('hidden');
             const empty = document.getElementById('tooltipNoPhotos');
             empty.textContent = '📷 暂无照片';
             empty.classList.add('hidden');
@@ -3158,10 +3189,16 @@
             }
             const image = document.getElementById('tooltipImg1');
             image.alt = `${dateStr} 的代表照片`;
-            image.onload = () => image.classList.remove('hidden');
+            image.onload = () => {
+                image.classList.remove('hidden');
+                document.getElementById('tooltipMedia').classList.remove('hidden');
+                requestAnimationFrame(positionWeekTooltip);
+            };
             image.onerror = () => {
                 image.classList.add('hidden');
+                document.getElementById('tooltipMedia').classList.add('hidden');
                 document.getElementById('tooltipNoPhotos').classList.remove('hidden');
+                requestAnimationFrame(positionWeekTooltip);
             };
             image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(result.asset.id)}`;
             caption.textContent = `第 ${weekIndex + 1} 周 · ${dateStr} · 精选 1 张`;
@@ -3189,20 +3226,33 @@
         }
 
         // Intentional desktop hover offers one cached representative photo.
-        function showWeekTooltip(event, weekIndex) {
+        function positionWeekTooltip() {
             const tooltip = document.getElementById('photoTooltip');
-            const rect = event.target.getBoundingClientRect();
+            if (!hoveredWeekTarget || !tooltip.classList.contains('visible')) return;
+            const rect = hoveredWeekTarget.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const margin = 10;
+            const width = tooltipRect.width;
+            const height = tooltipRect.height;
 
-            let left = rect.left + (rect.width / 2) - 110;
-            let top = rect.top - 190;
+            let left = rect.left + (rect.width / 2) - (width / 2);
+            let top = rect.top - height - margin;
 
-            if (left < 8) left = 8;
-            if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
-            if (top < 8) top = rect.bottom + 8;
+            left = Math.min(Math.max(left, margin), window.innerWidth - width - margin);
+            if (top < margin) top = rect.bottom + margin;
+            if (top + height > window.innerHeight - margin) {
+                top = Math.max(margin, window.innerHeight - height - margin);
+            }
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
+        }
+
+        function showWeekTooltip(target, weekIndex) {
+            const tooltip = document.getElementById('photoTooltip');
+            hoveredWeekTarget = target;
             tooltip.classList.add('visible');
+            positionWeekTooltip();
             clearTimeout(weekHoverTimer);
             resetWeekHoverPhoto();
 

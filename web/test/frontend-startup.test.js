@@ -146,10 +146,14 @@ test('Immich onboarding supports multi-select preview with manual fallback', () 
     assert.match(applicationScript, /memories\?limit=9/);
     assert.match(applicationScript, /Math\.floor\(\(assets\.length - 1\) \/ 2\)/);
     assert.match(applicationScript, /hoveredWeekKey !== key/);
+    assert.match(applicationScript, /function positionWeekTooltip\(\)/);
+    assert.match(applicationScript, /requestAnimationFrame\(positionWeekTooltip\)/);
     assert.match(applicationScript, /const isHistoricalWeek = ws\.getTime\(\) <= Date\.now\(\)/);
     assert.match(applicationScript, /function isActiveMemberImmichLinked\(\)/);
     assert.match(applicationScript, /user\.immich_linked === true/);
     assert.equal((html.match(/id="tooltipImg\d+"/g) || []).length, 1);
+    assert.match(html, /class="week-hover-image hidden"/);
+    assert.doesNotMatch(html, /id="tooltipImg1"[^>]*object-cover/);
     assert.match(applicationScript, /function renderImmichStatus/);
     assert.doesNotMatch(html, /Immich 集成将在 Phase 3 上线/);
     assert.equal([...applicationScript.matchAll(/function\s+updateTicker\s*\(/g)].length, 1);
