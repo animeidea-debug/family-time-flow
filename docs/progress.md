@@ -8,7 +8,7 @@
 ## Current state
 
 - Production runs commit
-  `134941236a2f5ab35febeacc707a34108b103102` through the NAS-owned
+  `9f9a5a58cd09a509ad4ed369619dfc203d7f3ce7` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
   photo playback inside the accessible week detail, bounded Immich pagination,
@@ -77,6 +77,13 @@
   and ignores stale responses. Browser QA confirmed a real 250 × 333 portrait
   rendered completely at 250 × 333 inside the larger card, with automatic
   viewport-edge positioning and no browser warnings or errors.
+- Household, personal, and week memory galleries now share a consistent square
+  media tile. Thumbnails use `object-fit: contain`, so portrait images fit the
+  tile height and landscape images fit its width without cropping or
+  distortion; capture dates sit in a separate footer instead of covering the
+  image. Production QA checked six real household memories spanning four
+  portrait, one landscape, and one near-square thumbnail. At 390 px the gallery
+  remains two columns with zero horizontal overflow and no browser errors.
 - Student, worker, and family themes now use explicit high-contrast primary,
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
@@ -158,6 +165,11 @@
   locally and in the NAS release gate. Production browser QA verified a real
   portrait thumbnail at its native 250 × 333 ratio and confirmed the tooltip
   remains inside a 1280 × 720 viewport.
+- The ratio-preserving gallery release passed the same 23 frontend and 24
+  backend tests locally and in the NAS release gate. Its production browser
+  check confirmed all six sampled thumbnails retained their natural aspect
+  ratios in 170 × 170 desktop media tiles; the 390 px layout used two 161 px
+  columns without horizontal overflow.
 - The adaptive “On This Day” release passed the same 23 frontend and 24 backend
   tests locally and in both NAS release gates. Its exact-first, ±1/±3 fallback,
   real-date, household-balance, and honest-empty-state contract is recorded in
@@ -166,9 +178,9 @@
   and showed the correct real-date badges and expansion explanation.
 - `nas-deploy status` and `nas-deploy doctor` passed after the final release.
   The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260904-104308.db` before the atomic
+  `/app/data/backups/ftf-pre-release-20260904-110002.db` before the atomic
   switch; rollback remains `nas-deploy rollback family-time-flow` and returns
-  to the previous release `1c22c8f4ab49f58d02c10d7cd052ff771bce502b`.
+  to the previous release `134941236a2f5ab35febeacc707a34108b103102`.
 - A slow NAS registry response exposed a one-minute false-failure window in the
   FTF deploy health gate. NAS tooling commit
   `bc2f2e8526213585546ce359321d32e7c64edea0` now uses a bounded, configurable

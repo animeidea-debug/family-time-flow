@@ -215,6 +215,10 @@ data explicitly.
 - Feature-flagged household card and persistent bottom ticker
 - Searches the exact calendar day across the previous five years first, then
   fills a sparse gallery from non-overlapping ±1-day and ±3-day bands
+- Uses consistent square media tiles for household, personal, and week
+  galleries. Images keep their native aspect ratio inside each tile, and the
+  capture date sits in a separate footer so portrait and landscape content is
+  never cropped or covered
 - Keeps only photos containing an Immich person linked to a created household
   member; personless photos are not used as filler
 - Removes exact duplicates and same-person camera bursts, balances the limited
