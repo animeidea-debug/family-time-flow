@@ -186,6 +186,10 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.match(applicationScript, /\/on-this-day\?month=\$\{now\.getMonth\(\) \+ 1\}&day=\$\{now\.getDate\(\)}&limit=6/);
     assert.match(applicationScript, /immichGet\(path, \{ timeoutMs: 10000 \}\)/);
     assert.match(applicationScript, /function openMemoryPreview/);
+    assert.match(applicationScript, /button\.className = 'memory-tile'/);
+    assert.match(applicationScript, /image\.className = 'memory-tile-image'/);
+    assert.match(applicationScript, /media\.appendChild\(image\)/);
+    assert.doesNotMatch(applicationScript, /scope === 'week' \? 'h-full w-full object-cover' : 'h-28 w-full object-cover'/);
     assert.match(applicationScript, /&size=preview/);
     assert.match(applicationScript, /function closeMemoryPreview/);
     assert.match(applicationScript, /image\.removeAttribute\('src'\)/);

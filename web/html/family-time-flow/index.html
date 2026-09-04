@@ -504,6 +504,58 @@
             display: none;
         }
 
+        /* ===== Memory Gallery ===== */
+        .memory-tile {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            background: var(--surface-color);
+            transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .memory-tile:hover,
+        .memory-tile:focus-visible {
+            border-color: var(--accent-color);
+            box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-color) 18%, transparent);
+            transform: translateY(-1px);
+            outline: none;
+        }
+
+        .memory-tile-media {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+            background: color-mix(in srgb, var(--surface-color) 82%, var(--accent-color) 18%);
+        }
+
+        .memory-tile-image {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .memory-tile-date {
+            display: block;
+            width: 100%;
+            padding: 6px 8px;
+            border-top: 1px solid var(--border-color);
+            color: color-mix(in srgb, var(--text-color) 72%, transparent);
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.2;
+            text-align: left;
+            background: color-mix(in srgb, var(--surface-color) 94%, var(--accent-color) 6%);
+        }
+
         .photo-tooltip.visible {
             opacity: 1;
             transform: translateY(0) scale(1);
@@ -2247,14 +2299,14 @@
                         : `${exactDate || `${asset.year} 年`}的家庭回忆`;
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.className = scope === 'week'
-                    ? 'relative aspect-square overflow-hidden rounded-xl border-2 border-slate-200 bg-slate-100 focus:outline-none'
-                    : 'relative h-28 overflow-hidden rounded-xl border-2 border-theme-border bg-theme-muted focus:outline-none';
+                button.className = 'memory-tile';
                 button.setAttribute('aria-label', `查看 ${memoryLabel}`);
                 button.addEventListener('click', () => openMemoryPreview(asset.id, scope));
 
+                const media = document.createElement('span');
+                media.className = 'memory-tile-media';
                 const image = document.createElement('img');
-                image.className = scope === 'week' ? 'h-full w-full object-cover' : 'h-28 w-full object-cover';
+                image.className = 'memory-tile-image';
                 image.loading = 'lazy';
                 image.decoding = 'async';
                 image.alt = memoryLabel;
@@ -2266,9 +2318,10 @@
                 }, { once: true });
 
                 const badge = document.createElement('span');
-                badge.className = 'absolute bottom-1.5 left-1.5 rounded-full bg-slate-950/75 px-2 py-0.5 text-[10px] font-black text-white';
+                badge.className = 'memory-tile-date';
                 badge.textContent = scope === 'week' ? asset.date.slice(5).replace('-', '.') : displayDate;
-                button.append(image, badge);
+                media.appendChild(image);
+                button.append(media, badge);
                 gallery.appendChild(button);
             });
         }
