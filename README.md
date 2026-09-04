@@ -187,6 +187,9 @@ data explicitly.
   4,160-cell grid does not issue photo requests
 - Requests the existing member/week memory selector, then shows one
   person-focused, deduplicated midpoint image as a representative preview
+- Uses a larger responsive card and preserves each thumbnail's native aspect
+  ratio, so portrait photos remain vertical and fully visible instead of being
+  stretched or cropped into a landscape frame
 - Caches at most 64 member/week results in page memory and ignores stale hover
   responses; touch devices continue to use the week-detail gallery
 - Uses only the compressed thumbnail proxy; larger read-only preview stays in

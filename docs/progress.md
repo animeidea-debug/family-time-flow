@@ -3,12 +3,12 @@
 > Current handoff snapshot. Durable rules live in `AGENTS.md`; stable product
 > information lives in `README.md` and the linked design and deployment docs.
 >
-> Last verified: 2026-09-03 Asia/Shanghai
+> Last verified: 2026-09-04 Asia/Shanghai
 
 ## Current state
 
 - Production runs commit
-  `1c22c8f4ab49f58d02c10d7cd052ff771bce502b` through the NAS-owned
+  `134941236a2f5ab35febeacc707a34108b103102` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
   photo playback inside the accessible week detail, bounded Immich pagination,
@@ -72,10 +72,11 @@
 - The desktop hover implementation is enabled in production. It waits 600 ms
   on a historical cell, requests the existing member/week selector only for an
   Immich-linked member on fine-pointer devices, shows one deduplicated midpoint
-  image, caches at most 64 page-session results, and ignores stale responses.
-  Browser QA confirmed a loaded representative photo for week 450, immediate
-  cached reuse in about 176 ms, clean dismissal on leave, and cancellation of a
-  220 ms pass over the adjacent cell before any delayed image appeared.
+  image in a responsive 380 px card, preserves portrait and landscape aspect
+  ratios with no `object-cover` crop, caches at most 64 page-session results,
+  and ignores stale responses. Browser QA confirmed a real 250 × 333 portrait
+  rendered completely at 250 × 333 inside the larger card, with automatic
+  viewport-edge positioning and no browser warnings or errors.
 - Student, worker, and family themes now use explicit high-contrast primary,
   secondary, and muted text tokens. Primary actions, active theme controls,
   input placeholders, and keyboard focus states remain legible on their light
@@ -153,6 +154,10 @@
 - The intentional-hover release passed the same 23 frontend and 24 backend
   tests locally and in the NAS release gate. Its durable rationale is recorded
   in `docs/decisions/006-intentional-week-hover-preview.md`.
+- The enlarged-preview release passed the same 23 frontend and 24 backend tests
+  locally and in the NAS release gate. Production browser QA verified a real
+  portrait thumbnail at its native 250 × 333 ratio and confirmed the tooltip
+  remains inside a 1280 × 720 viewport.
 - The adaptive “On This Day” release passed the same 23 frontend and 24 backend
   tests locally and in both NAS release gates. Its exact-first, ±1/±3 fallback,
   real-date, household-balance, and honest-empty-state contract is recorded in
@@ -161,9 +166,15 @@
   and showed the correct real-date badges and expansion explanation.
 - `nas-deploy status` and `nas-deploy doctor` passed after the final release.
   The NAS created readable pre-release SQLite backup
-  `/app/data/backups/ftf-pre-release-20260903-110207.db` before the atomic
-  switch; rollback remains `nas-deploy rollback family-time-flow` and currently
-  returns to `25ecac84be0ea32e2e0d9dec3d8e9e14ba8ea5d3`.
+  `/app/data/backups/ftf-pre-release-20260904-104308.db` before the atomic
+  switch; rollback remains `nas-deploy rollback family-time-flow` and returns
+  to the previous release `1c22c8f4ab49f58d02c10d7cd052ff771bce502b`.
+- A slow NAS registry response exposed a one-minute false-failure window in the
+  FTF deploy health gate. NAS tooling commit
+  `bc2f2e8526213585546ce359321d32e7c64edea0` now uses a bounded, configurable
+  six-minute startup window with progress logging and retains automatic
+  rollback for genuine failures. The retried exact-SHA release completed and
+  the backend subsequently reached Docker `healthy` state.
 - Routine validated application changes now have standing project authorization
   to commit, push, and deploy by immutable SHA. Destructive data operations,
   credentials, network exposure, infrastructure, failed validation, and other
