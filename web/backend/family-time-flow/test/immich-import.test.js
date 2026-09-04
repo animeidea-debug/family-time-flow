@@ -142,6 +142,14 @@ before(async () => {
                         type: 'IMAGE',
                         people: [{ id: 'person-1', name: '家人甲' }],
                         exifInfo: { dateTimeOriginal: at(4, '12:00:00') }
+                    },
+                    {
+                        id: `week-date-conflict-${assetYear}`,
+                        originalFileName: '2005-10-2 099.jpg',
+                        fileCreatedAt: at(6, '18:00:00'),
+                        type: 'IMAGE',
+                        people: [{ id: 'person-2', name: '家人乙' }],
+                        exifInfo: { dateTimeOriginal: at(6, '18:00:00') }
                     }
                 ], nextPage: '2' } }));
             }
@@ -384,6 +392,8 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             candidates: 35,
             personFocused: 30,
             deduplicated: 15,
+            excluded: 0,
+            dateConflicts: 0,
             windowDays: 0,
             searchedWindowDays: 0
         });
@@ -406,6 +416,8 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             candidates: 35,
             personFocused: 6,
             deduplicated: 3,
+            excluded: 0,
+            dateConflicts: 0,
             windowDays: 0,
             searchedWindowDays: 0
         });
@@ -425,9 +437,26 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
         assert.equal(weekBody.assets.every(asset => !('people' in asset) && !('originalFileName' in asset)), true);
         assert.deepEqual(weekBody.selection, {
             mode: 'linked-member-week', linkedPeople: 1,
-            candidates: 9, personFocused: 8, deduplicated: 6,
+            candidates: 10, personFocused: 8, deduplicated: 6,
+            excluded: 0, dateConflicts: 1,
             pages: 3, truncated: true
         });
+
+        const exclusionResponse = await fetch(`${baseUrl}/members/${secondCreated.id}/memory-exclusions`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ assetId: `week-first-${birthYear}` })
+        });
+        assert.equal(exclusionResponse.status, 200);
+        const excludedWeek = await fetch(`${baseUrl}/members/${secondCreated.id}/weeks/0/memories?limit=9`)
+            .then(response => response.json());
+        assert.equal(excludedWeek.assets.some(asset => asset.id.includes('week-first')), false);
+        assert.equal(excludedWeek.selection.excluded, 2);
+        const restoreResponse = await fetch(
+            `${baseUrl}/members/${secondCreated.id}/memory-exclusions/week-first-${birthYear}`,
+            { method: 'DELETE' }
+        );
+        assert.equal(restoreResponse.status, 200);
         assert.deepEqual(lastSearchBody.personIds, ['person-2']);
         assert.equal(lastSearchBody.type, 'IMAGE');
         assert.equal(lastSearchBody.withPeople, true);
@@ -509,6 +538,7 @@ test('returns bounded on-this-day results and surfaces upstream failure', async 
             selection: {
                 mode: 'linked-household-people', linkedPeople: 2,
                 candidates: 0, personFocused: 0, deduplicated: 0,
+                excluded: 0, dateConflicts: 0,
                 windowDays: 0, searchedWindowDays: 3
             }
         });

@@ -1079,6 +1079,11 @@
             <div class="rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-48">
                 <img id="memoryPreviewImage" class="max-h-[70vh] w-full object-contain" alt="家庭回忆预览">
             </div>
+            <div id="memoryPreviewActions" class="hidden items-center justify-between gap-3 px-1 pt-3">
+                <p id="memoryPreviewActionStatus" class="text-xs text-slate-500">如果照片认错了人物，可以只在这里隐藏。</p>
+                <button id="memoryPreviewExclude" type="button" onclick="requestMemoryExclusion()"
+                    class="btn btn-ghost btn-sm whitespace-nowrap text-red-700">不是此人 · 隐藏</button>
+            </div>
         </section>
     </div>
 
@@ -2258,6 +2263,8 @@
         let personalMemoryDateKey = null;
         let personalMemoryMemberId = null;
         let memoryPreviewTrigger = null;
+        let memoryPreviewAsset = null;
+        let memoryExclusionPending = false;
 
         function renderImmichStatus() {
             document.getElementById('onboardingSourceHint').textContent = immichConfigured
@@ -2530,6 +2537,8 @@
                 ? `${state.profile.name || '成员'}的这一周`
                 : scope === 'personal' ? `${state.profile.name || '成员'}的回忆` : '家庭回忆';
             memoryPreviewTrigger = document.activeElement;
+            memoryPreviewAsset = { id: asset.id, scope };
+            memoryExclusionPending = false;
             const memoryDate = asset.date || `${asset.year} 年`;
             caption.textContent = `${memoryDate} · ${scope === 'household' ? '家庭' : '个人'}只读预览`;
             image.classList.remove('hidden');
@@ -2539,6 +2548,14 @@
                 caption.textContent = `${memoryDate} · 预览暂时无法读取`;
             };
             image.src = `${API_BASE}/immich/asset-thumb?id=${encodeURIComponent(asset.id)}&size=preview`;
+            const actions = document.getElementById('memoryPreviewActions');
+            const exclusionButton = document.getElementById('memoryPreviewExclude');
+            const canExclude = scope === 'week' || scope === 'personal';
+            actions.classList.toggle('hidden', !canExclude);
+            actions.classList.toggle('flex', canExclude);
+            exclusionButton.disabled = false;
+            exclusionButton.textContent = '不是此人 · 隐藏';
+            document.getElementById('memoryPreviewActionStatus').textContent = '如果照片认错了人物，可以只在这里隐藏。';
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
             document.body.style.overflow = 'hidden';
@@ -2559,6 +2576,42 @@
                 memoryPreviewTrigger.focus();
             }
             memoryPreviewTrigger = null;
+            memoryPreviewAsset = null;
+            memoryExclusionPending = false;
+        }
+
+        async function requestMemoryExclusion() {
+            const preview = memoryPreviewAsset;
+            const memberId = String(activeUserId || '');
+            if (!preview || !/^[1-9][0-9]{0,11}$/.test(memberId)) return;
+            const button = document.getElementById('memoryPreviewExclude');
+            const status = document.getElementById('memoryPreviewActionStatus');
+            if (!memoryExclusionPending) {
+                memoryExclusionPending = true;
+                button.textContent = '确认隐藏这张照片';
+                status.textContent = '只影响这个成员在 Family Time Flow 中的回忆，不会删除 Immich 照片。';
+                return;
+            }
+            button.disabled = true;
+            button.textContent = '正在隐藏…';
+            const result = await apiPost(`/members/${encodeURIComponent(memberId)}/memory-exclusions`, {
+                assetId: preview.id
+            });
+            if (!result || result.status !== 'excluded') {
+                button.disabled = false;
+                button.textContent = '重试隐藏';
+                status.textContent = '保存失败，照片没有变化。';
+                return;
+            }
+            if (preview.scope === 'week') {
+                weekMemoryAssets = weekMemoryAssets.filter(asset => asset.id !== preview.id);
+                renderWeekMemories();
+            } else {
+                personalMemoryAssets = personalMemoryAssets.filter(asset => asset.id !== preview.id);
+                renderPersonalOnThisDayMemories();
+            }
+            closeMemoryPreview();
+            showToast('已为当前成员隐藏这张照片', 2200);
         }
 
         function memberDtoToLegacy(member) {

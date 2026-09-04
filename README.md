@@ -210,6 +210,12 @@ data explicitly.
   preview, retry, unlinked, empty, disabled, and unavailable states
 - Excludes photos before the member's birth date and ignores stale responses
   after member or week changes
+- Rejects an asset when a date-formatted filename clearly predates the member's
+  birth year, containing a common class of imported EXIF and face-association
+  mistakes
+- Lets the family mark a personal preview as “not this person”; the reversible
+  exclusion is stored only in Family Time Flow and never deletes or changes the
+  Immich asset
 
 #### "On This Day" Time Capsule
 - Feature-flagged household card and persistent bottom ticker

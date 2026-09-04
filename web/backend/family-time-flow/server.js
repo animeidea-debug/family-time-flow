@@ -101,6 +101,14 @@ async function initDb() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )`);
+    db.run(`
+    CREATE TABLE IF NOT EXISTS memory_exclusions (
+      user_id INTEGER NOT NULL,
+      asset_id TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT 'not_this_person',
+      created_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, asset_id)
+    )`);
 
     // Insert defaults
     db.run("INSERT OR IGNORE INTO app_config (key, value) VALUES (?, ?)", ["version", "0.2.0"]);
@@ -582,9 +590,37 @@ app.delete("/api/users/:id", (req, res) => {
     const eventCount = queryOne("SELECT COUNT(*) AS count FROM events WHERE user_id = ?", [req.params.id]).count;
     runTransaction([
         { sql: "DELETE FROM events WHERE user_id = ?", params: [req.params.id] },
+        { sql: "DELETE FROM memory_exclusions WHERE user_id = ?", params: [req.params.id] },
         { sql: "DELETE FROM users WHERE id = ?", params: [req.params.id] }
     ]);
     res.json({ status: "deleted", memberId: String(user.id), deletedEvents: eventCount });
+});
+
+app.post("/api/members/:id/memory-exclusions", (req, res) => {
+    const memberId = String(req.params.id);
+    const assetId = String(req.body && req.body.assetId || "").trim();
+    if (!/^[1-9][0-9]{0,11}$/.test(memberId) || !/^[A-Za-z0-9-]{1,100}$/.test(assetId)) {
+        return res.status(400).json({ error: "invalid member or asset" });
+    }
+    if (!queryOne("SELECT id FROM users WHERE id = ?", [memberId])) {
+        return res.status(404).json({ error: "Member not found" });
+    }
+    run(`INSERT OR IGNORE INTO memory_exclusions (user_id, asset_id, reason)
+         VALUES (?, ?, 'not_this_person')`, [memberId, assetId]);
+    res.json({ status: "excluded", memberId, assetId });
+});
+
+app.delete("/api/members/:id/memory-exclusions/:assetId", (req, res) => {
+    const memberId = String(req.params.id);
+    const assetId = String(req.params.assetId || "").trim();
+    if (!/^[1-9][0-9]{0,11}$/.test(memberId) || !/^[A-Za-z0-9-]{1,100}$/.test(assetId)) {
+        return res.status(400).json({ error: "invalid member or asset" });
+    }
+    if (!queryOne("SELECT id FROM users WHERE id = ?", [memberId])) {
+        return res.status(404).json({ error: "Member not found" });
+    }
+    run("DELETE FROM memory_exclusions WHERE user_id = ? AND asset_id = ?", [memberId, assetId]);
+    res.json({ status: "restored", memberId, assetId });
 });
 
 // GET /api/debug — Full database state (for admin panel)
@@ -882,6 +918,20 @@ app.get("/api/members/:id/avatar", async (req, res) => {
 
 const MEMORY_BURST_WINDOW_MS = 3 * 60 * 1000;
 
+function memoryIdentityKeys(asset) {
+    const keys = [asset.id ? `asset:${asset.id}` : null];
+    if (asset.duplicateId) keys.push(`asset:${asset.duplicateId}`, `duplicate:${asset.duplicateId}`);
+    if (asset.checksum) keys.push(`checksum:${String(asset.checksum)}`);
+    return keys.filter(Boolean);
+}
+
+function filenameCaptureYear(asset) {
+    const match = String(asset.originalFileName || "").match(
+        /(?:^|[^0-9])((?:19|20)\d{2})[-_.](?:0?[1-9]|1[0-2])[-_.](?:0?[1-9]|[12]\d|3[01])(?:[^0-9]|$)/
+    );
+    return match ? Number.parseInt(match[1], 10) : 0;
+}
+
 function memoryCaptureTime(asset) {
     const raw = asset.exifInfo && asset.exifInfo.dateTimeOriginal
         ? asset.exifInfo.dateTimeOriginal
@@ -907,8 +957,18 @@ function hasSimilarHouseholdPeople(a, b) {
     return overlap / smallerSize >= 0.5;
 }
 
-function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earliestCaptureTime = 0) {
+function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earliestCaptureTime = 0, excludedAssetIds = new Set()) {
+    const excludedIdentityKeys = new Set(candidates
+        .filter(candidate => excludedAssetIds.has(candidate.asset.id))
+        .flatMap(candidate => memoryIdentityKeys(candidate.asset)));
+    let excludedCount = 0;
+    let dateConflictCount = 0;
+    const birthYear = earliestCaptureTime ? new Date(earliestCaptureTime).getUTCFullYear() : 0;
     const focused = candidates.flatMap(candidate => {
+        if (memoryIdentityKeys(candidate.asset).some(key => excludedIdentityKeys.has(key))) {
+            excludedCount += 1;
+            return [];
+        }
         const people = Array.isArray(candidate.asset.people) ? candidate.asset.people : [];
         const householdPersonIds = [...new Set(people
             .map(person => person && person.id)
@@ -916,6 +976,11 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earlies
         if (!householdPersonIds.length) return [];
         const captureTime = memoryCaptureTime(candidate.asset);
         if (earliestCaptureTime && (!captureTime || captureTime < earliestCaptureTime)) return [];
+        const filenameYear = filenameCaptureYear(candidate.asset);
+        if (birthYear && filenameYear && filenameYear < birthYear) {
+            dateConflictCount += 1;
+            return [];
+        }
         return [{
             ...candidate,
             householdPersonIds,
@@ -928,12 +993,7 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earlies
     const deduplicated = [];
     for (const candidate of focused) {
         const asset = candidate.asset;
-        const identityKeys = [asset.id ? `asset:${asset.id}` : null];
-        if (asset.duplicateId) {
-            identityKeys.push(`asset:${asset.duplicateId}`, `duplicate:${asset.duplicateId}`);
-        }
-        if (asset.checksum) identityKeys.push(`checksum:${String(asset.checksum)}`);
-        const usableIdentityKeys = identityKeys.filter(Boolean);
+        const usableIdentityKeys = memoryIdentityKeys(asset);
         if (usableIdentityKeys.some(key => exactKeys.has(key))) continue;
 
         const matchesBurst = candidate.captureTime && deduplicated.some(existing =>
@@ -972,16 +1032,19 @@ function selectPersonFocusedMemories(candidates, linkedPersonIds, limit, earlies
     return {
         selected,
         focusedCount: focused.length,
-        deduplicatedCount: deduplicated.length
+        deduplicatedCount: deduplicated.length,
+        excludedCount,
+        dateConflictCount
     };
 }
 
-function selectWeeklyPersonMemories(candidates, linkedPersonIds, limit, earliestCaptureTime) {
+function selectWeeklyPersonMemories(candidates, linkedPersonIds, limit, earliestCaptureTime, excludedAssetIds) {
     const base = selectPersonFocusedMemories(
         candidates,
         linkedPersonIds,
         candidates.length,
-        earliestCaptureTime
+        earliestCaptureTime,
+        excludedAssetIds
     );
     const byDay = new Map();
     for (const candidate of base.selected) {
@@ -1132,6 +1195,7 @@ app.get("/api/immich/on-this-day", async (req, res) => {
     let selectionMode = "linked-household-people";
     let linkedPersonIds;
     let earliestCaptureTime = 0;
+    let excludedAssetIds = new Set();
     if (memberId !== undefined) {
         if (!/^[1-9][0-9]{0,11}$/.test(String(memberId))) {
             return res.status(400).json({ error: "invalid member id" });
@@ -1146,6 +1210,10 @@ app.get("/api/immich/on-this-day", async (req, res) => {
             const parsedBirthDate = Date.parse(`${member.birth_date}T00:00:00.000Z`);
             if (Number.isFinite(parsedBirthDate)) earliestCaptureTime = parsedBirthDate;
         }
+        excludedAssetIds = new Set(queryAll(
+            "SELECT asset_id FROM memory_exclusions WHERE user_id = ?",
+            [memberId]
+        ).map(row => row.asset_id));
     } else {
         linkedPersonIds = new Set(queryAll(
             `SELECT immich_person_id FROM users
@@ -1204,7 +1272,7 @@ app.get("/api/immich/on-this-day", async (req, res) => {
         }
         selection = memberId === undefined
             ? selectHouseholdBalancedMemories(allAssets, linkedPersonIds, lim)
-            : selectPersonFocusedMemories(allAssets, linkedPersonIds, lim, earliestCaptureTime);
+            : selectPersonFocusedMemories(allAssets, linkedPersonIds, lim, earliestCaptureTime, excludedAssetIds);
         searchedWindowDays = stage;
         if (selection.selected.length >= lim) break;
     }
@@ -1230,6 +1298,8 @@ app.get("/api/immich/on-this-day", async (req, res) => {
             candidates: allAssets.length,
             personFocused: selection.focusedCount,
             deduplicated: selection.deduplicatedCount,
+            excluded: selection.excludedCount,
+            dateConflicts: selection.dateConflictCount,
             windowDays: usedWindowDays,
             searchedWindowDays
         },
@@ -1289,7 +1359,13 @@ app.get("/api/members/:id/weeks/:weekIndex/memories", async (req, res) => {
         asset,
         year: new Date(memoryCaptureTime(asset) || start.getTime()).getUTCFullYear()
     }));
-    const selection = selectWeeklyPersonMemories(candidates, new Set([personId]), limit, birthDate.getTime());
+    const excludedAssetIds = new Set(queryAll(
+        "SELECT asset_id FROM memory_exclusions WHERE user_id = ?",
+        [req.params.id]
+    ).map(row => row.asset_id));
+    const selection = selectWeeklyPersonMemories(
+        candidates, new Set([personId]), limit, birthDate.getTime(), excludedAssetIds
+    );
     res.set('Cache-Control', 'private, max-age=300');
     res.json({
         assets: selection.selected.map(({ asset, captureTime }) => ({
@@ -1306,6 +1382,8 @@ app.get("/api/members/:id/weeks/:weekIndex/memories", async (req, res) => {
             candidates: candidates.length,
             personFocused: selection.focusedCount,
             deduplicated: selection.deduplicatedCount,
+            excluded: selection.excludedCount,
+            dateConflicts: selection.dateConflictCount,
             pages: result.pages,
             truncated: result.truncated
         }

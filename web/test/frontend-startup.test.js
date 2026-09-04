@@ -166,7 +166,8 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
         'immichMemoryRefresh', 'immichMemorySelectionNote',
         'personalMemorySection', 'personalMemoryStatus', 'personalMemoryGallery',
         'personalMemoryRetry', 'personalMemoryRefresh', 'personalMemorySelectionNote',
-        'memoryPreviewOverlay', 'memoryPreviewImage'
+        'memoryPreviewOverlay', 'memoryPreviewImage', 'memoryPreviewActions',
+        'memoryPreviewExclude', 'memoryPreviewActionStatus'
     ]) {
         assert.match(html, new RegExp(`id="${id}"`));
     }
@@ -192,6 +193,10 @@ test('on-this-day memories are feature flagged, retryable, and preview-only', ()
     assert.doesNotMatch(applicationScript, /scope === 'week' \? 'h-full w-full object-cover' : 'h-28 w-full object-cover'/);
     assert.match(applicationScript, /&size=preview/);
     assert.match(applicationScript, /function closeMemoryPreview/);
+    assert.match(applicationScript, /async function requestMemoryExclusion/);
+    assert.match(applicationScript, /memory-exclusions/);
+    assert.match(applicationScript, /确认隐藏这张照片/);
+    assert.match(html, /不是此人 · 隐藏/);
     assert.match(applicationScript, /image\.removeAttribute\('src'\)/);
     assert.match(applicationScript, /memoryPreviewTrigger\.focus\(\)/);
     assert.match(applicationScript, /if \(dateKey !== onThisDayDateKey\) force = true/);
