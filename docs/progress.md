@@ -8,12 +8,26 @@
 ## Current state
 
 - Production runs commit
-  `9f9a5a58cd09a509ad4ed369619dfc203d7f3ce7` through the NAS-owned
+  `2d7fd44623342edea7db94b88f6ae37e96234dae` through the NAS-owned
   `nas-deploy` release system on Node 22. It includes household and personal
   person-focused memories, the personal pre-birth guard, and on-demand week
   photo playback inside the accessible week detail, bounded Immich pagination,
-  server-private person links, and the intentional desktop hover preview.
-- `nas-deploy status` and `nas-deploy doctor` pass. The FTF container is
+  server-private person links, the intentional desktop hover preview, and
+  member-scoped wrong-photo exclusions.
+- Personal memory selection now rejects a date-formatted original filename
+  when its year clearly predates the member's birth year. A personal or week
+  preview also offers a two-step “not this person” action; it stores a
+  reversible exclusion in FTF SQLite and never changes or deletes the Immich
+  asset.
+- A production investigation of 陈婧文 life weeks 31 and 32 found no week
+  calculation defect. Three week-31 assets had 2005 dates in their filenames
+  despite 2014 capture metadata, and week 32 contained six duplicated pairs
+  incorrectly linked by Immich. After explicit owner confirmation, all 15
+  incorrect face associations were soft-deleted in Immich while preserving
+  the photos and other faces. Read-only database verification reports zero
+  remaining active matches and 15 soft-deleted matches in the bounded range;
+  both production week APIs now return zero candidates and zero assets.
+- `nas-deploy status` and `nas-deploy doctor` pass for the deployed commit. The FTF container is
   running and healthy, `/api/health` reports storage ready with backups
   enabled, and the persistent SQLite database opens successfully.
 - Immich onboarding is enabled through a NAS mode-0600 service secret. The
